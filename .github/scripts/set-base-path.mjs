@@ -27,12 +27,17 @@ import { readdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { join, extname } from "node:path";
 
 const [, , ROOT, RAW_BASE] = process.argv;
-if (!ROOT || !RAW_BASE) {
-	console.error("usage: set-base-path.mjs <static-dir> </base/>");
+if (!ROOT) {
+	console.error("usage: set-base-path.mjs <static-dir> [/base/]");
 	process.exit(1);
 }
-// Normalise to exactly one leading and one trailing slash.
-const BASE = "/" + RAW_BASE.replace(/^\/+|\/+$/g, "") + "/";
+
+// actions/configure-pages reports an empty base_path for a site served from the
+// origin root (a user/org site, or a custom domain), which is the same case as
+// an explicit "/". Trim first and rebuild, so an empty value yields "/" rather
+// than the "//" that concatenating slashes around it would give.
+const trimmed = (RAW_BASE || "").replace(/^\/+|\/+$/g, "");
+const BASE = trimmed ? `/${trimmed}/` : "/";
 if (BASE === "/") {
 	console.log("base is root, nothing to rewrite");
 	process.exit(0);
