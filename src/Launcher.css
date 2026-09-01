@@ -1,57 +1,185 @@
-#launcher-button-container {
-	position: absolute;
-	height: 100%;
-	aspect-ratio: 1/1;
-	width: auto;
+/* ==========================================================================
+   Launchpad — full-screen app grid
+   ========================================================================== */
+
+#launcher {
+	position: fixed;
+	inset: 0;
+	z-index: 9600;
 	display: flex;
+	flex-direction: column;
 	align-items: center;
-	justify-content: center;
-	cursor: pointer;
+	padding-top: calc(var(--menubar-h) + 44px);
+	padding-bottom: var(--dock-reserve);
+	box-sizing: border-box;
+
+	background: rgba(6, 7, 10, 0.34);
+	backdrop-filter: blur(44px) saturate(170%);
+	-webkit-backdrop-filter: blur(44px) saturate(170%);
+
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition:
+		opacity 0.22s var(--ease-out),
+		visibility 0s linear 0.22s,
+		backdrop-filter 0.22s var(--ease-out);
 }
 
-#launcher-button {
-	background: var(--theme-secondary-bg);
-	background: color-mix(in srgb, var(--theme-secondary-fg) 17.5%, transparent);
-
-	border-radius: 50%;
-	height: 34px;
-	width: 34px;
-}
-
-#launcher-button::after {
-	content: "";
-	position: absolute;
-	width: 0.7rem;
-	height: 0.7rem;
-	border: 0.125rem solid var(--theme-fg);
-	border-radius: 50%;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-}
-
-#launcher-button img {
-	border-radius: 50%;
-	height: 15px;
-	width: 15px;
-	opacity: 100;
-}
-.hw-screen {
-	height: 100%;
-	width: 100%;
+#launcher.launcher-active {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transition:
+		opacity 0.22s var(--ease-out),
+		visibility 0s,
+		backdrop-filter 0.22s var(--ease-out);
 }
 
 body.blur-disable #launcher {
 	backdrop-filter: none;
 	-webkit-backdrop-filter: none;
+	background: rgba(6, 7, 10, 0.93);
 }
 
-body.platform-mobile #launcher,
-body.platform-tablet #launcher {
-	border-left: none;
-	border-right: none;
+/* ---- search field ------------------------------------------------------- */
+
+#launcher .launcher-search {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: min(92vw, 330px);
+	height: 34px;
+	padding: 0 12px;
+	box-sizing: border-box;
+	border-radius: 9px;
+	background: rgba(255, 255, 255, 0.13);
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+	flex-shrink: 0;
+	transition:
+		background-color 0.15s ease,
+		box-shadow 0.15s ease;
 }
 
-.app-shortcut-name {
+#launcher .launcher-search:focus-within {
+	background: rgba(255, 255, 255, 0.18);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.12),
+		0 0 0 3.5px color-mix(in srgb, var(--theme-accent) 40%, transparent);
+}
+
+#launcher .launcher-search .material-symbols-outlined {
+	font-size: 18px;
+	color: var(--ink-dim);
+}
+
+#launcher .launcher-search input {
+	flex: 1;
+	min-width: 0;
+	background: transparent;
+	border: none;
+	outline: none;
+	font-family: var(--theme-font-sans);
+	font-size: 13.5px;
+	color: var(--ink);
+}
+
+#launcher .launcher-search input::placeholder {
+	color: var(--ink-faint);
+}
+
+/* ---- app grid ----------------------------------------------------------- */
+
+#launcher .appsView {
+	width: min(94vw, 1080px);
+	margin-top: 40px;
+	padding: 4px 8px 40px;
+	box-sizing: border-box;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+	gap: 26px 8px;
+	align-content: start;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	flex: 1;
+
+	transform: scale(1.06);
+	opacity: 0;
+	transition:
+		transform 0.26s var(--ease-out),
+		opacity 0.2s var(--ease-out);
+}
+
+#launcher.launcher-active .appsView {
+	transform: scale(1);
+	opacity: 1;
+}
+
+#launcher .appsView .app {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 9px;
+	padding: 10px 6px;
+	border-radius: 14px;
+	color: var(--ink);
+	cursor: default;
+	transition:
+		background-color 0.12s ease,
+		transform 0.12s var(--ease-out);
+}
+
+#launcher .appsView .app:hover {
+	background: rgba(255, 255, 255, 0.1);
+}
+
+#launcher .appsView .app:active {
+	transform: scale(0.94);
+}
+
+#launcher .appsView .app .app-shortcut-image {
+	width: 62px;
+	height: 62px;
+	object-fit: contain;
+	border: none;
+	background: transparent;
+	filter: drop-shadow(0 5px 12px rgba(0, 0, 0, 0.45));
+	pointer-events: none;
+}
+
+#launcher .appsView .app-shortcut-name {
 	text-align: center;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1.25;
+	max-width: 100%;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+#launcher .launcher-empty {
+	margin-top: 80px;
+	color: var(--ink-faint);
+	font-size: 14px;
+}
+
+.hw-screen {
+	height: 100%;
+	width: 100%;
+}
+
+@media (max-width: 640px) {
+	#launcher .appsView {
+		grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+		gap: 18px 4px;
+	}
+
+	#launcher .appsView .app .app-shortcut-image {
+		width: 52px;
+		height: 52px;
+	}
 }

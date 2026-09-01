@@ -243,7 +243,7 @@ class SettingsApp extends App {
 			class={`background ${settingsCSS}`}
 		>
 			<div class="header">
-				<h2>Anura Settings</h2>
+				<h2>{BRANDING.name} Settings</h2>
 			</div>
 
 			<div css={this.state} class="container">
@@ -351,7 +351,7 @@ class SettingsApp extends App {
 								setting="clampWindows"
 							/>
 							<SettingSwitch
-								title="Transparent Anura Shell Background"
+								title="Transparent Shell Background"
 								setting="transparent-ashell"
 							/>
 							<SettingSwitch
@@ -363,7 +363,7 @@ class SettingsApp extends App {
 						</div>
 					</div>
 					<div id="v86" class="v86 settings-category">
-						<h3 class="settings-category-name">Anura x86</h3>
+						<h3 class="settings-category-name">x86 Subsystem</h3>
 						<div class="settings-group">
 							{this.state.show_x86_install ? (
 								<div>
@@ -625,7 +625,7 @@ class SettingsApp extends App {
 						<div class="settings-group">
 							<div class="settings-item">
 								<span class="settings-item-name">
-									Reset your Anura install.
+									Reset your {BRANDING.name} install.
 								</span>
 								<button
 									class="matter-button-outlined"

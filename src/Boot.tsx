@@ -41,7 +41,7 @@ channel.addEventListener("message", (msg) => {
             </head>
             <body>
             <div id="wrapper">
-            <h1>AnuraOS is already running in another tab</h1>
+            <h1>{BRANDING.name} is already running in another tab</h1>
             <p>Please close the other tab and reload.</p>
             </div>
             </body>
@@ -202,7 +202,7 @@ window.addEventListener("load", async () => {
 					const tracker_br = document.getElementById("systemstatus-br")!;
 					tracker.style.display = "unset";
 					tracker_br.style.display = "unset";
-					tracker.innerText = "Anura is updating your system...";
+					tracker.innerText = `${BRANDING.name} is updating your system\u2026`;
 					try {
 						await new anura.fs.Shell().promises.rm("/anura_files", {
 							recursive: true,
@@ -273,8 +273,7 @@ window.addEventListener("load", async () => {
 		if (needsMigration.length > 0) {
 			anura.notifications.add({
 				title: "Anura Update",
-				description:
-					"AnuraOS has been updated to a new version. Users are recommended to change the installation directory of their apps and libraries to /usr/ to ensure consistency with new installations.",
+				description: `${BRANDING.name} has been updated to a new version. Users are recommended to change the installation directory of their apps and libraries to /usr/ to ensure consistency with new installations.`,
 				timeout: "never",
 				buttons: [
 					{
@@ -509,7 +508,7 @@ document.addEventListener("anura-login-completed", async () => {
 
 	wallpaper.setWallpaper(
 		anura.settings.get("wallpaper") ||
-			"/assets/wallpaper/bundled_wallpapers/Nocturne.jpg",
+			"/assets/wallpaper/bundled_wallpapers/Aether.svg",
 	);
 
 	for (const bin of anura.config.bin) {
@@ -538,74 +537,13 @@ document.addEventListener("anura-login-completed", async () => {
 	await launcher.init();
 	await taskbar.init();
 
-	if (anura.platform.type === "mobile") {
-		// Adjust styles for Taskbar right
-		const tright: HTMLDivElement =
-			taskbar.element.querySelector("#taskbar-right")!;
-		tright.style.backgroundColor = "black";
-		tright.style.top = "0";
-		tright.style.right = "0";
-		tright.style.height = "25px";
-		tright.style.transform = "translateY(0%)";
-		tright.style.width = "100%";
-		tright.style.zIndex = "1000000";
-
-		// Adjust styles taskinfo-container (has date and battery)
-		const tinfocont: HTMLDivElement = tright.querySelector(
-			"#taskinfo-container",
-		)!;
-		tinfocont.style.background = "black";
-		tinfocont.style.right = "0";
-		tinfocont.style.position = "absolute";
-
-		// Adjust styles for date container
-		const tdatecon: HTMLDivElement = tright.querySelector("#date-container")!;
-		tdatecon.style.background = "black";
-
-		document.body.appendChild(tright);
-
-		// Adjust launcher CSS
-		launcher.element.style.left = "0";
-		launcher.element.style.top = "25px";
-		launcher.element.style.borderRadius = "0";
+	// The menu bar already sits at the top of the screen on every form factor,
+	// so the old "move the clock out of the taskbar" hack is gone. Compact
+	// devices only need a denser Launchpad grid.
+	if (anura.platform.type === "mobile" || anura.platform.type === "tablet") {
 		const aview: HTMLDivElement = launcher.element.querySelector(".appsView")!;
-		aview.style.gridTemplateColumns = "1fr 1fr 1fr 1fr";
-		launcher.state.active = true;
-	}
-
-	if (anura.platform.type === "tablet") {
-		// Adjust styles for Taskbar right
-		const tright: HTMLDivElement =
-			taskbar.element.querySelector("#taskbar-right")!;
-		tright.style.backgroundColor = "black";
-		tright.style.top = "0";
-		tright.style.right = "0";
-		tright.style.height = "25px";
-		tright.style.transform = "translateY(0%)";
-		tright.style.width = "100%";
-		tright.style.zIndex = "1000000";
-
-		// Adjust styles taskinfo-container (has date and battery)
-		const tinfocont: HTMLDivElement = tright.querySelector(
-			"#taskinfo-container",
-		)!;
-		tinfocont.style.background = "black";
-		tinfocont.style.right = "0";
-		tinfocont.style.position = "absolute";
-
-		// Adjust styles for date container
-		const tdatecon: HTMLDivElement = tright.querySelector("#date-container")!;
-		tdatecon.style.background = "black";
-
-		document.body.appendChild(tright);
-
-		// Adjust launcher CSS
-		launcher.element.style.left = "0";
-		launcher.element.style.top = "25px";
-		launcher.element.style.borderRadius = "0";
-		const aview: HTMLDivElement = launcher.element.querySelector(".appsView")!;
-		aview.style.gridTemplateColumns = "1fr 1fr 1fr 1fr 1fr 1fr";
-		launcher.state.active = true;
+		aview.style.gridTemplateColumns =
+			anura.platform.type === "mobile" ? "repeat(4, 1fr)" : "repeat(6, 1fr)";
 	}
 
 	document.body.appendChild(launcher.element);
@@ -721,16 +659,15 @@ async function bootUserCustomizations() {
 		const recovery = new RecoveryApp();
 		anura.registerApp(recovery);
 		anura.notifications.add({
-			title: "Anura Error",
-			description:
-				"Anura has detected a system fault and booted in safe mode. Click this notification to enter the recovery app.",
+			title: `${BRANDING.name} Error`,
+			description: `${BRANDING.name} detected a system fault and booted in safe mode. Click this notification to enter the recovery app.`,
 			timeout: "never",
 			callback: () => anura.apps["anura.recovery"].open(),
 		});
 
 		const safeMode = document.createElement("span");
 		safeMode.style.position = "absolute";
-		safeMode.style.bottom = "calc(48px + 1.5rem)";
+		safeMode.style.bottom = "calc(var(--dock-reserve) + 1rem)";
 		safeMode.style.color = "#ff5533";
 		safeMode.style.fontWeight = "bold";
 		safeMode.style.fontSize = "1.25rem";

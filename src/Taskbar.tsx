@@ -1,3 +1,8 @@
+/**
+ * The shell chrome: a menu bar pinned to the top of the screen and a floating,
+ * magnifying dock at the bottom. Both live inside a single `display: contents`
+ * root so the rest of the OS can keep treating `taskbar.element` as one node.
+ */
 class Taskbar {
 	timeformat = new Intl.DateTimeFormat(navigator.language, {
 		hour: "numeric",
@@ -6,6 +11,7 @@ class Taskbar {
 	});
 
 	dateformat = new Intl.DateTimeFormat(navigator.language, {
+		weekday: "short",
 		month: "short",
 		day: "numeric",
 	});
@@ -14,7 +20,8 @@ class Taskbar {
 		pinnedApps: App[];
 		activeApps: App[];
 		showBar: boolean;
-		rounded: boolean;
+		solidMenubar: boolean;
+		activeApp: string;
 		time: string;
 		date: string;
 		bat_icon: string;
@@ -23,24 +30,13 @@ class Taskbar {
 		pinnedApps: [],
 		activeApps: [],
 		showBar: false,
-		rounded:
-			anura.platform.type === "mobile" || anura.platform.type === "tablet"
-				? false
-				: true,
+		solidMenubar: false,
+		activeApp: BRANDING.name,
 		time: "",
 		date: "",
 		bat_icon: "battery_0_bar",
-		net_icon: navigator.onLine ? "signal_wifi_4_bar" : "signal_wifi_off",
+		net_icon: navigator.onLine ? "wifi" : "wifi_off",
 	});
-
-	rounded = css`
-		border-top-left-radius: 25px;
-		border-top-right-radius: 25px;
-		width: calc(100% - 2px);
-		border-left: 1px solid var(--theme-dark-border);
-		border-right: 1px solid var(--theme-dark-border);
-		background-color: color-mix(in srgb, var(--theme-dark-bg) 78%, transparent);
-	`;
 
 	maximizedWins: WMWindow[] = [];
 	dragged = null;
@@ -48,10 +44,15 @@ class Taskbar {
 
 	element = (<div>Not Initialized</div>);
 
+	/** How far, in px, the cursor's influence on dock magnification reaches. */
+	static MAGNIFY_SIGMA = 78;
+	/** Peak scale of the icon directly under the cursor. */
+	static MAGNIFY_PEAK = 0.55;
+
 	shortcut(app: App) {
 		if (!app) return;
 		return ((this as any).tmp = (
-			<li class="taskbar-button">
+			<li class="dock-item" data-title={app?.name || "App"}>
 				<input
 					type="image"
 					draggable={anura.platform.type === "desktop"}
@@ -71,9 +72,7 @@ class Taskbar {
 							this.updateTaskbar();
 						} else {
 							const dropX = e.clientX;
-							const icons = document.querySelectorAll(
-								".taskbar-button .showDialog",
-							);
+							const icons = document.querySelectorAll(".dock-item .dock-icon");
 
 							let closestIndex = anura.settings.get("applist").length - 1;
 
@@ -109,6 +108,9 @@ class Taskbar {
 						}
 						this.dragged = null;
 						this.insidedrag = false;
+						document
+							.querySelectorAll(".dock-item .dock-icon")
+							.forEach((i) => ((i as HTMLElement).style.borderRight = "none"));
 					}}
 					on:dragstart={() => {
 						// @ts-ignore
@@ -116,9 +118,7 @@ class Taskbar {
 					}}
 					on:drag={(e: DragEvent) => {
 						// draw a line to show where the icon will be placed
-						const icons = document.querySelectorAll(
-							".taskbar-button .showDialog",
-						);
+						const icons = document.querySelectorAll(".dock-item .dock-icon");
 						const dropX = e.clientX;
 						const rects: DOMRect[] = [];
 						icons.forEach((icn) => {
@@ -134,10 +134,11 @@ class Taskbar {
 						for (let i = 0; i < icons.length; i++) {
 							(icons[i] as HTMLElement).style.borderRight = "none";
 						}
-						(icons[closestIndex] as HTMLElement).style.borderRight =
-							"2px solid var(--theme-fg)";
+						if (icons[closestIndex])
+							(icons[closestIndex] as HTMLElement).style.borderRight =
+								"2px solid var(--theme-fg)";
 					}}
-					class="showDialog"
+					class="dock-icon showDialog"
 					on:click={(e: MouseEvent) => {
 						if (app.windows.length === 1) {
 							app.windows[0]!.unminimize();
@@ -153,11 +154,10 @@ class Taskbar {
 				{
 					((this as any).lightbar = (
 						<div
-							class="lightbar"
-							style={
-								"position: relative; bottom: 0px; background-color:#FFF; width:30%; left:50%; transform:translateX(-50%)" +
-								(app.windows?.length === 0 ? ";visibility:hidden" : "")
-							}
+							class={[
+								"lightbar",
+								app.windows?.length === 0 ? "lightbar-hidden" : "",
+							]}
 						></div>
 					))
 				}
@@ -205,7 +205,7 @@ class Taskbar {
 			}
 			const pinned = anura.settings.get("applist").includes(app.package);
 			this.#contextMenu.addItem(
-				pinned ? "Unpin" : "Pin",
+				pinned ? "Remove from Dock" : "Keep in Dock",
 				() => {
 					if (pinned) {
 						anura.settings.set(
@@ -226,7 +226,7 @@ class Taskbar {
 			);
 
 			this.#contextMenu.addItem(
-				"Close",
+				"Quit",
 				() => {
 					for (const win of app.windows) {
 						win.close();
@@ -236,9 +236,10 @@ class Taskbar {
 			);
 
 			const c = this.#contextMenu.show(e.x, 0);
-			// HACK HACK DUMB HACK
+			// The menu opens upward out of the dock, so pin it to the bottom
+			// instead of letting ContextMenu place it from the top.
 			c.style.top = "";
-			c.style.bottom = "69px";
+			c.style.bottom = "calc(var(--dock-reserve) + 6px)";
 		} else {
 			const potentialFuture = app.open();
 			if (
@@ -256,7 +257,6 @@ class Taskbar {
 		}
 	}
 
-	// shortcuts: { [key: string]: Shortcut } = {};
 	constructor() {
 		setInterval(() => {
 			const date = Date.now();
@@ -264,20 +264,29 @@ class Taskbar {
 			if (this.timeformat.resolvedOptions().hour12 === false) {
 				this.state.time = this.timeformat.format(date);
 			} else {
-				this.state.time = this.timeformat.format(date).slice(0, -3);
+				this.state.time = this.timeformat.format(date);
 			}
 		}, 1000);
 
 		addEventListener("online", () => {
-			this.state.net_icon = "signal_wifi_4_bar";
+			this.state.net_icon = "wifi";
 		});
 
 		addEventListener("offline", () => {
-			this.state.net_icon = "signal_wifi_off";
+			this.state.net_icon = "wifi_off";
 		});
 
 		document.addEventListener("anura-force-taskbar-update", () => {
 			this.updateTaskbar();
+		});
+
+		// AliceWM tells us which window owns the menu bar title.
+		document.addEventListener("anura-window-focus", ((e: CustomEvent) => {
+			this.state.activeApp = e.detail?.name || BRANDING.name;
+		}) as EventListener);
+
+		document.addEventListener("anura-window-blur", () => {
+			this.state.activeApp = BRANDING.name;
 		});
 
 		// Battery Status API is deprecated, so Microsoft refuses to create type definitions. :(
@@ -332,23 +341,174 @@ class Taskbar {
 			});
 		}
 	}
+
+	/**
+	 * Dock magnification. Each icon's scale falls off as a gaussian of its
+	 * horizontal distance from the cursor, which is what gives the dock its
+	 * signature "wave" instead of a stepped hover.
+	 */
+	#magnify(clientX: number | null) {
+		const dock = document.getElementById("dock");
+		if (!dock) return;
+		if (anura.settings.get("disable-animation")) return;
+
+		const items = dock.querySelectorAll<HTMLElement>(
+			".dock-item, #launcher-button",
+		);
+		const sigma = Taskbar.MAGNIFY_SIGMA;
+
+		items.forEach((item) => {
+			if (clientX === null) {
+				item.style.setProperty("--mag", "1");
+				return;
+			}
+			const rect = item.getBoundingClientRect();
+			const center = rect.left + rect.width / 2;
+			const d = (clientX - center) / sigma;
+			const mag = 1 + Taskbar.MAGNIFY_PEAK * Math.exp(-d * d);
+			item.style.setProperty("--mag", mag.toFixed(3));
+		});
+	}
+
+	brandMenu = new ContextMenu(true);
+
+	#initBrandMenu() {
+		this.brandMenu.removeAllItems();
+		this.brandMenu.addItem(
+			`About ${BRANDING.name}`,
+			() => anura.apps["anura.about"]?.open(),
+			"info",
+		);
+		this.brandMenu.addItem(
+			"System Settings…",
+			() => anura.apps["anura.settings"]?.open(),
+			"settings",
+		);
+		this.brandMenu.addItem(
+			"Wallpaper & Style…",
+			() => anura.apps["anura.wallpaper"]?.open(),
+			"brush",
+		);
+		this.brandMenu.addItem(
+			"Activity Monitor",
+			() => anura.apps["anura.taskmgr"]?.open(),
+			"monitoring",
+		);
+		this.brandMenu.addItem("Restart", () => location.reload(), "restart_alt");
+	}
+
 	async init() {
+		this.#initBrandMenu();
+
 		this.element = (
-			<footer
-				class={[use(this.state.rounded, (rounded) => rounded && this.rounded)]}
-			>
-				<div id="launcher-button-container">
+			<div id="shell-root">
+				<header
+					id="menubar"
+					class={[
+						use(this.state.solidMenubar, (solid) => (solid ? "solid" : "")),
+					]}
+				>
 					<div
-						id="launcher-button"
-						on:click={() => {
+						class="menubar-item"
+						id="menubar-brand"
+						title={BRANDING.name}
+						on:click={(e: MouseEvent) => {
+							launcher.hide();
 							quickSettings.close();
 							calendar.close();
-							launcher.toggleVisible();
+							const el = e.currentTarget as HTMLElement;
+							const rect = el.getBoundingClientRect();
+							this.brandMenu.show(rect.left, rect.bottom + 4);
+							document.onclick = () => {
+								document.onclick = null;
+								this.brandMenu.hide();
+							};
 						}}
-					></div>
-				</div>
-				<nav
-					id="taskbar-bar"
+					>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							xmlns="http://www.w3.org/2000/svg"
+						>
+							<path
+								d="M12 1.5 22 20.5H2L12 1.5Z"
+								fill="currentColor"
+								fill-opacity="0.95"
+							/>
+							<path
+								d="M12 8.5 17 18H7l5-9.5Z"
+								fill="#000"
+								fill-opacity="0.45"
+							/>
+						</svg>
+					</div>
+
+					<div class="menubar-item" id="menubar-appname">
+						{use(this.state.activeApp)}
+					</div>
+
+					<div id="menubar-spacer"></div>
+
+					<div id="menubar-right">
+						<span class="systray"></span>
+
+						<div
+							class="menubar-item"
+							title="Control Center"
+							on:click={() => {
+								launcher.hide();
+								calendar.close();
+								quickSettings.toggle();
+							}}
+						>
+							<span class="material-symbols-outlined">
+								{use(this.state.net_icon)}
+							</span>
+							<span class="material-symbols-outlined">
+								{use(this.state.bat_icon)}
+							</span>
+						</div>
+
+						<div
+							class="menubar-item"
+							title="Notifications"
+							on:click={() => {
+								launcher.hide();
+								calendar.close();
+								quickSettings.toggle();
+							}}
+						>
+							<span
+								class={[
+									"notification-badge",
+									use(anura.notifications.state.notifications.length, (i) =>
+										i > 0 ? "shown" : "hidden",
+									),
+								]}
+							>
+								{use(anura.notifications.state.notifications.length)}
+							</span>
+						</div>
+
+						<div
+							class="menubar-item"
+							id="menubar-clock"
+							on:click={() => {
+								launcher.hide();
+								quickSettings.close();
+								calendar.toggle();
+							}}
+						>
+							<span>{use(this.state.date)}</span>
+							<span>{use(this.state.time)}</span>
+						</div>
+					</div>
+				</header>
+
+				<footer
+					id="dock"
+					on:pointermove={(e: PointerEvent) => this.#magnify(e.clientX)}
+					on:pointerleave={() => this.#magnify(null)}
 					on:dragover={(e: DragEvent) => {
 						e.preventDefault();
 					}}
@@ -357,68 +517,47 @@ class Taskbar {
 						e.preventDefault();
 					}}
 				>
-					<ul>
-						{use(this.state.pinnedApps, (apps: App[]) =>
-							apps.map(this.shortcut.bind(this)),
-						)}
-					</ul>
-
-					{$if(use(this.state.showBar), <div class="splitBar"></div>)}
-
-					<ul>
-						{use(this.state.activeApps, (apps: App[]) =>
-							apps.map(this.shortcut.bind(this)),
-						)}
-					</ul>
-				</nav>
-				<div id="taskbar-right">
-					{/* TODO: Calendar */}
-					<span
-						id="date-container"
-						on:click={() => {
-							launcher.hide();
-							quickSettings.close();
-							calendar.toggle();
-						}}
-					>
-						<span>{use(this.state.date)}</span>
-					</span>
-					<span
-						id="taskinfo-container"
-						on:click={() => {
-							launcher.hide();
-							calendar.close();
-							quickSettings.toggle();
-						}}
-					>
+					<div id="launcher-button-container">
 						<div
-							class="flex flexcenter"
-							style={{
-								gap: "4px",
+							id="launcher-button"
+							title="Launchpad"
+							on:click={() => {
+								quickSettings.close();
+								calendar.close();
+								launcher.toggleVisible();
 							}}
 						>
-							<span>{use(this.state.time)}</span>
-							<span class="material-symbols-outlined">
-								{use(this.state.net_icon)}
-								{use(this.state.bat_icon)}
-							</span>
-							<span class="systray"></span>
-							<span>
-								<span
-									class={[
-										"notification-badge",
-										use(anura.notifications.state.notifications.length, (i) =>
-											i > 0 ? "shown" : "hidden",
-										),
-									]}
-								>
-									{use(anura.notifications.state.notifications.length)}
-								</span>
-							</span>
+							<i></i>
+							<i></i>
+							<i></i>
+							<i></i>
+							<i></i>
+							<i></i>
+							<i></i>
+							<i></i>
+							<i></i>
 						</div>
-					</span>
-				</div>
-			</footer>
+					</div>
+
+					<div class="dock-separator"></div>
+
+					<nav id="taskbar-bar">
+						<ul>
+							{use(this.state.pinnedApps, (apps: App[]) =>
+								apps.map(this.shortcut.bind(this)),
+							)}
+						</ul>
+
+						{$if(use(this.state.showBar), <div class="dock-separator"></div>)}
+
+						<ul>
+							{use(this.state.activeApps, (apps: App[]) =>
+								apps.map(this.shortcut.bind(this)),
+							)}
+						</ul>
+					</nav>
+				</footer>
+			</div>
 		);
 	}
 
@@ -439,18 +578,13 @@ class Taskbar {
 			this.state.pinnedApps.length > 0 && this.state.activeApps.length > 0;
 	}
 
+	/**
+	 * Kept under its old name so existing callers keep working: it now decides
+	 * whether the menu bar is translucent or opaque rather than rounding the
+	 * old bottom taskbar.
+	 */
 	updateRadius() {
-		if (this.maximizedWins.length > 0 || snappedWindows.length > 0) {
-			this.state.rounded = false;
-		} else {
-			if (anura.platform.type !== "mobile" && anura.platform.type !== "tablet")
-				this.state.rounded = true;
-		}
+		this.state.solidMenubar =
+			this.maximizedWins.length > 0 || snappedWindows.length > 0;
 	}
-	// removeShortcuts() {
-	//     for (const name in this.shortcuts) {
-	//         this.shortcuts[name]!.element.remove();
-	//         delete this.shortcuts[name];
-	//     }
-	// }
 }

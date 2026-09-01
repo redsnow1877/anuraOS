@@ -9,8 +9,9 @@ class Calendar {
 
 	calCSS = css`
 		min-height: 355px;
-		bottom: 60px;
-		right: 10px;
+		top: calc(var(--menubar-h) + 6px);
+		right: 8px;
+		transform-origin: top right;
 
 		.calContent {
 			height: 100%;
@@ -152,6 +153,8 @@ class Calendar {
 	hide = css`
 		opacity: 0;
 		z-index: -1;
+		pointer-events: none;
+		transform: scale(0.94) translateY(-6px);
 	`;
 
 	clickoffChecker: HTMLDivElement;

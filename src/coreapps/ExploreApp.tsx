@@ -135,17 +135,29 @@ class ExploreApp extends App {
 
 	whatsnew = (
 		<div id="body">
-			<h1>What's new in AnuraOS {anura.version.pretty}?</h1>
+			<h1>
+				What's new in {BRANDING.name} {anura.version.pretty}?
+			</h1>
+			<h2>A brand new shell</h2>
 			<p>
-				This version resolves a bug where certain portions of the OOBE were
-				displayed incorrectly. The release notes for AnuraOS 2.1.0 continue
-				below.
+				The desktop has been rebuilt around a menu bar, a magnifying dock, and
+				translucent window chrome. Windows have traffic lights, the launcher is
+				now a full-screen Launchpad, and Control Center drops down from the top
+				right. Almost every surface is frosted glass — you can turn that off
+				under Appearance in{" "}
+				<span>
+					<a href="javascript:anura.apps['anura.settings'].open();">
+						<img src="/assets/icons/settings.png" alt="Settings Icon" />
+						Settings
+					</a>
+					.
+				</span>
 			</p>
 			<h2>Experimental OPFS filesystem driver</h2>
 			<p>
-				AnuraOS 2.1 includes an experimental filesystem driver for the Origin
-				Private File System (OPFS). This greatly improves the speed of file
-				operations. You can enable it in{" "}
+				{BRANDING.name} includes an experimental filesystem driver for the
+				Origin Private File System (OPFS). This greatly improves the speed of
+				file operations. You can enable it in{" "}
 				<span>
 					<a href="javascript:anura.apps['anura.ui.settings'].open();">
 						<img src="/assets/icons/settings.png" alt="Settings Icon" />
@@ -156,8 +168,8 @@ class ExploreApp extends App {
 			</p>
 			<h2>VSCode Support</h2>
 			<p>
-				AnuraOS 2.1 is the first version to include support for Visual Studio
-				Code. You can download it from the Developer Repository in{" "}
+				{BRANDING.name} supports Visual Studio Code. You can download it from
+				the Developer Repository in{" "}
 				<span>
 					<img
 						src="/apps/marketplace.app/playstore.webp"
@@ -179,13 +191,13 @@ class ExploreApp extends App {
 		<div id="body" class="v86">
 			<h1>Using the x86 Subsystem</h1>
 			<p>
-				AnuraOS includes an x86 subsystem (based on{" "}
+				{BRANDING.name} includes an x86 subsystem (based on{" "}
 				<a
 					href="javascript:anura.apps['anura.browser'].open(['https://github.com/copy/v86']);" // using dreamland on:click or html onclick makes the link not blue
 				>
 					v86
 				</a>
-				), which lets you run real Linux within Anura.
+				), which lets you run real Linux inside {BRANDING.name}.
 				{anura.x86 === undefined && (
 					<p>
 						It seems like you dont have the subsystem enabled. You can install
@@ -232,26 +244,27 @@ class ExploreApp extends App {
 	welcome = (
 		<div id="body">
 			<div class="head">
-				<img src="/icon.png" alt="AnuraOS Logo" />
-				<h1>Welcome to AnuraOS!</h1>
+				<img src="/icon.png" alt="Logo" />
+				<h1>Welcome to {BRANDING.name}!</h1>
 			</div>
-			<h2>What is AnuraOS?</h2>
+			<h2>What is {BRANDING.name}?</h2>
 			<p>
-				AnuraOS is a desktop environment made for development that runs right in
-				your browser. It features full Linux emulation and a robust app
+				{BRANDING.name} is a desktop environment made for development that runs
+				right in your browser. It features full Linux emulation and a robust app
 				ecosystem.
 			</p>
 			<h2>Getting Started</h2>
 			<p>
-				AnuraOS functions just like your average desktop: you can launch apps
-				from the launcher (accessible via the button in the bottom-left, or
-				pressing the Meta key), drag windows around, and pin apps to the
-				taskbar. AnuraOS is visually based off of Google's ChromeOS.
+				It works the way a desktop should: open apps from Launchpad (the grid
+				icon at the left of the dock, or press the Meta key), drag windows
+				around by their title bars, and keep the apps you use in the dock. The
+				menu bar along the top carries the clock, Control Center and
+				notifications.
 			</p>
 
 			<h2>Get new apps</h2>
 			<p>
-				To install more native Anura apps, you can head to the{" "}
+				To install more native apps, head to the{" "}
 				<span>
 					<img
 						src="/apps/marketplace.app/playstore.webp"
@@ -263,8 +276,8 @@ class ExploreApp extends App {
 			</p>
 			<h2>Customize your experience</h2>
 			<p>
-				AnuraOS has robust customization features. You can change the wallpaper
-				and system colors using{" "}
+				{BRANDING.name} has robust customization features. You can change the
+				wallpaper and system colors using{" "}
 				<span>
 					<a href="javascript:anura.apps['anura.wallpaper'].open();">
 						<img
@@ -327,7 +340,7 @@ class ExploreApp extends App {
 
 	async open(args: string[] = []): Promise<WMWindow | undefined> {
 		const win = anura.wm.create(this, {
-			title: "Explore AnuraOS",
+			title: `Explore ${BRANDING.name}`,
 			width: `calc(${window.innerHeight * 0.6}px * 16 / 10)`, // manually calculating to prevent wonky behaviour on window resize
 			height: `${window.innerHeight * 0.6}px`,
 		});

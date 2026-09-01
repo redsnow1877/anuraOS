@@ -1,136 +1,331 @@
-#taskbar-bar {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	height: 48px;
+/* ==========================================================================
+   Shell chrome — menu bar (top) and dock (bottom)
+   ========================================================================== */
+
+#shell-root {
+	display: contents;
 }
 
-.showDialog {
-	width: 32px;
-	height: 32px;
-}
+/* --------------------------------------------------------------------------
+   Menu bar
+   -------------------------------------------------------------------------- */
 
-.lightbar {
-	transition:
-		visibility 0s,
-		opacity 5s linear;
-	opacity: 1;
-}
-
-.lightbar-hidden {
-	visibility: hidden;
-	opacity: 0;
-}
-
-.splitBar {
-	background-color: var(--material-border);
-	width: 1px;
-	height: 40%;
-}
-
-.taskbar-button {
-	filter: drop-shadow(0px 3px 7px #111);
-}
-
-#taskbar-right {
-	right: 0.3em;
-
-	top: 50%;
-	transform: translateY(-50%);
-	position: absolute;
-	height: 70%;
-	display: flex;
-	gap: 5px;
-}
-
-#taskinfo-container,
-#date-container {
-	background-color: var(--theme-secondary-bg);
-	background: color-mix(in srgb, var(--theme-secondary-fg) 17.5%, transparent);
-	padding-left: 1em;
-	padding-right: 1em;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-
-	font-size: 1rem;
-	font-weight: 500;
-	line-height: 1rem;
-}
-
-#taskinfo-container {
-	border-radius: 5px 25px 25px 5px;
-}
-
-#date-container {
-	border-radius: 25px 5px 5px 25px;
-}
-
-#taskinfo-container .material-symbols-outlined {
-	font-size: 1rem;
-}
-
-#taskinfo-container > *,
-#date-container > * {
-	color: var(--theme-fg);
-	cursor: pointer;
-}
-
-footer {
+#menubar {
 	position: fixed;
-	bottom: 0;
-	width: 100%;
-	/* left: -1px; */
-	/* background-color: rgba(0, 0, 0, 0.55); */
-	background-color: color-mix(in srgb, var(--theme-dark-bg) 90%, transparent);
-	border: 1px solid var(--theme-dark-border);
-	box-shadow: inset 0 0 0 1px var(--theme-border);
-	border-bottom: none;
-	backdrop-filter: blur(30px);
-	border-top-left-radius: 0;
-	border-top-right-radius: 0;
-	transition-property: border-radius, background-color;
-	transition-duration: 0.15s;
-	transition-timing-function: ease;
-	-webkit-backdrop-filter: blur(30px);
-	border-left: none;
-	border-right: none;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: var(--menubar-h);
+	z-index: 9500;
+	display: flex;
+	align-items: center;
+	padding: 0 10px;
+	gap: 4px;
+	font-size: 12.5px;
+	font-weight: 500;
+	color: var(--ink);
+	background: rgba(22, 22, 26, 0.42);
+	backdrop-filter: var(--glass-blur-light);
+	-webkit-backdrop-filter: var(--glass-blur-light);
+	box-shadow:
+		inset 0 -1px 0 0 rgba(255, 255, 255, 0.07),
+		0 1px 12px rgba(0, 0, 0, 0.28);
+	transition: background-color 0.2s ease;
 }
 
-body.blur-disable footer {
-	backdrop-filter: none;
-	-webkit-backdrop-filter: none;
+/* When something is maximized the bar goes opaque, like macOS does over
+   a fullscreen window. */
+#menubar.solid {
+	background: rgba(16, 16, 19, 0.86);
 }
-.systray {
+
+.menubar-item {
 	display: flex;
-	padding-top: 0.075em; /* mmm */
-	height: 1.5em;
 	align-items: center;
-	justify-content: center;
+	gap: 5px;
+	height: 20px;
+	padding: 0 8px;
+	border-radius: 5px;
+	cursor: default;
+	white-space: nowrap;
+	transition: background-color 0.08s linear;
 }
+
+.menubar-item:hover,
+.menubar-item.open {
+	background: rgba(255, 255, 255, 0.14);
+}
+
+.menubar-item .material-symbols-outlined {
+	font-size: 16px;
+	line-height: 1;
+}
+
+#menubar-brand {
+	padding: 0 9px;
+}
+
+#menubar-brand svg {
+	width: 14px;
+	height: 14px;
+	display: block;
+}
+
+#menubar-appname {
+	font-weight: 650;
+	max-width: 32vw;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#menubar-spacer {
+	flex: 1;
+	height: 100%;
+}
+
+#menubar-right {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	margin-right: 2px;
+}
+
+#menubar-right .systray {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	height: 18px;
+}
+
+#menubar-right .systray:empty {
+	display: none;
+}
+
+#menubar-clock {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-variant-numeric: tabular-nums;
+	font-weight: 500;
+}
+
 .notification-badge {
 	display: flex;
-	width: 1.5em;
-	height: 1.5em;
-	color: var(--theme-dark-bg);
-	background-color: var(--theme-fg);
-	border-radius: 50%;
 	align-items: center;
 	justify-content: center;
-	font-size: 0.75rem;
-	font-weight: 600;
-	opacity: 1;
-	transition-property: width, height, opacity;
-	transition-duration: 0.15s;
-	transition-timing-function: ease;
-	padding-top: 0.075em; /* mmm */
+	min-width: 16px;
+	height: 16px;
+	padding: 0 4px;
+	border-radius: 999px;
+	background: #ff453a;
+	color: #fff;
+	font-size: 10.5px;
+	font-weight: 700;
+	line-height: 1;
+	box-shadow: 0 1px 4px rgba(255, 69, 58, 0.5);
+	transition:
+		transform 0.16s var(--ease-spring),
+		opacity 0.16s ease;
 }
 
 .notification-badge.hidden {
-	width: 0em;
-	height: 0.25em;
+	transform: scale(0);
 	opacity: 0;
-	transition-property: width, height, opacity;
-	transition-duration: 0.15s;
-	transition-timing-function: ease;
+	width: 0;
+	min-width: 0;
+	padding: 0;
+	margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Dock
+   -------------------------------------------------------------------------- */
+
+#dock {
+	position: fixed;
+	bottom: 8px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 9400;
+	display: flex;
+	align-items: flex-end;
+	gap: 2px;
+	padding: var(--dock-pad);
+	max-width: calc(100vw - 24px);
+	border-radius: var(--radius-dock);
+	background: var(--glass-tint);
+	backdrop-filter: var(--glass-blur);
+	-webkit-backdrop-filter: var(--glass-blur);
+	border: 1px solid var(--glass-stroke);
+	box-shadow: var(--glass-highlight), var(--shadow-dock);
+	/* Icons scale past the container on hover; let them spill out. */
+	overflow: visible;
+}
+
+#dock nav,
+#dock ul {
+	display: flex;
+	align-items: flex-end;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	gap: 2px;
+}
+
+#dock nav {
+	gap: 2px;
+}
+
+.dock-item {
+	--mag: 1;
+	position: relative;
+	width: var(--dock-icon);
+	height: var(--dock-icon);
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	cursor: default;
+}
+
+.dock-item .dock-icon {
+	width: var(--dock-icon);
+	height: var(--dock-icon);
+	padding: 3px;
+	box-sizing: border-box;
+	border: none;
+	background: transparent;
+	object-fit: contain;
+	transform-origin: bottom center;
+	transform: scale(var(--mag)) translateY(calc((var(--mag) - 1) * -2px));
+	transition: transform 0.13s var(--ease-out);
+	filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.45));
+	-webkit-user-drag: element;
+}
+
+.dock-item .dock-icon:active {
+	transform: scale(calc(var(--mag) * 0.9))
+		translateY(calc((var(--mag) - 1) * -2px));
+	transition: transform 0.06s ease;
+}
+
+/* Running indicator */
+.dock-item .lightbar {
+	position: absolute;
+	bottom: -4px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 4px;
+	height: 4px;
+	border-radius: 50%;
+	background: var(--ink);
+	opacity: 0.85;
+	transition:
+		opacity 0.15s ease,
+		transform 0.15s ease;
+	pointer-events: none;
+}
+
+.dock-item .lightbar-hidden {
+	opacity: 0;
+	transform: translateX(-50%) scale(0.2);
+}
+
+/* Tooltip */
+.dock-item::after {
+	content: attr(data-title);
+	position: absolute;
+	bottom: calc(100% + 12px);
+	left: 50%;
+	transform: translateX(-50%) translateY(4px);
+	padding: 4px 9px;
+	border-radius: 7px;
+	font-size: 12px;
+	font-weight: 500;
+	white-space: nowrap;
+	color: var(--ink);
+	background: var(--glass-tint-strong);
+	backdrop-filter: var(--glass-blur-light);
+	-webkit-backdrop-filter: var(--glass-blur-light);
+	border: 1px solid var(--glass-stroke);
+	box-shadow: var(--shadow-panel);
+	opacity: 0;
+	pointer-events: none;
+	transition:
+		opacity 0.12s ease,
+		transform 0.12s var(--ease-out);
+}
+
+.dock-item:hover::after {
+	opacity: 1;
+	transform: translateX(-50%) translateY(0);
+	transition-delay: 0.35s;
+}
+
+.dock-separator {
+	width: 1px;
+	align-self: stretch;
+	margin: 6px 5px;
+	background: rgba(255, 255, 255, 0.16);
+	flex-shrink: 0;
+}
+
+/* Launcher (Launchpad) button lives inside the dock, pinned to the left. */
+#launcher-button-container {
+	display: flex;
+	align-items: flex-end;
+	flex-shrink: 0;
+}
+
+#launcher-button {
+	--mag: 1;
+	width: var(--dock-icon);
+	height: var(--dock-icon);
+	padding: 4px;
+	box-sizing: border-box;
+	border-radius: 13px;
+	background: linear-gradient(155deg, #8f86ff 0%, #5a4fd6 55%, #3d2fa8 100%);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.35),
+		0 4px 10px rgba(0, 0, 0, 0.45);
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	grid-template-rows: repeat(3, 1fr);
+	gap: 3px;
+	cursor: default;
+	transform-origin: bottom center;
+	transform: scale(var(--mag)) translateY(calc((var(--mag) - 1) * -2px));
+	transition: transform 0.13s var(--ease-out);
+}
+
+#launcher-button i {
+	display: block;
+	border-radius: 2px;
+	background: rgba(255, 255, 255, 0.92);
+}
+
+#launcher-button:active {
+	transform: scale(calc(var(--mag) * 0.9))
+		translateY(calc((var(--mag) - 1) * -2px));
+}
+
+/* --------------------------------------------------------------------------
+   Compact layouts
+   -------------------------------------------------------------------------- */
+
+body.platform-mobile #dock,
+body.platform-tablet #dock {
+	--dock-icon: 44px;
+	bottom: 6px;
+	border-radius: 18px;
+}
+
+body.platform-mobile .dock-item::after,
+body.platform-tablet .dock-item::after {
+	display: none;
+}
+
+@media (max-width: 560px) {
+	#menubar-appname {
+		display: none;
+	}
 }

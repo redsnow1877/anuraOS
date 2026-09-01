@@ -1,6 +1,14 @@
 {
 	"wallpapers": [
 		{
+			"name": "Aether",
+			"url": "/assets/wallpaper/bundled_wallpapers/Aether.svg"
+		},
+		{
+			"name": "Aether Dusk",
+			"url": "/assets/wallpaper/bundled_wallpapers/Aether Dusk.svg"
+		},
+		{
 			"name": "Nocturne",
 			"url": "/assets/wallpaper/bundled_wallpapers/Nocturne.jpg"
 		},

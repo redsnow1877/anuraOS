@@ -37,11 +37,14 @@ class QuickSettings {
 	hide = css`
 		opacity: 0;
 		z-index: -1;
+		pointer-events: none;
+		transform: scale(0.94) translateY(-6px);
 	`;
 
 	quickSettingsCss = css`
-		bottom: 60px;
-		right: 10px;
+		top: calc(var(--menubar-h) + 6px);
+		right: 8px;
+		transform-origin: top right;
 
 		.quickSettingsContent {
 			display: flex;
@@ -167,10 +170,11 @@ class QuickSettings {
 	quickSettingsElement: HTMLElement = (<div>Not Initialized</div>);
 
 	notificationCenterCss = css`
-		max-height: calc(60% - 80px);
+		max-height: calc(40% - 20px);
 		min-height: 20px;
-		bottom: calc(70px + 46%);
-		right: 10px;
+		top: calc(var(--menubar-h) + 12px + 46%);
+		right: 8px;
+		transform-origin: top right;
 		overflow: hidden;
 
 		.notificationContainer {

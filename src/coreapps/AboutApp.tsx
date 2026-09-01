@@ -18,7 +18,7 @@ class AboutApp extends App {
 			</div>
 			<div class="aboutapp-logo-divider"></div>
 			<div class="aboutapp-content">
-				<p>AnuraOS</p>
+				<p>{BRANDING.name}</p>
 				<p>
 					Version {anura.version.codename} ({anura.version.pretty}) (OS build{" "}
 					{this.getOSBuild()})
@@ -28,7 +28,7 @@ class AboutApp extends App {
 				{$if(
 					anura.settings.get("x86-disabled"),
 					<p>
-						Anura x86 subsystem disabled. <br /> Enable it in{" "}
+						{BRANDING.name} x86 subsystem disabled. <br /> Enable it in{" "}
 						<button
 							on:click={() => {
 								anura.apps["anura.settings"].open();
@@ -39,15 +39,15 @@ class AboutApp extends App {
 						</button>
 						.
 					</p>,
-					<p>Anura x86 subsystem enabled.</p>,
+					<p>{BRANDING.name} x86 subsystem enabled.</p>,
 				)}
 
 				<br />
 
 				{$if(
 					anura.settings.get("bootFromOPFS"),
-					<p>Anura is booting from OPFS.</p>,
-					<p>Anura OPFS boot disabled.</p>,
+					<p>{BRANDING.name} is booting from OPFS.</p>,
+					<p>{BRANDING.name} OPFS boot disabled.</p>,
 				)}
 
 				<br />

@@ -1,83 +1,233 @@
+/* ==========================================================================
+   Window chrome
+   ========================================================================== */
+
 .aliceWMwin {
 	user-select: none;
 	-webkit-user-select: none;
-	-ms-user-select: none;
 	height: 200px;
 	width: 500px;
-	background: var(--theme-bg);
 	position: fixed;
 	overflow: hidden;
 	z-index: 91;
 	display: flex;
-	/* FLEXBOX #2 */
-	border: 2px solid var(--material-border);
 	flex-direction: column;
-	box-shadow:
-		0 4px 8px 0 rgba(0, 0, 0, 0.2),
-		0 6px 20px 0 rgba(0, 0, 0, 0.19);
-	border-radius: 3px;
+	background: var(--theme-bg);
+	border: none;
+	border-radius: var(--radius-window);
+	box-shadow: var(--shadow-window-idle);
+	opacity: 1;
 	transform: scale(1);
 	transition:
 		visibility 0s,
-		opacity 0.15s cubic-bezier(0, 0, 0.4, 1);
-	opacity: 1;
+		opacity 0.16s var(--ease-out),
+		box-shadow 0.2s ease;
+	/* Keeps child content (iframes especially) inside the rounded corners. */
+	isolation: isolate;
 }
 
-.aliceWMwin svg {
-	fill: var(--theme-fg);
-	height: 12px;
+.aliceWMwin.focused {
+	box-shadow: var(--shadow-window);
 }
 
 .scaletransition {
 	transition:
 		visibility 0s,
-		transform 0.15s cubic-bezier(0, 0, 0.4, 1),
-		opacity 0.15s cubic-bezier(0, 0, 0.4, 1);
+		transform 0.16s var(--ease-out),
+		opacity 0.16s var(--ease-out),
+		box-shadow 0.2s ease;
+}
+
+.opacity0 {
+	opacity: 0;
 }
 
 .opacity0.scaletransition {
-	transform: scale(0.9);
+	transform: scale(0.92);
 }
 
 .maxtransition {
 	transition:
-		width 0.2s,
-		height 0.2s,
-		top 0.2s,
-		left 0.2s;
+		width 0.22s var(--ease-out),
+		height 0.22s var(--ease-out),
+		top 0.22s var(--ease-out),
+		left 0.22s var(--ease-out),
+		border-radius 0.22s var(--ease-out);
 }
 
 .remaxtransitionx {
 	transition:
-		width 0.2s,
-		left 0.2s;
+		width 0.2s var(--ease-out),
+		left 0.2s var(--ease-out);
 }
 
 .remaxtransitiony {
 	transition:
-		height 0.2s,
-		top 0.2s;
+		height 0.2s var(--ease-out),
+		top 0.2s var(--ease-out);
 }
 
+/* --------------------------------------------------------------------------
+   Title bar
+   -------------------------------------------------------------------------- */
+
+.aliceWMwin .title {
+	position: relative;
+	display: flex;
+	align-items: center;
+	height: 38px;
+	flex-shrink: 0;
+	padding: 0 12px;
+	gap: 8px;
+	background: var(--glass-tint-strong);
+	backdrop-filter: var(--glass-blur-light);
+	-webkit-backdrop-filter: var(--glass-blur-light);
+	box-shadow:
+		inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+		inset 0 -1px 0 0 rgba(0, 0, 0, 0.35);
+	color: var(--ink);
+	z-index: 1;
+	cursor: default;
+}
+
+.aliceWMwin .title:hover {
+	cursor: default;
+}
+
+/* Title is centered across the full bar, not just the leftover space —
+   the same trick macOS uses so it doesn't shift as buttons appear. */
+.aliceWMwin .titleContent {
+	position: absolute;
+	left: 0;
+	right: 0;
+	text-align: center;
+	pointer-events: none;
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	color: var(--ink-dim);
+	padding: 0 96px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	transition: color 0.2s ease;
+}
+
+.aliceWMwin.focused .titleContent {
+	color: var(--ink);
+}
+
+/* --------------------------------------------------------------------------
+   Traffic lights
+   -------------------------------------------------------------------------- */
+
+.aliceWMwin .window-controls {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	z-index: 2;
+}
+
+.aliceWMwin .windowButton {
+	width: 12px;
+	height: 12px;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	flex-shrink: 0;
+	cursor: default;
+	background: var(--tl-idle);
+	box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.14);
+	display: grid;
+	place-items: center;
+	transition: background-color 0.18s ease;
+}
+
+.aliceWMwin.focused .windowButton.close {
+	background: var(--tl-close);
+}
+
+.aliceWMwin.focused .windowButton.minimize {
+	background: var(--tl-min);
+}
+
+.aliceWMwin.focused .windowButton.maximize {
+	background: var(--tl-max);
+}
+
+.aliceWMwin .windowButton:active {
+	filter: brightness(0.82);
+}
+
+/* Glyphs fade in when the pointer is anywhere over the cluster. */
+.aliceWMwin .windowButton svg {
+	width: 7px;
+	height: 7px;
+	opacity: 0;
+	transition: opacity 0.12s ease;
+	pointer-events: none;
+}
+
+.aliceWMwin .windowButton svg path {
+	fill: rgba(0, 0, 0, 0.62);
+	stroke: none;
+}
+
+.aliceWMwin .window-controls:hover .windowButton svg {
+	opacity: 1;
+}
+
+.aliceWMwin svg {
+	fill: var(--theme-fg);
+}
+
+/* --------------------------------------------------------------------------
+   Content
+   -------------------------------------------------------------------------- */
+
+.aliceWMwin .content {
+	padding: 0;
+	flex: 1;
+	min-height: 0;
+	background-color: var(--theme-bg);
+	position: relative;
+}
+
+.aliceWMwin .content iframe {
+	color-scheme: normal; /* quirk to preserve frame bg */
+	display: block;
+	border: none;
+}
+
+/* --------------------------------------------------------------------------
+   Snapping
+   -------------------------------------------------------------------------- */
+
 #snapPreview {
-	background-color: gray;
-	opacity: 50%;
+	top: var(--menubar-h);
+	background: rgba(255, 255, 255, 0.16);
+	border: 1px solid rgba(255, 255, 255, 0.32);
+	border-radius: var(--radius-window);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
 	position: fixed;
 	user-select: none;
-	transition: opacity 0.2s;
+	transition:
+		opacity 0.2s ease,
+		all 0.14s var(--ease-out);
 	z-index: 9999;
 }
 
-/* super jank */
 .snapPreview-se,
 .snapPreview-sw {
-	bottom: 49px !important;
+	top: auto !important;
+	bottom: var(--dock-reserve) !important;
 }
 
 #snapSplitBar {
-	background-color: rgba(0, 0, 0, 0.1);
-	top: 0;
-	height: calc(100% - 49px);
+	background-color: rgba(0, 0, 0, 0.18);
+	top: var(--menubar-h);
+	height: calc(100% - var(--menubar-h) - var(--dock-reserve));
 	width: 8px;
 	position: fixed;
 	transition: background 0.2s;
@@ -90,140 +240,57 @@
 
 #snapSplitBar > div {
 	opacity: 1;
-	width: 2px;
-	height: 16px;
-	border-radius: 2px;
-	background-color: white;
+	width: 3px;
+	height: 28px;
+	border-radius: 999px;
+	background-color: rgba(255, 255, 255, 0.7);
 }
 
-.opacity0 {
-	opacity: 0;
-}
-
-.aliceWMwin .title {
-	display: flex;
-	background-color: var(--theme-bg);
-	font-weight: bold;
-	color: var(--theme-fg);
-	height: 24px;
-	padding: 2px;
-	align-items: center;
-	z-index: 1;
-}
-body.platform-mobile .aliceWMwin {
-	border: 0;
-	border-radius: 0px;
-}
-
-body.platform-mobile .aliceWMwin .title {
-	height: 21px; /* just big enough to hide behind taskbar */
-}
-body.platform-tablet .aliceWMwin .title {
-	height: 21px; /* just big enough to hide behind taskbar */
-}
-
-.aliceWMwin .titleContent {
-	flex: 1;
-	font-size: 13px;
-	font-weight: 400;
-	padding: 8px;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.aliceWMwin .content {
-	padding: 2px;
-	flex: 1;
-	background-color: var(--theme-bg);
-}
-
-.aliceWMwin .content iframe {
-	color-scheme: normal; /* quirk to preserve frame bg */
-}
-
-.aliceWMwin .title:hover {
-	cursor: move;
-}
-
-.aliceWMwin .windowButton {
-	background-color: transparent;
-	color: var(--theme-fg);
-	fill: var(--theme-fg);
-	border: none;
-	border-radius: 100%;
-	margin: 2px;
-	aspect-ratio: 1 / 1;
-	flex-shrink: 0;
-	transition: background-color 0.2s ease-in-out;
-	z-index: 2;
-}
-
-body.platform-mobile .aliceWMwin .windowButton.maximize {
-	display: none;
-}
-
-.aliceWMwin .windowButton > span {
-	font-size: 16px;
-}
-
-body.platform-mobile .aliceWMwin .windowButton > span,
-body.platform-tablet .aliceWMwin .windowButton > span {
-	font-size: 18px;
-	padding: 2px;
-}
-
-.aliceWMwin .windowButton:hover {
-	background-color: var(--theme-secondary-bg);
-}
-
-.aliceWMwin .windowButton:active {
-	background-color: color-mix(var(--theme-secondary-bg) var(--theme-bg) 50%);
-}
+/* --------------------------------------------------------------------------
+   Resize handles
+   -------------------------------------------------------------------------- */
 
 .resize-corner {
-	width: 10px;
-	height: 10px;
-
+	width: 12px;
+	height: 12px;
 	position: absolute;
-	z-index: 2;
+	z-index: 3;
 }
 
 .resize-edge {
 	position: absolute;
-	z-index: 2;
-	padding: 5px;
+	z-index: 3;
+	padding: 4px;
 }
 
 .resize-edge.left {
-	left: -5px;
+	left: -4px;
 	height: 100%;
-	cursor: e-resize;
+	cursor: ew-resize;
 }
 
 .resize-edge.right {
-	right: -5px;
+	right: -4px;
 	height: 100%;
-	cursor: e-resize;
+	cursor: ew-resize;
 }
 
 .resize-edge.top {
-	top: -5px;
+	top: -4px;
 	width: 100%;
-	cursor: s-resize;
+	cursor: ns-resize;
 }
 
 .resize-edge.bottom {
-	bottom: -5px;
+	bottom: -4px;
 	width: 100%;
-	cursor: s-resize;
+	cursor: ns-resize;
 }
 
 .resize-corner.top-left {
 	left: -5px;
 	top: -5px;
 	cursor: nwse-resize;
-	/*resizer cursor*/
 }
 
 .resize-corner.top-right {
@@ -242,4 +309,23 @@ body.platform-tablet .aliceWMwin .windowButton > span {
 	right: -5px;
 	bottom: -5px;
 	cursor: nwse-resize;
+}
+
+/* --------------------------------------------------------------------------
+   Compact layouts — windows go edge-to-edge under the menu bar
+   -------------------------------------------------------------------------- */
+
+body.platform-mobile .aliceWMwin,
+body.platform-tablet .aliceWMwin {
+	border-radius: 0;
+	box-shadow: none;
+}
+
+body.platform-mobile .aliceWMwin .title,
+body.platform-tablet .aliceWMwin .title {
+	height: 34px;
+}
+
+body.platform-mobile .aliceWMwin .windowButton.maximize {
+	display: none;
 }

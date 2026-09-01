@@ -15,6 +15,68 @@ type SnappedWindow = {
 	direction: "left" | "right" | "ne" | "nw" | "se" | "sw";
 };
 
+/**
+ * Screen insets the window manager keeps clear.
+ *
+ * `WM_TOP_INSET` is the menu bar; `WM_BOTTOM_INSET` is the floating dock plus
+ * its margin. They mirror `--menubar-h` / `--dock-reserve` in Glass.css — keep
+ * the two in step if you retheme the shell.
+ */
+const WM_TOP_INSET = 28;
+const WM_BOTTOM_INSET = 82;
+/** Total vertical space unavailable to a maximized window. */
+const WM_V_INSET = WM_TOP_INSET + WM_BOTTOM_INSET;
+
+/**
+ * Only one window wears the `focused` class at a time: it drives the coloured
+ * traffic lights, the heavier shadow, and the app name in the menu bar.
+ */
+function markWindowFocused(win: WMWindow | null) {
+	document
+		.querySelectorAll(".aliceWMwin.focused")
+		.forEach((el) => el.classList.remove("focused"));
+
+	if (!win) {
+		document.dispatchEvent(new Event("anura-window-blur"));
+		return;
+	}
+
+	win.element.classList.add("focused");
+	document.dispatchEvent(
+		new CustomEvent("anura-window-focus", {
+			detail: {
+				name: win.app?.name || win.state.title || BRANDING.name,
+				title: win.state.title,
+			},
+		}),
+	);
+}
+
+/**
+ * After a window closes or minimizes, whichever visible window has the highest
+ * z-index inherits focus — otherwise the menu bar would keep naming a window
+ * that is no longer there.
+ */
+function focusTopmostWindow() {
+	const candidates = Array.from(
+		document.querySelectorAll<HTMLElement>(".aliceWMwin:not(.opacity0)"),
+	);
+	if (candidates.length === 0) {
+		markWindowFocused(null);
+		return;
+	}
+	const top = candidates.reduce((best, el) =>
+		(parseInt(el.style.zIndex) || 0) > (parseInt(best.style.zIndex) || 0)
+			? el
+			: best,
+	);
+	const win = wmWindowByElement.get(top);
+	markWindowFocused(win || null);
+}
+
+/** Lets us go from a DOM node back to the window that owns it. */
+const wmWindowByElement = new WeakMap<HTMLElement, WMWindow>();
+
 const minimizedSnappedWindows: SnappedWindow[] = [];
 
 const snappedWindows: SnappedWindow[] = [];
@@ -88,9 +150,30 @@ class WMWindow extends EventTarget implements Process {
 		return this.#args;
 	}
 
-	maximizeImg: HTMLOrSVGElement;
+	#maximizeImg: HTMLOrSVGElement;
 	maximizeSvg: HTMLOrSVGElement;
 	restoreSvg: HTMLOrSVGElement;
+
+	get maximizeImg() {
+		return this.#maximizeImg;
+	}
+
+	/**
+	 * Swapping this swaps the glyph inside the green button. The window's
+	 * element does not exist yet during the first assignment (it happens inside
+	 * the JSX that builds it), hence the optional chaining.
+	 */
+	set maximizeImg(value: HTMLOrSVGElement) {
+		this.#maximizeImg = value;
+		const button = this.element?.querySelector(".windowButton.maximize");
+		if (
+			button &&
+			value instanceof Node &&
+			button.firstChild !== (value as Node)
+		) {
+			button.replaceChildren(value);
+		}
+	}
 	constructor(
 		wininfo: WindowInformation,
 		public app?: App,
@@ -104,39 +187,17 @@ class WMWindow extends EventTarget implements Process {
 		this.resizable = wininfo.resizable || true;
 		this.clampWindows = !!anura.settings.get("clampWindows");
 
+		// Traffic-light glyphs. They're hidden until the pointer enters the
+		// button cluster (see AliceWM.css), matching macOS.
 		this.maximizeSvg = (
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				xmlns:xlink="http://www.w3.org/1999/xlink"
-				width="12px"
-				height="12px"
-				viewBox="0 0 12 12"
-				version="1.1"
-			>
-				<g id="surface1">
-					<path
-						style=" stroke:none;fill-rule:evenodd;fill-opacity:1;"
-						d="M 11.5 0.5 L 11.5 11.5 L 0.5 11.5 L 0.5 0.5 Z M 10 10 L 2 10 L 2 2 L 10 2 Z M 10 10 "
-					/>
-				</g>
+			<svg viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">
+				<path d="M2.4 1.1h3.1a.6.6 0 0 1 .42 1.03L2.13 5.92A.6.6 0 0 1 1.1 5.5V2.4c0-.72.58-1.3 1.3-1.3Zm7.2 9.8H6.5a.6.6 0 0 1-.42-1.03l3.79-3.79a.6.6 0 0 1 1.03.42v3.1c0 .72-.58 1.3-1.3 1.3Z" />
 			</svg>
 		);
 
 		this.restoreSvg = (
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				xmlns:xlink="http://www.w3.org/1999/xlink"
-				width="12px"
-				height="12px"
-				viewBox="0 0 12 12"
-				version="1.1"
-			>
-				<g id="surface1">
-					<path
-						style=" stroke:none;fill-rule:evenodd;fill-opacity:1;"
-						d="M 11.5 8 L 4 8 L 4 0.5 L 11.5 0.5 Z M 5.5 6.5 L 5.5 2 L 10 2 L 10 6.5 Z M 2 4 L 0.5 4 L 0.5 11.5 L 8 11.5 L 8 10 L 2 10 Z M 2 4 "
-					/>
-				</g>
+			<svg viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">
+				<path d="M5.4 6.6H2.3a.6.6 0 0 1-.42-1.03L5.67 1.78a.6.6 0 0 1 1.03.42v3.1c0 .72-.58 1.3-1.3 1.3Zm1.2-1.2h3.1a.6.6 0 0 1 .42 1.03L6.33 10.22a.6.6 0 0 1-1.03-.42V6.7c0-.72.58-1.3 1.3-1.3Z" />
 			</svg>
 		);
 
@@ -205,54 +266,41 @@ class WMWindow extends EventTarget implements Process {
 						}
 					}}
 				>
-					<div class="titleContent">{use(this.state.title)}</div>
+					<div class="window-controls">
+						<button
+							class="windowButton close"
+							title="Close"
+							on:pointerdown={(e: PointerEvent) => e.stopPropagation()}
+							on:click={this.close.bind(this)}
+						>
+							<svg viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">
+								<path d="M3.1 2.25 6 5.15l2.9-2.9a.6.6 0 1 1 .85.85L6.85 6l2.9 2.9a.6.6 0 1 1-.85.85L6 6.85l-2.9 2.9a.6.6 0 0 1-.85-.85L5.15 6l-2.9-2.9a.6.6 0 0 1 .85-.85Z" />
+							</svg>
+						</button>
+						<button
+							class="windowButton minimize"
+							title="Minimize"
+							on:pointerdown={(e: PointerEvent) => e.stopPropagation()}
+							on:click={() => {
+								this.minimizing = true;
+								this.minimize();
+							}}
+						>
+							<svg viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">
+								<path d="M2.4 5.4h7.2a.6.6 0 1 1 0 1.2H2.4a.6.6 0 1 1 0-1.2Z" />
+							</svg>
+						</button>
+						<button
+							class="windowButton maximize"
+							title="Zoom"
+							on:pointerdown={(e: PointerEvent) => e.stopPropagation()}
+							on:click={this.togglemaximize.bind(this)}
+						>
+							{(this.maximizeImg = this.maximizeSvg)}
+						</button>
+					</div>
 
-					<button
-						class="windowButton minimize"
-						on:click={() => {
-							this.minimizing = true;
-							this.minimize();
-						}}
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							xmlns:xlink="http://www.w3.org/1999/xlink"
-							width="12px"
-							height="12px"
-							viewBox="0 0 12 12"
-							version="1.1"
-						>
-							<g id="surface1">
-								<path
-									style=" stroke:none;fill-rule:evenodd;fill-opacity:1;"
-									d="M 0.5 10 L 11.5 10 L 11.5 11.5 L 0.5 11.5 Z M 0.5 10 "
-								/>
-							</g>
-						</svg>
-					</button>
-					<button
-						class="windowButton maximize"
-						on:click={this.maximize.bind(this)}
-					>
-						{(this.maximizeImg = this.maximizeSvg)}
-					</button>
-					<button class="windowButton close" on:click={this.close.bind(this)}>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							xmlns:xlink="http://www.w3.org/1999/xlink"
-							width="12px"
-							height="12px"
-							viewBox="0 0 12 12"
-							version="1.1"
-						>
-							<g id="surface1">
-								<path
-									style=" stroke:none;fill-rule:evenodd;fill-opacity:1;"
-									d="M 11.5 1.609375 L 10.390625 0.5 L 6 4.890625 L 1.609375 0.5 L 0.5 1.609375 L 4.890625 6 L 0.5 10.390625 L 1.609375 11.5 L 6 7.109375 L 10.390625 11.5 L 11.5 10.390625 L 7.109375 6 Z M 11.5 1.609375 "
-								/>
-							</g>
-						</svg>
-					</button>
+					<div class="titleContent">{use(this.state.title)}</div>
 				</div>
 				{
 					(this.content = (
@@ -510,6 +558,8 @@ class WMWindow extends EventTarget implements Process {
 
 		this.pid = anura.processes.state.procs.length;
 		anura.processes.register(this);
+		wmWindowByElement.set(this.element, this);
+		markWindowFocused(this);
 	}
 
 	handleDrag(evt: PointerEvent) {
@@ -526,8 +576,8 @@ class WMWindow extends EventTarget implements Process {
 			);
 
 			const newOffsetY = Math.min(
-				window.innerHeight - 49 - this.element.clientHeight,
-				Math.max(0, offsetY),
+				window.innerHeight - WM_BOTTOM_INSET - this.element.clientHeight,
+				Math.max(WM_TOP_INSET, offsetY),
 			);
 
 			this.element.style.left = newOffsetX + "px";
@@ -583,6 +633,7 @@ class WMWindow extends EventTarget implements Process {
 			(getHighestZindex() + 1).toString(),
 		);
 		normalizeZindex();
+		markWindowFocused(this);
 		this.dispatchEvent(new Event("focus"));
 		this.onfocus();
 	}
@@ -596,6 +647,8 @@ class WMWindow extends EventTarget implements Process {
 		this.element.classList.add("opacity0");
 		setTimeout(() => {
 			this.element.remove();
+			// Hand focus (and the menu bar title) to whatever is on top now.
+			focusTopmostWindow();
 			// TODO, Remove this and make it an event
 			anura.removeStaleApps();
 		}, 200);
@@ -629,10 +682,10 @@ class WMWindow extends EventTarget implements Process {
 			this.element.classList.add("maxtransition");
 		this.element.classList.add("scaletransition");
 
-		this.element.style.top = "0";
+		this.element.style.top = `${WM_TOP_INSET}px`;
 		this.element.style.left = "0";
 		this.element.style.width = `${width}px`;
-		this.element.style.height = `${height - 49}px`;
+		this.element.style.height = `${height - WM_V_INSET}px`;
 
 		if (!anura.settings.get("disable-animation"))
 			setTimeout(() => {
@@ -718,7 +771,7 @@ class WMWindow extends EventTarget implements Process {
 			document.body.clientHeight;
 		if (this.snapped) {
 			splitBar?.splitWindowsAround(width / 2);
-			this.element.style.height = `${height - 49}px`;
+			this.element.style.height = `${height - WM_V_INSET}px`;
 			return;
 		}
 		const oldwidth = parseFloat(this.element.style.width);
@@ -735,10 +788,10 @@ class WMWindow extends EventTarget implements Process {
 
 		animx && this.element.classList.add("remaxtransitionx");
 		animy && this.element.classList.add("remaxtransitiony");
-		this.element.style.top = "0";
+		this.element.style.top = `${WM_TOP_INSET}px`;
 		this.element.style.left = "0";
 		this.element.style.width = `${width}px`;
-		this.element.style.height = `${height - 49}px`;
+		this.element.style.height = `${height - WM_V_INSET}px`;
 		animx &&
 			setTimeout(() => {
 				this.element.classList.remove("remaxtransitionx");
@@ -760,6 +813,7 @@ class WMWindow extends EventTarget implements Process {
 		// This is to make sure that you cannot interact with the window while it is minimized
 		setTimeout(() => {
 			this.element.style.display = "none";
+			focusTopmostWindow();
 		}, 200);
 	}
 	unminimize() {
@@ -918,14 +972,14 @@ class WMWindow extends EventTarget implements Process {
 		switch (snapDirection) {
 			case "left":
 				this.element.style.width = scaledWidth - 4 + "px";
-				this.element.style.height = height - 49 + "px";
-				this.element.style.top = "0px";
+				this.element.style.height = height - WM_V_INSET + "px";
+				this.element.style.top = WM_TOP_INSET + "px";
 				this.element.style.left = "0px";
 				break;
 			case "right":
 				this.element.style.width = scaledWidth - 4 + "px";
-				this.element.style.height = height - 49 + "px";
-				this.element.style.top = "0px";
+				this.element.style.height = height - WM_V_INSET + "px";
+				this.element.style.top = WM_TOP_INSET + "px";
 				this.element.style.left = scaledWidth + "px";
 				break;
 			case "top":
@@ -934,26 +988,32 @@ class WMWindow extends EventTarget implements Process {
 				return;
 			case "ne":
 				this.element.style.width = width / 2 + "px";
-				this.element.style.height = (height - 49) / 2 + "px";
-				this.element.style.top = "0px";
+				this.element.style.height = (height - WM_V_INSET) / 2 + "px";
+				this.element.style.top = WM_TOP_INSET + "px";
 				this.element.style.left = width - this.element.clientWidth + "px";
 				break;
 			case "nw":
 				this.element.style.width = width / 2 + "px";
-				this.element.style.height = (height - 49) / 2 + "px";
-				this.element.style.top = "0px";
+				this.element.style.height = (height - WM_V_INSET) / 2 + "px";
+				this.element.style.top = WM_TOP_INSET + "px";
 				this.element.style.left = "0px";
 				break;
 			case "se":
 				this.element.style.width = width / 2 + "px";
-				this.element.style.height = (height - 49) / 2 + "px";
-				this.element.style.top = height - 49 - this.element.clientHeight + "px";
+				this.element.style.height = (height - WM_V_INSET) / 2 + "px";
+				this.element.style.top =
+					WM_TOP_INSET +
+					(height - WM_V_INSET - this.element.clientHeight) +
+					"px";
 				this.element.style.left = width - this.element.clientWidth + "px";
 				break;
 			case "sw":
 				this.element.style.width = width / 2 + "px";
-				this.element.style.height = (height - 49) / 2 + "px";
-				this.element.style.top = height - 49 - this.element.clientHeight + "px";
+				this.element.style.height = (height - WM_V_INSET) / 2 + "px";
+				this.element.style.top =
+					WM_TOP_INSET +
+					(height - WM_V_INSET - this.element.clientHeight) +
+					"px";
 				this.element.style.left = "0px";
 				break;
 		}
@@ -974,26 +1034,29 @@ class WMWindow extends EventTarget implements Process {
 		forceY: number,
 	): "left" | "right" | "top" | "ne" | "nw" | "se" | "sw" | null {
 		if (forceX > 20 && forceY > 20) {
-			if (this.element.offsetLeft === 0 && this.element.offsetTop === 0) {
+			if (
+				this.element.offsetLeft === 0 &&
+				this.element.offsetTop <= WM_TOP_INSET
+			) {
 				return "nw";
 			}
 			if (
 				this.element.offsetLeft + this.element.clientWidth ===
 					window.innerWidth &&
-				this.element.offsetTop === 0
+				this.element.offsetTop <= WM_TOP_INSET
 			) {
 				return "ne";
 			}
 			if (
 				this.element.offsetTop + this.element.clientHeight ==
-					window.innerHeight - 49 &&
+					window.innerHeight - WM_BOTTOM_INSET &&
 				this.element.offsetLeft == 0
 			) {
 				return "sw";
 			}
 			if (
 				this.element.offsetTop + this.element.clientHeight ==
-					window.innerHeight - 49 &&
+					window.innerHeight - WM_BOTTOM_INSET &&
 				this.element.offsetLeft + this.element.clientWidth == window.innerWidth
 			) {
 				return "se";
@@ -1044,7 +1107,7 @@ class WMWindow extends EventTarget implements Process {
 			document.body.clientHeight;
 
 		let scaledWidth = width;
-		let scaledHeight = height;
+		let scaledHeight = height - WM_V_INSET;
 
 		if (side !== "top") {
 			scaledWidth = width / 2;
@@ -1052,7 +1115,7 @@ class WMWindow extends EventTarget implements Process {
 
 		if (["ne", "nw", "se", "sw"].includes(side)) {
 			scaledWidth = width / 2;
-			scaledHeight = (height - 49) / 2;
+			scaledHeight = (height - WM_V_INSET) / 2;
 		}
 
 		let previewSide = side;
@@ -1288,6 +1351,14 @@ async function normalizeZindex() {
 function center(element: HTMLElement) {
 	if (element) {
 		element.style.left = (window.innerWidth - element.offsetWidth) / 2 + "px";
-		element.style.top = (window.innerHeight - element.offsetHeight) / 2 + "px";
+		// Centre within the usable area, not the raw viewport, so windows don't
+		// drift toward the dock.
+		element.style.top =
+			WM_TOP_INSET +
+			Math.max(
+				0,
+				(window.innerHeight - WM_V_INSET - element.offsetHeight) / 2,
+			) +
+			"px";
 	}
 }

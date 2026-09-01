@@ -1,131 +1,20 @@
+/**
+ * Launchpad — a full-screen, blurred app grid with a search field.
+ *
+ * Replaces the old dropdown launcher panel: instead of a small popover anchored
+ * to the taskbar, the whole desktop frosts over and the apps float on top.
+ */
 class Launcher {
 	state: Stateful<{
 		active: boolean;
 		apps?: App[];
 		appsView?: HTMLDivElement;
 		search?: HTMLInputElement;
+		empty: boolean;
 	}> = $state({
 		active: false,
+		empty: false,
 	});
-
-	private popupTransition = anura.settings.get("disable-animation")
-		? "opacity 0.15s"
-		: "all 0.15s cubic-bezier(0.445, 0.05, 0.55, 0.95)";
-
-	private gridTransition = anura.settings.get("disable-animation")
-		? "all 0s"
-		: "all 0.225s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
-
-	css = css`
-		position: absolute;
-		background: color-mix(in srgb, var(--theme-dark-bg) 77.5%, transparent);
-		bottom: 60px;
-		left: 10px;
-		overflow-y: hidden;
-		visibility: hidden;
-		z-index: -1;
-		opacity: 0;
-		transition: ${this.popupTransition};
-
-		.topSearchBar {
-			display: flex;
-			flex-direction: row;
-			padding: 1em;
-			align-items: center;
-		}
-
-		.topSearchBar img {
-			width: 1em;
-			height: 1em;
-			margin-right: 1em;
-		}
-
-		.topSearchBar input {
-			font-family: var(--theme-font-sans);
-			flex-grow: 1;
-			background: transparent;
-			border: none;
-		}
-
-		.recentItemsWrapper {
-			padding: 1em;
-			font-size: 12px;
-			border-top: 1px solid rgb(22 22 22 / 50%);
-		}
-
-		.recentItemsWrapper .recentItemsText {
-			margin-left: 4em;
-			margin-right: 4em;
-			color: var(--theme-fg);
-			border-bottom: 1px solid rgb(22 22 22 / 50%);
-			padding: 1em 0em;
-		}
-		/* https://codepen.io/xtrp/pen/QWjREeo */
-		::-webkit-scrollbar {
-			width: 20px;
-		}
-
-		::-webkit-scrollbar-track {
-			background-color: transparent;
-		}
-
-		::-webkit-scrollbar-thumb {
-			background-color: var(--theme-bg);
-			border-radius: 20px;
-			border: 6px solid transparent;
-			background-clip: content-box;
-		}
-
-		::-webkit-scrollbar-thumb:hover {
-			background-color: var(--theme-secondary-bg);
-		}
-
-		*::-webkit-input-placeholder {
-			color: var(--theme-secondary-fg);
-		}
-
-		.appsView {
-			transition: ${this.gridTransition};
-			transition-delay: 0.075s;
-			padding: 1em;
-			font-size: 12px;
-			flex-grow: 1;
-			display: grid;
-			grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-			grid-auto-rows: 8em;
-			max-height: calc(5.9 * 8em);
-			overflow-y: auto;
-			opacity: 0;
-			grid-row-gap: 30px;
-		}
-
-		.appsView .app {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			color: var(--theme-fg);
-		}
-
-		.appsView .app input[type="image"] {
-			margin-bottom: 0.5em;
-		}
-
-		.appsView .app div {
-			height: 1em;
-		}
-	`;
-
-	activeCss = css`
-		display: block;
-		opacity: 1;
-		z-index: 9999;
-		visibility: visible;
-
-		.appsView {
-			opacity: 1;
-			grid-row-gap: 0px;
-		}
-	`;
 
 	element = (<div>Not Initialized</div>);
 
@@ -133,32 +22,33 @@ class Launcher {
 	updateClickoffChecker: (show: boolean) => void;
 
 	handleSearch(event: Event) {
-		const searchQuery = (event.target as HTMLInputElement).value.toLowerCase();
+		const searchQuery = (event.target as HTMLInputElement).value
+			.toLowerCase()
+			.trim();
 		if (!this.state.appsView) return;
-		const apps = this.state.appsView?.querySelectorAll(".app");
+		const apps = this.state.appsView.querySelectorAll(".app");
 
+		let visible = 0;
 		apps.forEach((app: HTMLElement) => {
 			const appNameElement = app.querySelector(".app-shortcut-name");
-			if (appNameElement) {
-				const appName = appNameElement.textContent?.toLowerCase() || "";
-				if (searchQuery === "") {
-					app.style.display = "";
-				} else if (appName.includes(searchQuery)) {
-					app.style.display = "";
-				} else {
-					app.style.display = "none";
-				}
-			}
+			const appName = appNameElement?.textContent?.toLowerCase() || "";
+			const match = searchQuery === "" || appName.includes(searchQuery);
+			app.style.display = match ? "" : "none";
+			if (match) visible++;
 		});
+
+		this.state.empty = visible === 0;
 	}
 
 	toggleVisible() {
 		this.state.active = !this.state.active;
 		this.clearSearch();
+		if (this.state.active) this.focusSearch();
 	}
 
 	setActive(active: boolean) {
 		this.state.active = active;
+		if (active) this.focusSearch();
 	}
 
 	hide() {
@@ -166,12 +56,18 @@ class Launcher {
 		this.clearSearch();
 	}
 
+	focusSearch() {
+		// Wait for the fade-in; focusing a `visibility: hidden` input is a no-op.
+		setTimeout(() => this.state.search?.focus(), 60);
+	}
+
 	clearSearch() {
 		if (this.state.search) {
 			this.state.search.value = "";
 		}
+		this.state.empty = false;
 		if (!this.state.appsView) return;
-		const apps = this.state.appsView?.querySelectorAll(".app");
+		const apps = this.state.appsView.querySelectorAll(".app");
 		apps.forEach((app: HTMLElement) => {
 			app.style.display = "";
 		});
@@ -195,52 +91,42 @@ class Launcher {
 		this.updateClickoffChecker = updateClickoffChecker;
 
 		useChange(use(this.state.active), updateClickoffChecker);
+
+		document.addEventListener("keydown", (e: KeyboardEvent) => {
+			if (e.key === "Escape" && this.state.active) {
+				e.preventDefault();
+				this.hide();
+			}
+		});
 	}
 
 	async init() {
-		const Panel: Component<
-			{
-				width?: string | DLPointer<any>;
-				height?: string | DLPointer<any>;
-				margin?: string | DLPointer<any>;
-				grow?: boolean;
-				style?: any;
-				class?: string | (string | DLPointer<any>)[];
-				id?: string;
-			},
-			{ children: HTMLElement[] }
-		> = await anura.ui.get("Panel");
-
 		this.element = (
-			<Panel
+			<div
 				id="launcher"
-				width={
-					anura.platform.type === "mobile" || anura.platform.type === "tablet"
-						? "100%"
-						: "min(70%, 35em)"
-				}
-				height={use(this.state.active, (active) =>
-					active
-						? anura.platform.type === "mobile" ||
-							anura.platform.type === "tablet"
-							? "calc(100% - 75px)"
-							: "min(80%, 40em)"
-						: anura.platform.type == "mobile" || anura.platform.type == "tablet"
-							? "calc(100% - 75px)"
-							: "min(30%, 20em)",
-				)}
 				class={[
-					this.css,
-					use(this.state.active, (active) => active && this.activeCss),
+					use(this.state.active, (active) => (active ? "launcher-active" : "")),
 				]}
+				on:pointerdown={(e: PointerEvent) => {
+					// Clicking the frosted background (not a tile) dismisses.
+					if (e.target === e.currentTarget) this.hide();
+				}}
 			>
-				<div class="topSearchBar">
-					<img src="/icon.png"></img>
+				<div class="launcher-search">
+					<span class="material-symbols-outlined">search</span>
 					<input
-						placeholder="Search your tabs, files, apps, and more..."
-						style="outline: none; color: var(--theme-fg);"
+						placeholder="Search"
+						spellcheck={false}
+						autocomplete="off"
 						bind:this={use(this.state.search)}
 						on:input={this.handleSearch.bind(this)}
+						on:keydown={(e: KeyboardEvent) => {
+							if (e.key !== "Enter") return;
+							const first = this.state.appsView?.querySelector<HTMLElement>(
+								'.app:not([style*="display: none"])',
+							);
+							first?.click();
+						}}
 					/>
 				</div>
 
@@ -261,7 +147,12 @@ class Launcher {
 						)),
 					)}
 				</div>
-			</Panel>
+
+				{$if(
+					use(this.state.empty),
+					<div class="launcher-empty">No results</div>,
+				)}
+			</div>
 		);
 	}
 }
@@ -289,7 +180,7 @@ const LauncherShortcut: Component<
 	// MARK: MAKE IT UPDATE
 	if (anura.settings.get("applist").includes(app.package)) {
 		contextmenu.addItem(
-			"Unpin from taskbar",
+			"Remove from Dock",
 			function () {
 				anura.settings.set(
 					"applist",
@@ -303,7 +194,7 @@ const LauncherShortcut: Component<
 		);
 	} else {
 		contextmenu.addItem(
-			"Pin to taskbar",
+			"Keep in Dock",
 			function () {
 				anura.settings.set("applist", [
 					...anura.settings.get("applist"),
@@ -368,12 +259,7 @@ const LauncherShortcut: Component<
 				};
 			}}
 		>
-			<input
-				class="app-shortcut-image showDialog"
-				style="width: 40px; height: 40px"
-				type="image"
-				src={this.app.icon}
-			/>
+			<img class="app-shortcut-image" src={this.app.icon} alt="" />
 			<div class="app-shortcut-name">{this.app.name}</div>
 		</div>
 	);

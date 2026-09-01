@@ -1,14 +1,33 @@
+/* ==========================================================================
+   App switcher (⌘-Tab style)
+   ========================================================================== */
+
 .alttab-container {
-	position: absolute;
+	position: fixed;
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	padding: 0.8em 1.5em;
-	border-radius: 1rem;
-	background-color: color-mix(in srgb, var(--theme-dark-bg) 80%, transparent);
-	backdrop-filter: blur(10px);
-	color: var(--theme-fg);
-	border: 0.0125rem solid var(--theme-border);
+	z-index: 9700;
+	padding: 14px 16px;
+	border-radius: 22px;
+	color: var(--ink);
+	background: var(--glass-tint-strong);
+	backdrop-filter: var(--glass-blur-heavy);
+	-webkit-backdrop-filter: var(--glass-blur-heavy);
+	border: 1px solid var(--glass-stroke);
+	box-shadow: var(--glass-highlight), var(--shadow-panel);
+	animation: alttab-in 0.14s var(--ease-out);
+}
+
+@keyframes alttab-in {
+	from {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(0.94);
+	}
+	to {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+	}
 }
 
 body.blur-disable .alttab-container {
@@ -22,23 +41,17 @@ body.blur-disable .alttab-container {
 
 .alttab-window-list {
 	display: flex;
-	gap: 0.5rem;
+	gap: 6px;
 }
 
 .alttab-nowindows {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	color: var(--theme-secondary-fg);
-}
-
-.alttab-window,
-.alttab-nowindows {
-	min-width: 10rem;
-	min-height: 5.625rem;
-	padding: 1em;
-	border: 0.125rem solid transparent;
-	border-radius: 0.8rem;
+	color: var(--ink-faint);
+	min-width: 12rem;
+	min-height: 6rem;
+	font-size: 13px;
 }
 
 .alttab-window {
@@ -46,12 +59,16 @@ body.blur-disable .alttab-container {
 	flex-wrap: wrap;
 	justify-content: center;
 	align-items: center;
-	transition: 0.1s border-color;
+	width: 106px;
+	padding: 12px 8px 10px;
+	border-radius: 16px;
+	border: none;
+	background: transparent;
+	transition: background-color 0.1s ease;
 }
 
 .alttab-window-selected {
-	border-color: var(--theme-accent);
-	transition: 0.1s border-color;
+	background: rgba(255, 255, 255, 0.16);
 }
 
 .alttab-window-icon-container {
@@ -61,13 +78,15 @@ body.blur-disable .alttab-container {
 }
 
 .alttab-icon-large {
-	width: 3rem;
-	height: 3rem;
+	width: 56px;
+	height: 56px;
+	object-fit: contain;
+	filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
 }
 
 .alttab-icon-inline {
-	width: 1.5em;
-	height: 1.5em;
+	width: 1.25em;
+	height: 1.25em;
 	padding: 0 0.25em;
 }
 
@@ -75,6 +94,17 @@ body.blur-disable .alttab-container {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	gap: 0.3rem;
-	padding-top: 0.25rem;
+	gap: 0.25rem;
+	padding-top: 0.5rem;
+	font-size: 11.5px;
+	font-weight: 500;
+	color: var(--ink-dim);
+	max-width: 100%;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.alttab-window-selected .alttab-titlebar {
+	color: var(--ink);
 }

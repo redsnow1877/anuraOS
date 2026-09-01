@@ -194,17 +194,17 @@ class AnuraUI {
 			this.css = `
                 display: flex;
                 position: absolute;
-                background: color-mix(
-                    in srgb,
-                    var(--theme-dark-bg) 77.5%,
-                    transparent
-                );
-                border: 1px solid var(--theme-dark-border);
-                box-shadow: inset 0 0 0 1px var(--theme-secondary-bg);
-                border-radius: 1em;
+                background: var(--glass-tint);
+                border: 1px solid var(--glass-stroke);
+                box-shadow: var(--glass-highlight), var(--shadow-panel);
+                border-radius: var(--radius-panel);
 
-                backdrop-filter: blur(30px);
-                -webkit-backdrop-filter: blur(30px);
+                backdrop-filter: var(--glass-blur);
+                -webkit-backdrop-filter: var(--glass-blur);
+
+                transition:
+                    opacity 0.18s var(--ease-out),
+                    transform 0.18s var(--ease-out);
 
                 flex-grow: ${this.grow ? 1 : 0};
                 flex-direction: column;

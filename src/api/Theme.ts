@@ -110,13 +110,13 @@ class Theme implements ThemeProps {
 
 	constructor(
 		foreground = "#FFFFFF",
-		secondaryForeground = "#C1C1C1",
-		border = "#444444",
-		darkBorder = "#000000",
-		background = "#202124",
-		secondaryBackground = "#383838",
-		darkBackground = "#161616",
-		accent = "#4285F4",
+		secondaryForeground = "#A7A7AF",
+		border = "#3A3A42",
+		darkBorder = "#0B0B0E",
+		background = "#1C1C21",
+		secondaryBackground = "#2A2A31",
+		darkBackground = "#141418",
+		accent = "#7A6CFF",
 	) {
 		this.state = $state<ThemeProps>({
 			foreground,
@@ -142,13 +142,13 @@ class Theme implements ThemeProps {
 
 	reset() {
 		this.state.foreground = "#FFFFFF";
-		this.state.secondaryForeground = "#C1C1C1";
-		this.state.border = "#444444";
-		this.state.darkBorder = "#000000";
-		this.state.background = "#202124";
-		this.state.secondaryBackground = "#383838";
-		this.state.darkBackground = "#161616";
-		this.state.accent = "#4285F4";
+		this.state.secondaryForeground = "#A7A7AF";
+		this.state.border = "#3A3A42";
+		this.state.darkBorder = "#0B0B0E";
+		this.state.background = "#1C1C21";
+		this.state.secondaryBackground = "#2A2A31";
+		this.state.darkBackground = "#141418";
+		this.state.accent = "#7A6CFF";
 
 		this.apply();
 	}
