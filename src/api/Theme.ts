@@ -92,8 +92,27 @@ class Theme implements ThemeProps {
 		secondaryBackground: ["--theme-secondary-bg"],
 		secondaryForeground: ["--theme-secondary-fg"],
 		darkBackground: ["--theme-dark-bg"],
-		accent: ["--theme-accent", "--matter-helper-theme"],
+		// Matter's variables are deliberately absent here: it consumes the theme
+		// colour as `rgb(var(...))`, so it needs a bare "r, g, b" triplet rather
+		// than the hex the rest of the theme uses. Derived alongside the accent
+		// below.
+		accent: ["--theme-accent"],
 	};
+
+	/**
+	 * "#7A6CFF" -> "122, 108, 255". Matter's component styles interpolate the
+	 * theme colour into `rgb()` / `rgba()`, so they need the channels bare.
+	 * Falls back to the default accent if handed something unparseable.
+	 */
+	static toRgbTriplet(hex: string): string {
+		let h = (hex || "").trim().replace(/^#/, "");
+		if (h.length === 3) {
+			h = h[0]! + h[0]! + h[1]! + h[1]! + h[2]! + h[2]!;
+		}
+		if (!/^[0-9a-fA-F]{6}$/.test(h)) return "122, 108, 255";
+		const n = parseInt(h, 16);
+		return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
+	}
 
 	static new(json: { [key: string]: string }) {
 		return new Theme(
@@ -133,6 +152,16 @@ class Theme implements ThemeProps {
 			useChange(use(this.state[key as keyof ThemeProps]), (value) => {
 				for (const prop of this.cssPropMap[key as keyof ThemeProps]) {
 					document.body.style.setProperty(prop, value);
+				}
+				if (key === "accent") {
+					const triplet = Theme.toRgbTriplet(value);
+					document.body.style.setProperty("--theme-accent-rgb", triplet);
+					// Every Matter component re-declares --matter-helper-theme from
+					// --matter-theme-rgb in its own rule, so that local declaration
+					// always beats one set here. --matter-theme-rgb is the knob that
+					// actually reaches them.
+					document.body.style.setProperty("--matter-theme-rgb", triplet);
+					document.body.style.setProperty("--matter-helper-theme", triplet);
 				}
 			});
 		}

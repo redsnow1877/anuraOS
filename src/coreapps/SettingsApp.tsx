@@ -301,7 +301,7 @@ class SettingsApp extends App {
 								callback={async () => {
 									if (
 										await anura.dialog.confirm(
-											"This will restart Anura. Are you sure?",
+											`This will restart ${BRANDING.name}. Are you sure?`,
 										)
 									) {
 										anura.settings.set("milestone", "INVALID");
@@ -320,7 +320,7 @@ class SettingsApp extends App {
 								callback={async () => {
 									if (
 										await anura.dialog.confirm(
-											"This will restart Anura. Are you sure?\nYour data will not be accessible",
+											`This will restart ${BRANDING.name}. Are you sure?\nYour data will not be accessible`,
 										)
 									) {
 										await (window as any).idbKeyval.set(
@@ -621,7 +621,7 @@ class SettingsApp extends App {
 						</div>
 					</div>
 					<div id="reset" class="settings-category">
-						<h3 class="settings-category-name">Reset Anura</h3>
+						<h3 class="settings-category-name">Reset {BRANDING.name}</h3>
 						<div class="settings-group">
 							<div class="settings-item">
 								<span class="settings-item-name">
@@ -631,7 +631,7 @@ class SettingsApp extends App {
 									class="matter-button-outlined"
 									on:click={async () => {
 										const confirmation = await anura.dialog.confirm(
-											"Are you sure you want to powerwash Anura? All of your data will be lost.",
+											`Are you sure you want to powerwash ${BRANDING.name}? All of your data will be lost.`,
 										);
 										if (confirmation) {
 											try {

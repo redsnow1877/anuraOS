@@ -1,5 +1,5 @@
 class AboutApp extends App {
-	name = "About Anura";
+	name = `About ${BRANDING.name}`;
 	package = "anura.about";
 	icon = "/assets/icons/aboutapp.png";
 

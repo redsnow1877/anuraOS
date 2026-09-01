@@ -300,7 +300,9 @@ class WMWindow extends EventTarget implements Process {
 						</button>
 					</div>
 
-					<div class="titleContent">{use(this.state.title)}</div>
+					<div class="titleContent">
+						{use(this.state.title, (t) => t || this.app?.name || "")}
+					</div>
 				</div>
 				{
 					(this.content = (

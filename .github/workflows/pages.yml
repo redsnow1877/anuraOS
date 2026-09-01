@@ -1,0 +1,77 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, claude/virtual-proxy-browser-ui-y75fvi]
+  workflow_dispatch:
+
+# Only one deploy at a time; let an in-flight one finish rather than
+# cancelling it half-published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build static site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      # Same toolchain the CI build uses. The Rust nightly needed for v86's
+      # wasm comes from rust-toolchain.toml via the runner's rustup.
+      - name: Install build dependencies
+        run: sudo apt update && sudo apt install -y git build-essential clang default-jre
+
+      - name: Pack the static site
+        run: make static
+
+      # A project site is served from /<repo>/, not the origin root, so the
+      # build's absolute URLs need re-basing. A user/org site
+      # (<name>.github.io) already lives at the root and the script no-ops.
+      - name: Rewrite absolute paths for the Pages sub-path
+        run: |
+          REPO_NAME='${{ github.event.repository.name }}'
+          if [ "$REPO_NAME" = "${{ github.repository_owner }}.github.io" ]; then
+            BASE=/
+          else
+            BASE="/$REPO_NAME/"
+          fi
+          echo "Deploying under base path: $BASE"
+          node .github/scripts/set-base-path.mjs static "$BASE"
+
+      # Without this, Pages runs the output through Jekyll and drops any
+      # file or directory whose name starts with an underscore.
+      - name: Disable Jekyll processing
+        run: touch static/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: static
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

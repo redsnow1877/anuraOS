@@ -6,7 +6,7 @@ type ProgressObject = {
 };
 
 class Dialog extends App {
-	name = "Anura Dialog";
+	name = "Dialog";
 	package = "anura.dialog";
 	icon = "/assets/icons/generic.svg";
 	source: string;

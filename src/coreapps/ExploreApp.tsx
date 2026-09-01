@@ -290,8 +290,8 @@ class ExploreApp extends App {
 				.
 			</p>
 			<p>
-				For advanced users, Anura will execute any files in the /usr/init folder
-				as JavaScript code on boot.
+				For advanced users, {BRANDING.name} will execute any files in the
+				/usr/init folder as JavaScript code on boot.
 			</p>
 		</div>
 	);

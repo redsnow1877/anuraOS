@@ -71,4 +71,15 @@ export default [
 			semi: ["error", "always"],
 		},
 	},
+	{
+		// Build tooling: Node ESM, not browser code.
+		files: [".github/scripts/**/*.mjs"],
+		languageOptions: {
+			globals: {
+				...globals.node,
+			},
+			ecmaVersion: "latest",
+			sourceType: "module",
+		},
+	},
 ];

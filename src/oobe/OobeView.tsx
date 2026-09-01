@@ -1,7 +1,7 @@
 class OobeView {
 	state = $state({
-		color: "white",
-		text: "#202124",
+		color: "transparent",
+		text: "var(--ink)",
 		step: 0,
 		offlineEnabled: true,
 		v86Enabled: false,
@@ -28,131 +28,242 @@ class OobeView {
 	}
 
 	css = css`
-		color-scheme: light;
 		z-index: 9996;
 		position: absolute;
-		width: 100%;
-		height: 100%;
-		top: 0;
-		left: 0;
+		inset: 0;
 		display: flex;
+		align-items: center;
 		justify-content: center;
-		align-content: center;
-		flex-wrap: wrap;
+		font-family: var(--theme-font-sans);
 
-		--matter-onsurface-rgb: #121212 !important;
-		* {
-			--matter-helper-theme: 26, 115, 232 !important;
+		/* Same mesh gradient as the default wallpaper, so setup and desktop
+		   feel like one product rather than two. */
+		background-image:
+			radial-gradient(
+				120% 80% at 15% 0%,
+				rgba(94, 84, 214, 0.4) 0%,
+				transparent 60%
+			),
+			radial-gradient(
+				90% 70% at 95% 15%,
+				rgba(38, 132, 255, 0.3) 0%,
+				transparent 55%
+			),
+			radial-gradient(
+				110% 90% at 60% 110%,
+				rgba(214, 84, 160, 0.26) 0%,
+				transparent 60%
+			);
+		background-color: #06070a;
+
+		#oobe-top {
+			width: min(92vw, 760px);
+			max-height: 88vh;
+			overflow-y: auto;
+			border-radius: 22px;
+			background: var(--glass-tint);
+			backdrop-filter: var(--glass-blur);
+			-webkit-backdrop-filter: var(--glass-blur);
+			border: 1px solid var(--glass-stroke);
+			box-shadow: var(--glass-highlight), var(--shadow-panel);
+			animation: oobe-in 0.4s var(--ease-out);
 		}
 
-		#content {
-			padding: 79.6px 40px 23.8px 40px;
-			width: ${anura.platform.type === "mobile" ? "100vw;" : "1040px;"};
-			height: ${anura.platform.type === "mobile" ? "100vh;" : "680px;"};
-			box-sizing: border-box;
-
-			&:has(#features) {
-				padding-top: 0;
+		@keyframes oobe-in {
+			from {
+				opacity: 0;
+				transform: translateY(12px) scale(0.985);
 			}
 		}
 
-		#content .screen {
-			width: 100%;
-			height: 100%;
+		#content {
+			padding: 48px 52px 40px;
+			box-sizing: border-box;
+		}
+
+		.screen {
+			display: flex;
+			flex-direction: column;
+		}
+
+		.oobe-mark {
+			width: 56px;
+			height: 56px;
+			margin-bottom: 22px;
+			filter: drop-shadow(0 6px 20px rgba(120, 110, 255, 0.5));
 		}
 
 		.screen h1 {
-			margin: 48px 0 0 0;
+			margin: 0;
+			font-size: 30px;
+			font-weight: 680;
+			letter-spacing: -0.022em;
+			color: var(--ink);
 		}
 
 		.screen #subtitle {
-			margin: 16px 0 64px 0;
-			font-size: 24px;
-			/* https://partnermarketinghub.withgoogle.com/brands/chromebook/visual-identity/visual-identity/color-palette/ */
-			color: #5f6368;
+			margin: 10px 0 30px 0;
+			font-size: 15px;
+			color: var(--ink-dim);
 		}
 
 		.screen #gridContent {
-			display: grid;
-			grid-template-columns: auto minmax(0, 1fr);
-			grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-		}
-
-		.screen #gridContent #topButtons {
-			grid-column: 1 / span 1;
-			grid-row: 1 / span 1;
-		}
-
-		.screen #gridContent #bottomButtons {
-			align-self: end;
-			justify-self: start;
-			grid-column: 1 / span 1;
-			grid-row: 2 / span 1;
+			display: flex;
+			justify-content: flex-end;
+			margin-top: 30px;
 		}
 
 		.screen .preferredButton {
-			background-color: rgb(26, 115, 232);
-			border-radius: 16px;
-			border-style: none;
-			color: white;
-			height: 2em;
-			padding-left: 1em;
-			padding-right: 1em;
-			transition: 0s;
+			background: var(--theme-accent);
+			border-radius: 10px;
+			border: none;
+			color: #fff;
+			font-weight: 600;
+			font-size: 14px;
+			height: 38px;
+			padding: 0 22px;
+			cursor: pointer;
+			font-family: var(--theme-font-sans);
+			box-shadow:
+				inset 0 1px 0 rgba(255, 255, 255, 0.22),
+				0 6px 18px -6px color-mix(in srgb, var(--theme-accent) 80%, transparent);
+			transition:
+				filter 0.12s ease,
+				transform 0.12s var(--ease-out);
 		}
 
 		.screen .preferredButton:hover {
-			background-color: rgb(26, 115, 232);
-			filter: brightness(1.1);
+			filter: brightness(1.09);
+		}
+
+		.screen .preferredButton:active {
+			transform: scale(0.97);
 		}
 
 		.screen button {
-			background-color: var(--oobe-bg);
-			border-radius: 16px;
-			border: 1px solid gray;
-			color: rgb(26, 115, 232);
-			height: 2em;
-			margin: 0.5em;
-			padding-left: 1em;
-			padding-right: 1em;
-			cursor: pointer;
 			font-family: var(--theme-font-sans);
+			cursor: pointer;
 		}
 
-		.screen #animation {
-			grid-column: 2 / span 1;
-			grid-row: 1 / span 2;
-			margin-left: auto;
-			display: ${anura.platform.type === "mobile" ? "none;" : "unset;"};
+		/* Each choice is a card so the checkbox and its explainer read as one
+		   unit instead of a loose stack of rows. */
+		.oobe-option {
+			border: 1px solid var(--glass-stroke);
+			border-radius: 13px;
+			padding: 15px 17px;
+			margin-bottom: 11px;
+			background: rgba(255, 255, 255, 0.04);
+			transition: background-color 0.12s ease;
+		}
+
+		.oobe-option:hover {
+			background: rgba(255, 255, 255, 0.07);
+		}
+
+		.oobe-option .matter-checkbox span {
+			font-weight: 600;
+			font-size: 14.5px;
+			color: var(--ink);
+		}
+
+		.sub {
+			color: var(--ink-faint);
+			font-size: 12.5px;
+			line-height: 1.5;
+			display: flex;
+			align-items: flex-start;
+			margin-top: 7px;
+			& > .material-symbols-outlined {
+				font-size: 15px;
+				margin-top: 1px;
+			}
+		}
+
+		.oobe-footnotes {
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+			margin-top: 18px;
+			padding-top: 16px;
+			border-top: 1px solid var(--hairline);
+		}
+
+		.oobe-footnotes .sub {
+			margin-top: 0;
 		}
 
 		.material-symbols-outlined {
 			font-size: 1rem;
 		}
 
-		.sub {
-			color: #96969f;
-			font-size: 1.05rem;
-			display: flex;
-			align-items: center;
-			& > .material-symbols-outlined {
-				font-size: 1.1rem;
-			}
+		#tracker {
+			display: block;
+			margin-top: 14px;
+			color: var(--ink-dim);
+			font-size: 13px;
 		}
 
-		#features #subtitle {
-			margin-bottom: 2rem;
+		.oobe-progress {
+			margin-top: 26px;
+			width: 100%;
+			height: 4px;
+			border-radius: 999px;
+			background: rgba(255, 255, 255, 0.12);
+			overflow: hidden;
+		}
+
+		.oobe-progress::after {
+			content: "";
+			display: block;
+			width: 35%;
+			height: 100%;
+			border-radius: 999px;
+			background: linear-gradient(
+				90deg,
+				transparent,
+				var(--theme-accent),
+				transparent
+			);
+			animation: oobe-sweep 1.5s ease-in-out infinite;
+		}
+
+		@keyframes oobe-sweep {
+			0% {
+				transform: translateX(-120%);
+			}
+			100% {
+				transform: translateX(340%);
+			}
 		}
 	`;
+
+	/** The brand triangle, reused across every setup step. */
+	mark = () => (
+		<svg
+			class="oobe-mark"
+			viewBox="0 0 96 96"
+			xmlns="http://www.w3.org/2000/svg"
+		>
+			<defs>
+				<linearGradient id="oobeGrad" x1="10" y1="4" x2="86" y2="92">
+					<stop offset="0" stop-color="#a99cff" />
+					<stop offset="0.55" stop-color="#6a5cf0" />
+					<stop offset="1" stop-color="#3a2fb0" />
+				</linearGradient>
+			</defs>
+			<path d="M48 4 92 88H4L48 4Z" fill="url(#oobeGrad)" />
+			<path d="M48 30 71 74H25l23-44Z" fill="#06070a" fill-opacity="0.5" />
+		</svg>
+	);
 
 	steps = [
 		{
 			elm: (
 				<div class="screen" id="welcome">
+					{this.mark()}
 					<h1>Welcome to {BRANDING.name}</h1>
-					<div id="subtitle">Effortless. Modern. Powerful.</div>
+					<div id="subtitle">{BRANDING.tagline}</div>
 					<div id="gridContent">
-						<img id="animation" src="assets/oobe/welcome.gif" />
 						<div id="bottomButtons">
 							<button on:click={() => this.nextStep()} class="preferredButton">
 								Get Started
@@ -166,53 +277,62 @@ class OobeView {
 		{
 			elm: (
 				<div class="screen" id="features">
+					{this.mark()}
 					<h1>Choose your experience</h1>
 					<div id="subtitle">What kind of {BRANDING.name} user are you?</div>
-					<label class="matter-checkbox">
-						<input
-							type="checkbox"
-							bind:checked={use(this.state.offlineEnabled)}
-						/>
-						<span>Offline Functionality</span>
-					</label>
-					<div class="sub">
-						<span class="material-symbols-outlined">info</span>
-						&nbsp;This allows you to use {BRANDING.name} without an internet
-						connection.
+					<div class="oobe-option">
+						<label class="matter-checkbox">
+							<input
+								type="checkbox"
+								bind:checked={use(this.state.offlineEnabled)}
+							/>
+							<span>Offline Functionality</span>
+						</label>
+						<div class="sub">
+							<span class="material-symbols-outlined">info</span>
+							&nbsp;This allows you to use {BRANDING.name} without an internet
+							connection.
+						</div>
 					</div>
-					<br></br>
-					<label class="matter-checkbox">
-						<input type="checkbox" bind:checked={use(this.state.v86Enabled)} />
-						<span>Linux Emulation</span>
-					</label>
-					<div class="sub">
-						<span class="material-symbols-outlined">info</span>
-						&nbsp;This allows you to run Linux applications on {BRANDING.name}.
+					<div class="oobe-option">
+						<label class="matter-checkbox">
+							<input
+								type="checkbox"
+								bind:checked={use(this.state.v86Enabled)}
+							/>
+							<span>Linux Emulation</span>
+						</label>
+						<div class="sub">
+							<span class="material-symbols-outlined">info</span>
+							&nbsp;This allows you to run Linux applications on {BRANDING.name}
+							.
+						</div>
 					</div>
-					<br></br>
-					<label class="matter-checkbox">
-						<input
-							type="checkbox"
-							bind:checked={use(this.state.localfsdriver)}
-						/>
-						<span>Experimental OPFS Driver</span>
-					</label>
-					<div class="sub">
-						<span class="material-symbols-outlined">info</span>
-						&nbsp;Use experimental OPFS based filesystem driver. Comes with a
-						speed improvement at the cost of system stability.
+					<div class="oobe-option">
+						<label class="matter-checkbox">
+							<input
+								type="checkbox"
+								bind:checked={use(this.state.localfsdriver)}
+							/>
+							<span>Experimental OPFS Driver</span>
+						</label>
+						<div class="sub">
+							<span class="material-symbols-outlined">info</span>
+							&nbsp;Use experimental OPFS based filesystem driver. Comes with a
+							speed improvement at the cost of system stability.
+						</div>
 					</div>
-					<br></br>
-					<div id="size" class="sub">
-						<span class="material-symbols-outlined">download</span>
-						&nbsp;{use(this.state.dlsize)} download
-					</div>
-					<div class="sub">
-						<span class="material-symbols-outlined">info</span>
-						&nbsp;These features can always be enabled in Settings.
+					<div class="oobe-footnotes">
+						<div id="size" class="sub">
+							<span class="material-symbols-outlined">download</span>
+							&nbsp;{use(this.state.dlsize)} download
+						</div>
+						<div class="sub">
+							<span class="material-symbols-outlined">info</span>
+							&nbsp;These features can always be enabled in Settings.
+						</div>
 					</div>
 					<div id="gridContent">
-						<img id="animation" src="assets/oobe/checking_for_update.gif" />
 						<div id="bottomButtons">
 							<button
 								on:click={async () => {
@@ -267,13 +387,13 @@ class OobeView {
 			elm: (
 				<div class="screen" id="downloadingFiles">
 					<div id="assetsDiv" style="display:none;"></div>
-					<h1>Downloading assets</h1>
-					<div id="subtitle" style="color: white;">
+					{this.mark()}
+					<h1>Setting things up</h1>
+					<div id="subtitle">
 						For the best experience, {BRANDING.name} needs to download required
 						assets.
 					</div>
-					<img src="/assets/oobe/spinner.gif" />
-					<br />
+					<div class="oobe-progress"></div>
 					<span id="tracker"></span>
 				</div>
 			),
@@ -282,8 +402,8 @@ class OobeView {
 					anura_target: "anura.cache",
 					value: anura.settings.get("use-sw-cache"),
 				});
-				this.state.color = "var(--material-bg)";
-				this.state.text = "whitesmoke";
+				this.state.color = "transparent";
+				this.state.text = "var(--ink)";
 				if (!anura.settings.get("x86-disabled")) {
 					await anura.settings.set("x86-image", "alpine");
 					await installx86();

@@ -1,6 +1,6 @@
 // probably some of the most clusterfucked code i've written - fish
 class TaskManager extends App {
-	name = "Task Manager";
+	name = "Activity Monitor";
 	package = "anura.taskmgr";
 	icon = "/assets/icons/system-monitor.svg";
 

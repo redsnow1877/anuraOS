@@ -105,7 +105,7 @@ class Launcher {
 			<div
 				id="launcher"
 				class={[
-					use(this.state.active, (active) => (active ? "launcher-active" : "")),
+					use(this.state.active, (active) => active && "launcher-active"),
 				]}
 				on:pointerdown={(e: PointerEvent) => {
 					// Clicking the frosted background (not a tile) dismisses.
@@ -214,7 +214,9 @@ const LauncherShortcut: Component<
 			) {
 				try {
 					const sh = new anura.fs.Shell();
-					const path = (app as ExternalApp).source.replace(/^\/fs\//, "");
+					// Tolerates a sub-path deployment, where the source URL is
+					// "/<base>/fs/..." rather than "/fs/...".
+					const path = (app as ExternalApp).source.replace(/^.*?\/fs\//, "");
 					await sh.rm(
 						path,
 						{

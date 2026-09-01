@@ -156,7 +156,7 @@ class Taskbar {
 						<div
 							class={[
 								"lightbar",
-								app.windows?.length === 0 ? "lightbar-hidden" : "",
+								app.windows?.length === 0 && "lightbar-hidden",
 							]}
 						></div>
 					))
@@ -404,9 +404,7 @@ class Taskbar {
 			<div id="shell-root">
 				<header
 					id="menubar"
-					class={[
-						use(this.state.solidMenubar, (solid) => (solid ? "solid" : "")),
-					]}
+					class={[use(this.state.solidMenubar, (solid) => solid && "solid")]}
 				>
 					<div
 						class="menubar-item"
