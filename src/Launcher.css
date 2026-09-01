@@ -13,9 +13,11 @@
 	padding-bottom: var(--dock-reserve);
 	box-sizing: border-box;
 
-	background: rgba(6, 7, 10, 0.34);
-	backdrop-filter: blur(44px) saturate(170%);
-	-webkit-backdrop-filter: blur(44px) saturate(170%);
+	/* Heavy enough that open windows dissolve into the blur rather than
+	   showing through as dark rectangles. */
+	background: rgba(6, 7, 10, 0.42);
+	backdrop-filter: blur(72px) saturate(160%) brightness(0.92);
+	-webkit-backdrop-filter: blur(72px) saturate(160%) brightness(0.92);
 
 	opacity: 0;
 	visibility: hidden;

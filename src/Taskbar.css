@@ -150,7 +150,9 @@
 	display: flex;
 	align-items: flex-end;
 	gap: 2px;
-	padding: var(--dock-pad);
+	/* Extra room along the bottom so the running-indicator dots clear the
+	   dock's own border instead of crowding it. */
+	padding: var(--dock-pad) var(--dock-pad) calc(var(--dock-pad) + 8px);
 	max-width: calc(100vw - 24px);
 	border-radius: var(--radius-dock);
 	background: var(--glass-tint);
@@ -211,7 +213,7 @@
 /* Running indicator */
 .dock-item .lightbar {
 	position: absolute;
-	bottom: -4px;
+	bottom: -9px;
 	left: 50%;
 	transform: translateX(-50%);
 	width: 4px;
