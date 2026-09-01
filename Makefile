@@ -198,6 +198,38 @@ static: all
 	cp -r build/* static/
 	cp -r public/* static/
 
+# Everything `all` builds except the v86 emulator.
+#
+# The x86 subsystem needs the Alpine rootfs, which only `make full` produces, so
+# a plain static build could never boot it anyway — compiling v86's wasm there is
+# pure cost. It is also the most fragile part of the build: rust-toolchain.toml
+# floats on `nightly`, and current nightlies fail to link it
+# ("--global-base cannot be less than stack size when --stack-first is used").
+# Used by the GitHub Pages deploy.
+all-nov86: submodules build/bootstrap \
+		external-libs bundle public/config.json apps/libfileview.lib/icons \
+		build/assets/matter.css v86-stub build/cache-load.json
+
+# Anura's own v86.js augments V86.prototype as soon as it loads, so the global
+# has to exist as a constructor even when the emulator isn't bundled.
+# Constructing it is what's unsupported, and that only happens if the user turns
+# the x86 subsystem on.
+v86-stub: FORCE
+	mkdir -p build/lib
+	printf '%s\n' \
+		'// v86 is not bundled in this build; see the all-nov86 target.' \
+		'globalThis.V86 = function V86() {' \
+		'	throw new Error("The x86 subsystem is not available in this build.");' \
+		'};' > build/lib/libv86.js
+
+static-nov86: all-nov86
+	mkdir -p static/
+	cp -r aboutproxy/static/* static/
+	cp -r apps/ static/apps/
+	cp -r bin/ static/bin/
+	cp -r build/* static/
+	cp -r public/* static/
+
 server: FORCE
 	cd server; node server.js
 

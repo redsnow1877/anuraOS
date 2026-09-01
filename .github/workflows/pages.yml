@@ -37,8 +37,12 @@ jobs:
       - name: Install build dependencies
         run: sudo apt update && sudo apt install -y git build-essential clang default-jre
 
+      # `static-nov86` skips compiling the v86 emulator to wasm. Pages can't
+      # host the Alpine rootfs the x86 subsystem needs (that's `make full`), so
+      # the emulator could never boot here regardless — and its build currently
+      # fails against floating Rust nightlies.
       - name: Pack the static site
-        run: make static
+        run: make static-nov86
 
       # A project site is served from /<repo>/, not the origin root, so the
       # build's absolute URLs need re-basing. A user/org site
