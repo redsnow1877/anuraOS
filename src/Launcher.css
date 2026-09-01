@@ -81,7 +81,10 @@ body.blur-disable #launcher {
 	min-width: 0;
 	background: transparent;
 	border: none;
-	outline: none;
+	/* The wrapper draws the focus ring (see :focus-within above); without this
+	   the input's own ring stacks inside it. */
+	outline: none !important;
+	box-shadow: none !important;
 	font-family: var(--theme-font-sans);
 	font-size: 13.5px;
 	color: var(--ink);
