@@ -61,8 +61,7 @@ class ShortcutApp extends App implements AnuraShortcut {
 	package = "anura.shortcut";
 	icon = "/assets/icons/generic.svg";
 	console = false;
-	command =
-		'/usr/bin/vista.ajs --alert --message "Anura Shortcuts: This shortcut is not configured properly." --title Error';
+	command = `/usr/bin/vista.ajs --alert --message "${BRANDING.name} Shortcuts: This shortcut is not configured properly." --title Error`;
 
 	constructor(filePath: string, props: AnuraShortcut) {
 		super();

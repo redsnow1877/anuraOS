@@ -129,7 +129,7 @@ class Networking {
 								} catch (e) {
 									// This should only really error if theres nothing in v86, so I'll give the user an error that might be wrong
 									anura.notifications.add({
-										title: "Anura Networking Error",
+										title: `${BRANDING.name} Networking Error`,
 										description:
 											"fetch requested to non binded localhost port " +
 											requestObj.url,
@@ -142,7 +142,7 @@ class Networking {
 					});
 				}
 				anura.notifications.add({
-					title: "Anura Networking Error",
+					title: `${BRANDING.name} Networking Error`,
 					description: "fetch requested to non binded localhost port",
 					timeout: 5000,
 				});

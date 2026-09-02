@@ -572,7 +572,7 @@ class QuickSettingsNotification {
 	originalNotification: AnuraNotification;
 
 	constructor(notif: AnuraNotification) {
-		this.state.title = notif.title || "Anura Notification";
+		this.state.title = notif.title || `${BRANDING.name} Notification`;
 		this.state.description = notif.description || "Missing Description";
 		this.state.timeout = notif.timeout || 2000;
 		this.state.closeIndicator = notif.closeIndicator || false;

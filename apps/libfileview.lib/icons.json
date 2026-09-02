@@ -112,7 +112,7 @@
 			"ext": "ajs",
 			"icon": "icons/js.svg",
 			"source": "papirus/Papirus/16x16/mimetypes/application-javascript.svg",
-			"type": "Anura JavaScript Binary"
+			"type": "Aether JavaScript Binary"
 		},
 		{
 			"ext": "json",
@@ -134,7 +134,7 @@
 		},
 		{
 			"ext": "app",
-			"type": "Anura Shortcut"
+			"type": "Aether Shortcut"
 		}
 	],
 	"default": "icons/txt.svg",

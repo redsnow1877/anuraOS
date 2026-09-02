@@ -272,7 +272,7 @@ window.addEventListener("load", async () => {
 
 		if (needsMigration.length > 0) {
 			anura.notifications.add({
-				title: "Anura Update",
+				title: `${BRANDING.name} Update`,
 				description: `${BRANDING.name} has been updated to a new version. Users are recommended to change the installation directory of their apps and libraries to /usr/ to ensure consistency with new installations.`,
 				timeout: "never",
 				buttons: [

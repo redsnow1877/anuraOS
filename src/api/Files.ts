@@ -133,10 +133,10 @@ class FilesAPI {
 			if (handler.handler_type === "module") {
 				const handlerModule = await anura.import(handler.id);
 				if (!handlerModule) {
-					return "Anura File";
+					return `${BRANDING.name} File`;
 				}
 				if (!handlerModule.getFileType) {
-					return "Anura File";
+					return `${BRANDING.name} File`;
 				}
 				return handlerModule.getFileType(path);
 			}
@@ -147,13 +147,13 @@ class FilesAPI {
 						`if (getFileType) {
                             getFileType(${JSON.stringify(path)})
                         } else {
-                            "Anura File"
+                            BRANDING.name + " File"
                         }`,
 				); // here, JSON.stringify is used to properly escape the string
 			}
 		}
-		// If no handler is found, return "Anura File"
-		return "Anura File";
+		// If no handler is found, return a generic fallback label
+		return `${BRANDING.name} File`;
 	}
 
 	setFolderIcon(path: string) {
