@@ -26,6 +26,7 @@
 		"sound-enabled": true,
 		"sound-volume": 0.4,
 		"custom-cursor": true,
+		"magnetic-icons": true,
 		"preloader-variant": "orbit",
 		"relay-url": "wss://relay.widgetry.org/"
 	},

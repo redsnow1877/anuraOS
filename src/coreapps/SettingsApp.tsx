@@ -502,6 +502,18 @@ class SettingsApp extends App {
 									}
 								}}
 							/>
+							<SettingSwitch
+								title="Magnetic icons"
+								setting="magnetic-icons"
+								callback={() => {
+									try {
+										if (!anura.settings.get("magnetic-icons"))
+											AetherMagnetic.releaseAll();
+									} catch {
+										/* Magnetic.js may be absent in a trimmed build */
+									}
+								}}
+							/>
 							<SettingChoice
 								title="Loading style"
 								setting="preloader-variant"

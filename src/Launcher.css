@@ -132,9 +132,27 @@ body.blur-disable #launcher {
 	border-radius: 14px;
 	color: var(--ink);
 	cursor: default;
+	/*
+	 * The independent `translate` property, not `transform` — deliberately.
+	 * Motion.css reveals these tiles with `animation: lp-butterfly-in … both`,
+	 * and a filling animation pins `transform` for as long as it applies, so a
+	 * transform-based pull here would compute to nothing. `translate` is a
+	 * separate property that composes with the animated transform instead of
+	 * losing to it, and it leaves the `:active` scale below free to use
+	 * `transform` on its own.
+	 */
+	translate: var(--mag-x, 0px) var(--mag-y, 0px);
 	transition:
 		background-color 0.12s ease,
-		transform 0.12s var(--ease-out);
+		translate 0.34s var(--ease-spring-soft, cubic-bezier(0.34, 1.3, 0.64, 1));
+}
+
+/* While actively pulled, follow the cursor closely; the long spring above is
+   for the release, where the overshoot is the whole point. */
+#launcher .appsView .app.is-magnetized {
+	transition:
+		background-color 0.12s ease,
+		translate 0.09s var(--ease-out, ease-out);
 }
 
 #launcher .appsView .app:hover {
@@ -142,7 +160,7 @@ body.blur-disable #launcher {
 }
 
 #launcher .appsView .app:active {
-	transform: scale(0.94);
+	scale: 0.94;
 }
 
 #launcher .appsView .app .app-shortcut-image {
@@ -261,4 +279,30 @@ body.blur-disable #launcher {
 	#launcher .widget-grid {
 		overflow: visible;
 	}
+}
+
+/* ==========================================================================
+   Gooey search inside the Launchpad
+   --------------------------------------------------------------------------
+   Gooey.css owns the control; this only sizes it for the Launchpad and keeps
+   it in the same place the plain `.launcher-search` occupied, so the fallback
+   path lands in an identical layout.
+   ========================================================================== */
+
+#launcher .gooey-search {
+	--gooey-collapsed: 150px;
+	--gooey-expanded: min(88vw, 330px);
+	--gooey-offset: 46px;
+	flex-shrink: 0;
+	/* The control reserves offset+expanded of width so the detached bubble has
+	   somewhere to sit; shifting left by half of that keeps the *expanded* pill
+	   centred under the grid, which is where the eye expects it. */
+	margin-left: calc(var(--gooey-offset) * -1);
+}
+
+/* No backdrop-filter anywhere in here: on the blob layer a filtered ancestor
+   severs the backdrop root, and on the content layer there is no fill to blur
+   behind. Gooey.css's dimmed blob layer is what reads as glass. */
+#launcher .gooey-search.is-expanded .gooey-search-trigger {
+	background: rgba(255, 255, 255, 0.16);
 }

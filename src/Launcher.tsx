@@ -21,6 +21,9 @@ class Launcher {
 	/** Set once init() builds the rail; null when widgets are unavailable. */
 	widgetHost: any = null;
 
+	/** The gooey search control; null when Gooey.js is unavailable. */
+	gooey: any = null;
+
 	clickoffChecker: HTMLDivElement;
 	updateClickoffChecker: (show: boolean) => void;
 
@@ -63,10 +66,13 @@ class Launcher {
 		});
 	}
 
-	handleSearch(event: Event) {
-		const searchQuery = (event.target as HTMLInputElement).value
-			.toLowerCase()
-			.trim();
+	/** Accepts either a DOM event (plain input) or a value (GooeySearch). */
+	handleSearch(source: Event | string) {
+		const raw =
+			typeof source === "string"
+				? source
+				: (source.target as HTMLInputElement).value;
+		const searchQuery = raw.toLowerCase().trim();
 		if (!this.state.appsView) return;
 		const apps = this.state.appsView.querySelectorAll(".app");
 
@@ -111,7 +117,17 @@ class Launcher {
 		// only has a resolved column count once it's laid out.
 		this.layoutGrid();
 		this.state.active = true;
-		requestAnimationFrame(() => this.layoutGrid());
+		requestAnimationFrame(() => {
+			this.layoutGrid();
+			// Tiles are rebuilt whenever the app list changes, so re-scan on
+			// every open; attach() skips anything already bound.
+			try {
+				AetherMagnetic.scan(this.state.appsView || undefined);
+			} catch {
+				/* Magnetic.js is optional */
+			}
+		});
+		this.gooey?.expand();
 		this.focusSearch();
 		// Widgets poll (clock, weather, system stats) — only while on screen.
 		try {
@@ -134,6 +150,14 @@ class Launcher {
 		}
 
 		this.state.active = false;
+		// Collapsed on the way out so the bubble has somewhere to come from the
+		// next time the Launchpad opens.
+		this.gooey?.collapse();
+		try {
+			AetherMagnetic.releaseAll(this.element as HTMLElement);
+		} catch {
+			/* Magnetic.js is optional */
+		}
 		this.clearSearch();
 		try {
 			this.widgetHost?.setActive(false);
@@ -152,6 +176,7 @@ class Launcher {
 		if (this.state.search) {
 			this.state.search.value = "";
 		}
+		this.gooey?.reset();
 		this.state.empty = false;
 		if (!this.state.appsView) return;
 		const apps = this.state.appsView.querySelectorAll(".app");
@@ -170,14 +195,17 @@ class Launcher {
 		clickoffChecker: HTMLDivElement,
 		updateClickoffChecker: (show: boolean) => void,
 	) {
-		clickoffChecker.addEventListener("click", () => {
-			this.state.active = false;
-		});
-
 		this.clickoffChecker = clickoffChecker;
 		this.updateClickoffChecker = updateClickoffChecker;
 
-		useChange(use(this.state.active), updateClickoffChecker);
+		// The Launchpad deliberately does NOT drive the shared click-off layer.
+		// That layer sits at z-index 9998 and `#launcher` at 9600, so raising it
+		// covered the whole grid: every tile click landed on the catcher, which
+		// dismissed the Launchpad without ever launching the app. `#launcher` is
+		// itself `position: fixed; inset: 0` and dismisses on a pointerdown that
+		// reaches its own backdrop (see render()), so the catcher was redundant
+		// as well as harmful. The menu-bar panels still use it — they're small,
+		// and genuinely need a catcher over the rest of the screen.
 
 		document.addEventListener("keydown", (e: KeyboardEvent) => {
 			if (e.key === "Escape" && this.state.active) {
@@ -199,27 +227,24 @@ class Launcher {
 					active ? "launcher-active" : "",
 				)}
 				on:pointerdown={(e: PointerEvent) => {
-					// Clicking the frosted background (not a tile) dismisses.
-					if (e.target === e.currentTarget) this.hide();
+					// Clicking the frosted background dismisses. `#launcher` itself
+					// is only a thin strip once the two-pane body fills it, so the
+					// test covers the structural containers too — most of the
+					// "empty space" a user aims at is actually `.appsView`. Tiles,
+					// the search field and the widget rail are all interactive and
+					// are deliberately absent from this list.
+					const target = e.target as HTMLElement;
+					if (
+						target === e.currentTarget ||
+						target.classList.contains("launcher-body") ||
+						target.classList.contains("launcher-apps") ||
+						target.classList.contains("appsView")
+					) {
+						this.hide();
+					}
 				}}
 			>
-				<div class="launcher-search">
-					<span class="material-symbols-outlined">search</span>
-					<input
-						placeholder="Search"
-						spellcheck={false}
-						autocomplete="off"
-						bind:this={use(this.state.search)}
-						on:input={this.handleSearch.bind(this)}
-						on:keydown={(e: KeyboardEvent) => {
-							if (e.key !== "Enter") return;
-							const first = this.state.appsView?.querySelector<HTMLElement>(
-								'.app:not([style*="display: none"])',
-							);
-							first?.click();
-						}}
-					/>
-				</div>
+				{this.buildSearch()}
 
 				<div class="launcher-body">
 					<div class="launcher-apps">
@@ -251,6 +276,52 @@ class Launcher {
 				</div>
 			</div>
 		);
+	}
+
+	/**
+	 * The search field. A GooeySearch when Gooey.js is present — it starts
+	 * collapsed so that opening the Launchpad pulls the icon bubble out of the
+	 * pill — and the plain field otherwise. Either way `state.search` ends up
+	 * pointing at the <input>, so focusSearch/clearSearch don't care which.
+	 */
+	buildSearch(): HTMLElement {
+		const openFirstResult = (e: KeyboardEvent) => {
+			if (e.key !== "Enter") return;
+			const first = this.state.appsView?.querySelector<HTMLElement>(
+				'.app:not([style*="display: none"])',
+			);
+			first?.click();
+		};
+
+		try {
+			const Gooey = (globalThis as any).GooeySearch;
+			if (Gooey) {
+				this.gooey = new Gooey({
+					placeholder: "Search",
+					onInput: (value: string) => this.handleSearch(value),
+					onKeyDown: openFirstResult,
+				});
+				this.state.search = this.gooey.input;
+				return this.gooey.element;
+			}
+		} catch (e) {
+			console.warn("gooey search unavailable", e);
+			this.gooey = null;
+		}
+
+		return (
+			<div class="launcher-search">
+				<span class="material-symbols-outlined">search</span>
+				<input
+					placeholder="Search"
+					spellcheck={false}
+					autocomplete="off"
+					bind:this={use(this.state.search)}
+					on:input={this.handleSearch.bind(this)}
+					on:keydown={openFirstResult}
+				/>
+			</div>
+		) as HTMLElement;
 	}
 
 	/**
@@ -372,6 +443,9 @@ const LauncherShortcut: Component<
 	return (
 		<div
 			class="app"
+			// Picked up by AetherMagnetic.scan() when the Launchpad opens; the
+			// value is the pull strength. Harmless if Magnetic.js is absent.
+			data-magnetic="0.3"
 			on:click={this.onclick}
 			on:contextmenu={(e: PointerEvent) => {
 				e.preventDefault();

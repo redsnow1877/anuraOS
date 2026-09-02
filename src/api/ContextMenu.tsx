@@ -96,6 +96,14 @@ class ContextMenu {
 		// Force a reflow so re-showing the same menu replays the animation.
 		void this.#element.offsetWidth;
 		this.#element.classList.add("ctx-in");
+		// Taken off once it lands: the animation fills forwards, which would
+		// otherwise leave a `filter` on the menu for as long as it exists and
+		// keep it on its own compositing layer for nothing.
+		this.#element.addEventListener(
+			"animationend",
+			() => this.#element.classList.remove("ctx-in"),
+			{ once: true },
+		);
 
 		return this.#element;
 	}

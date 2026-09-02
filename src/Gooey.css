@@ -1,0 +1,215 @@
+/* ==========================================================================
+   Aether — gooey surfaces
+   --------------------------------------------------------------------------
+   The `feGaussianBlur` + `feColorMatrix` alpha-ramp trick: blur everything in
+   a subtree, then crush the alpha curve so soft edges snap back to hard ones.
+   Shapes that overlap while blurred fuse into one blob on the way out.
+
+   Two constraints shape everything below.
+
+   1. The alpha ramp (`0 0 0 20 -10`) multiplies alpha by 20 then subtracts 10,
+      so anything under ~0.5 alpha is crushed to nothing and the `atop`
+      composite paints an empty box. The goo layer must therefore be OPAQUE.
+      Glass is achieved with `opacity` on the layer, which applies after the
+      filter — the shapes fuse at full strength and only the result is dimmed.
+
+   2. `filter:` rasterises its whole subtree, so it never wraps readable text
+      or a focusable control. Content lives in a sibling layer on top.
+
+   For the same reason this is only ever applied to small, self-contained
+   controls — never a window (each holds a live iframe) and never anything
+   relying on `backdrop-filter`, since a filtered ancestor severs the backdrop
+   root.
+   ========================================================================== */
+
+/* The goo layer: solid shapes, filtered, then dimmed to glass as a whole. */
+.gooey-blobs {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	opacity: 0.17;
+	pointer-events: none;
+}
+
+/* The readable layer: same geometry, no filter. */
+.gooey-content {
+	position: relative;
+	display: flex;
+	align-items: center;
+	height: 100%;
+}
+
+.gooey-defs {
+	position: absolute;
+	width: 0;
+	height: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+/* ---- expanding search ---------------------------------------------------- */
+
+.gooey-search {
+	--gooey-collapsed: 132px;
+	--gooey-expanded: 330px;
+	--gooey-offset: 46px;
+	--gooey-h: 38px;
+	position: relative;
+	display: flex;
+	align-items: center;
+	height: var(--gooey-h);
+	width: calc(var(--gooey-offset) + var(--gooey-expanded));
+}
+
+/*
+ * Row and bubble geometry is declared once and used by both layers, so the
+ * blob and the content it stands in for can never drift apart.
+ */
+.gooey-blob-row,
+.gooey-search-trigger {
+	height: var(--gooey-h);
+	width: var(--gooey-collapsed);
+	margin-left: 0;
+	box-sizing: border-box;
+	border-radius: 999px;
+	transition:
+		width 0.42s var(--ease-spring-soft, cubic-bezier(0.34, 1.3, 0.64, 1)),
+		margin-left 0.42s var(--ease-spring-soft, cubic-bezier(0.34, 1.3, 0.64, 1));
+}
+
+.gooey-search.is-expanded .gooey-blob-row,
+.gooey-search.is-expanded .gooey-search-trigger {
+	width: var(--gooey-expanded);
+	margin-left: var(--gooey-offset);
+}
+
+.gooey-blob-row {
+	background: #fff;
+	flex-shrink: 0;
+}
+
+/*
+ * The blob starts at scale 0 *underneath* the row's left end, so expanding
+ * drags it out of the same mass rather than popping it into existence. This is
+ * the whole trick — the goo filter fuses them while they overlap and stretches
+ * the join as they separate.
+ */
+.gooey-blob-bubble {
+	position: absolute;
+	top: 50%;
+	left: 0;
+	width: var(--gooey-h);
+	height: var(--gooey-h);
+	margin-top: calc(var(--gooey-h) / -2);
+	border-radius: 50%;
+	background: #fff;
+	transform: scale(0);
+	transition: transform 0.42s
+		var(--ease-spring-soft, cubic-bezier(0.34, 1.3, 0.64, 1));
+}
+
+.gooey-search.is-expanded .gooey-blob-bubble {
+	transform: scale(1);
+}
+
+/* ---- content layer ------------------------------------------------------- */
+
+.gooey-search-trigger {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 0 15px;
+	border: none;
+	background: transparent;
+	color: var(--ink);
+	font-family: var(--theme-font-sans);
+	font-size: 13px;
+	cursor: text;
+	outline: none;
+	/* The rim reads as the edge of the glass; the fill is the blob layer's. */
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+	flex-shrink: 0;
+}
+
+.gooey-search-trigger .material-symbols-outlined {
+	font-size: 18px;
+	color: var(--ink-dim);
+	flex-shrink: 0;
+	/* Faded rather than removed: the detached bubble is what the eye tracks,
+	   and removing this node would reflow the row mid-goo. */
+	transition:
+		opacity 0.16s ease,
+		width 0.3s var(--ease-out, ease);
+}
+
+.gooey-search.is-expanded .gooey-search-trigger .material-symbols-outlined {
+	opacity: 0;
+	width: 0;
+}
+
+.gooey-search-input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	background: transparent;
+	border: none;
+	outline: none !important;
+	box-shadow: none !important;
+	color: var(--ink);
+	font-family: inherit;
+	font-size: 13px;
+}
+
+.gooey-search-input::placeholder {
+	color: var(--ink-faint);
+}
+
+/* The icon that rides on top of the detached blob. */
+.gooey-search-bubble {
+	position: absolute;
+	top: 50%;
+	left: 0;
+	width: var(--gooey-h);
+	height: var(--gooey-h);
+	margin-top: calc(var(--gooey-h) / -2);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	transform: scale(0);
+	opacity: 0;
+	pointer-events: none;
+	transition:
+		transform 0.42s var(--ease-spring-soft, cubic-bezier(0.34, 1.3, 0.64, 1)),
+		opacity 0.2s ease;
+}
+
+.gooey-search.is-expanded .gooey-search-bubble {
+	transform: scale(1);
+	opacity: 1;
+	pointer-events: auto;
+	cursor: default;
+}
+
+.gooey-search-bubble .material-symbols-outlined {
+	font-size: 18px;
+	color: var(--ink-dim);
+}
+
+/* ---- degraded modes ------------------------------------------------------ */
+
+/* Performance mode and reduced motion both drop the goo: the filter is the
+   expensive part, and with no transition to fuse there is nothing to hide.
+   The blob layer still paints the fills, so the control keeps its shape. */
+body.blur-disable .gooey-blobs,
+body.reduce-motion .gooey-blobs {
+	filter: none !important;
+}
+
+body.reduce-motion .gooey-blob-row,
+body.reduce-motion .gooey-blob-bubble,
+body.reduce-motion .gooey-search-trigger,
+body.reduce-motion .gooey-search-bubble {
+	transition-duration: 1ms !important;
+}
