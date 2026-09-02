@@ -26,12 +26,19 @@ class QuickSettings {
 	});
 
 	transition = css`
-		transition: opacity 0.08s cubic-bezier(0.445, 0.05, 0.55, 0.95);
+		/* Panels hinge down from the menu bar: opacity leads, transform and a
+		   short blur trail behind it on the soft spring from Motion.css. */
+		transition:
+			opacity 0.16s var(--ease-decelerate, ease-out),
+			transform 0.3s var(--ease-spring-soft, ease-out),
+			filter 0.24s var(--ease-decelerate, ease-out);
 	`;
 
 	show = css`
 		opacity: 1;
 		z-index: 9998;
+		transform: scale(1) translateY(0);
+		filter: blur(0);
 	`;
 
 	hide = css`
@@ -39,6 +46,7 @@ class QuickSettings {
 		z-index: -1;
 		pointer-events: none;
 		transform: scale(0.94) translateY(-6px);
+		filter: blur(var(--motion-blur-soft, 6px));
 	`;
 
 	quickSettingsCss = css`

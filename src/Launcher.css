@@ -104,7 +104,9 @@ body.blur-disable #launcher {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
 	gap: 26px 8px;
-	align-content: start;
+	/* Centred like Launchpad when the apps fit; `safe` degrades to start-
+	   aligned once they don't, so a long list never loses its first row. */
+	align-content: safe center;
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	flex: 1;
@@ -186,5 +188,77 @@ body.blur-disable #launcher {
 	#launcher .appsView .app .app-shortcut-image {
 		width: 52px;
 		height: 52px;
+	}
+}
+
+/* ==========================================================================
+   Start-menu layout — app grid beside the widget rail
+   --------------------------------------------------------------------------
+   The rail is optional: Launcher.tsx omits it entirely when Widgets.tsx isn't
+   loaded or every widget declines to render, and `.launcher-apps` then just
+   takes the full width on its own.
+   ========================================================================== */
+
+#launcher .launcher-body {
+	display: flex;
+	gap: 26px;
+	width: min(94vw, 1280px);
+	flex: 1;
+	min-height: 0;
+	margin-top: 34px;
+	transform: scale(1.06);
+	opacity: 0;
+	transition:
+		transform 0.26s var(--ease-out),
+		opacity 0.2s var(--ease-out);
+}
+
+#launcher.launcher-active .launcher-body {
+	transform: scale(1);
+	opacity: 1;
+}
+
+#launcher .launcher-apps {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+/* The grid already animates itself; inside the two-pane body it only needs to
+   stop being a standalone flex child and fill its column instead. */
+#launcher .launcher-apps .appsView {
+	width: 100%;
+	margin-top: 0;
+	padding-top: 0;
+}
+
+#launcher .widget-rail {
+	flex: 0 0 clamp(300px, 30%, 380px);
+	min-height: 0;
+	padding-left: 26px;
+	border-left: 1px solid var(--hairline);
+}
+
+/* Below this the two panes stop fitting side by side; the rail moves under the
+   apps and the whole body scrolls as one column. */
+@media (max-width: 1040px) {
+	#launcher .launcher-body {
+		flex-direction: column;
+		overflow-y: auto;
+		gap: 18px;
+	}
+
+	#launcher .widget-rail {
+		flex: none;
+		padding-left: 0;
+		border-left: none;
+		border-top: 1px solid var(--hairline);
+		padding-top: 18px;
+	}
+
+	#launcher .widget-grid {
+		overflow: visible;
 	}
 }

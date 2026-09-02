@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <defs>
+    <linearGradient id="teBody" x1="14" y1="6" x2="82" y2="92" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f6f6fa"/>
+      <stop offset="1" stop-color="#c9c9d6"/>
+    </linearGradient>
+    <linearGradient id="tePen" x1="58" y1="30" x2="80" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a99cff"/>
+      <stop offset="1" stop-color="#5d4fe0"/>
+    </linearGradient>
+    <linearGradient id="teGloss" x1="18" y1="4" x2="50" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <circle cx="48" cy="48" r="46" fill="#232330"/>
+  <path d="M28 20h30l14 14v42a4 4 0 0 1-4 4H28a4 4 0 0 1-4-4V24a4 4 0 0 1 4-4Z" fill="url(#teBody)"/>
+  <path d="M58 20v10a4 4 0 0 0 4 4h10L58 20Z" fill="#9a9aae"/>
+  <g stroke="#5a5a6e" stroke-width="3" stroke-linecap="round" opacity="0.55">
+    <path d="M33 46h22M33 56h30M33 66h18"/>
+  </g>
+  <path d="M76 34 62 48l-3 9 9-3 14-14a4.5 4.5 0 0 0-6-6Z" fill="url(#tePen)"/>
+  <path d="M48 2a46 46 0 0 1 32.5 13.5A46 46 0 0 0 15.5 80.5 46 46 0 0 1 48 2Z" fill="url(#teGloss)" opacity="0.5"/>
+</svg>

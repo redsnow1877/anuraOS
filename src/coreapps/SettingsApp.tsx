@@ -186,6 +186,88 @@ const SettingSwitch: Component<{
 	);
 };
 
+/**
+ * A 0..1 slider. Values are stored as the raw float; `format` only decides what
+ * the row prints next to it.
+ */
+const SettingSlider: Component<{
+	title: string;
+	setting: string;
+	fallback?: number;
+	callback?: any;
+	value?: number;
+}> = function () {
+	this.mount = () => {
+		const stored = anura.settings.get(this.setting);
+		this.value = typeof stored === "number" ? stored : (this.fallback ?? 0.5);
+	};
+	return (
+		<div class="settings-item">
+			<span class="settings-item-name">{use(this.title)}</span>
+			<div class="aether-slider-row">
+				<input
+					type="range"
+					class="aether-slider"
+					min="0"
+					max="100"
+					id={this.setting}
+					// `--v` tints the track up to the thumb; it has to be kept in
+					// sync by hand because CSS can't read an input's value.
+					style={use(this.value, (v) => `--v: ${Math.round((v ?? 0) * 100)}%`)}
+					value={use(this.value, (v) => String(Math.round((v ?? 0) * 100)))}
+					on:input={(e: Event) => {
+						const next = Number((e.target as HTMLInputElement).value) / 100;
+						this.value = next;
+						anura.settings.set(this.setting, next);
+						if (this.callback) this.callback(next);
+					}}
+				/>
+				<span class="aether-slider-value">
+					{use(this.value, (v) => `${Math.round((v ?? 0) * 100)}%`)}
+				</span>
+			</div>
+		</div>
+	);
+};
+
+/** A segmented picker over a fixed list of string values. */
+const SettingChoice: Component<{
+	title: string;
+	setting: string;
+	options: string[];
+	fallback?: string;
+	callback?: any;
+	value?: string;
+}> = function () {
+	this.mount = () => {
+		const stored = anura.settings.get(this.setting);
+		this.value = this.options.includes(stored)
+			? stored
+			: (this.fallback ?? this.options[0]);
+	};
+	return (
+		<div class="settings-item">
+			<span class="settings-item-name">{use(this.title)}</span>
+			<div class="aether-segmented">
+				{this.options.map((option: string) => (
+					<button
+						// Single pointer, not a class array — dreamland filters
+						// empty strings out of the former but not the latter.
+						class={use(this.value, (v) => (v === option ? "is-selected" : ""))}
+						on:click={() => {
+							this.value = option;
+							anura.settings.set(this.setting, option);
+							if (this.callback) this.callback(option);
+						}}
+					>
+						{option}
+					</button>
+				))}
+			</div>
+		</div>
+	);
+};
+
 const SettingText: Component<{
 	title: string;
 	setting: string;
@@ -279,6 +361,19 @@ class SettingsApp extends App {
 					<div
 						class="sidebar-settings-item"
 						on:click={() => {
+							document
+								.getElementById("feel")
+								?.scrollIntoView({ behavior: "smooth", block: "start" });
+						}}
+					>
+						<span class="sidebar-settings-item-name">
+							<span class="material-symbols-outlined">graphic_eq</span>
+							<a>Sound &amp; Feel</a>
+						</span>
+					</div>
+					<div
+						class="sidebar-settings-item"
+						on:click={() => {
 							this.state.settingsBody.scrollTo({
 								top: 100000,
 								behavior: "smooth",
@@ -345,6 +440,13 @@ class SettingsApp extends App {
 							<SettingSwitch
 								title="Reduce motion"
 								setting="disable-animation"
+								callback={() => {
+									try {
+										AetherMotion.sync();
+									} catch {
+										/* Motion.js may be absent in a trimmed build */
+									}
+								}}
 							/>
 							<SettingSwitch
 								title="Window Edge Clamping"
@@ -360,6 +462,52 @@ class SettingsApp extends App {
 							/>
 							<SettingText title="Custom Wisp URL" setting="wisp-url" />
 							<SettingText title="Custom Power Off URL" setting="exitUrl" />
+						</div>
+					</div>
+					<div id="feel" class="feel settings-category">
+						<h3 class="settings-category-name">Sound &amp; Feel</h3>
+						<div class="settings-group">
+							<SettingSwitch
+								title="Interface sounds"
+								setting="sound-enabled"
+								callback={() => {
+									try {
+										if (anura.settings.get("sound-enabled"))
+											aetherSound.play("toggleOn");
+									} catch {
+										/* Sound.js may be absent in a trimmed build */
+									}
+								}}
+							/>
+							<SettingSlider
+								title="Sound volume"
+								setting="sound-volume"
+								fallback={0.4}
+								callback={() => {
+									try {
+										aetherSound.play("click");
+									} catch {
+										/* as above */
+									}
+								}}
+							/>
+							<SettingSwitch
+								title="Custom cursor"
+								setting="custom-cursor"
+								callback={() => {
+									try {
+										AetherCursor.init();
+									} catch {
+										/* Cursor.js may be absent in a trimmed build */
+									}
+								}}
+							/>
+							<SettingChoice
+								title="Loading style"
+								setting="preloader-variant"
+								fallback="orbit"
+								options={AetherPreloader.VARIANTS}
+							/>
 						</div>
 					</div>
 					<div id="v86" class="v86 settings-category">

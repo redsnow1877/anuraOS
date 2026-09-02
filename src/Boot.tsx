@@ -495,6 +495,12 @@ document.addEventListener("anura-login-completed", async () => {
 	// const themeEditor = new ThemeEditor();
 	// anura.registerApp(themeEditor);
 
+	const calculator = new CalculatorApp();
+	anura.registerApp(calculator);
+
+	const textEditor = new TextEditorApp();
+	anura.registerApp(textEditor);
+
 	const explore = new ExploreApp();
 	anura.registerApp(explore);
 
@@ -557,6 +563,18 @@ document.addEventListener("anura-login-completed", async () => {
 	AnuradHelpers.setReady("anura.systray");
 
 	anura.ui.theme.apply();
+
+	// Shell chrome extras. All three are self-gating: the cursor turns itself
+	// off on coarse pointers, the sound engine no-ops without WebAudio, and
+	// AetherMotion just mirrors the existing disable-animation setting onto
+	// <body>. Kept in a try so a failure here can't block the desktop.
+	try {
+		AetherCursor.init();
+		AetherMotion.sync();
+		aetherSound.play("boot");
+	} catch (e) {
+		console.warn("shell chrome init failed", e);
+	}
 
 	(window as any).taskbar = taskbar;
 

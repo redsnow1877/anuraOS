@@ -1,7 +1,23 @@
 /**
  * Boot splashes. All variants share the same skeleton so that Boot.tsx can keep
  * driving `#systemstatus` regardless of which one is on screen.
+ *
+ * The progress indicator is an AetherPreloader (Preloader.tsx), so the splash
+ * picks up whatever variant the user chose in Settings. Preloader.js loads
+ * before this file, but the guard keeps a broken build showing *something*
+ * rather than an empty splash.
  */
+
+function BootProgress() {
+	try {
+		return aetherPreloader({
+			variant: AetherPreloader.preferred(),
+			size: "sm",
+		});
+	} catch {
+		return (<div class="boot-progress"></div>) as HTMLElement;
+	}
+}
 
 function BootMark() {
 	return (
@@ -33,7 +49,7 @@ const bootsplash = (
 	<div class="bootsplash">
 		{BootMark()}
 		<div class="boot-wordmark">{BRANDING.name}</div>
-		<div class="boot-progress"></div>
+		{BootProgress()}
 		<br id="systemstatus-br" style="display: none;" />
 		<h2 id="systemstatus" class="boot-status" style="display: none;"></h2>
 	</div>
@@ -43,7 +59,7 @@ const bootsplashMobile = (
 	<div class="bootsplash">
 		{BootMark()}
 		<div class="boot-wordmark">{BRANDING.name}</div>
-		<div class="boot-progress"></div>
+		{BootProgress()}
 		<br id="systemstatus-br" style="display: none;" />
 		<h2 id="systemstatus" class="boot-status" style="display: none;"></h2>
 	</div>
@@ -57,7 +73,7 @@ const gangstaBootsplash = (
 			src="/assets/images/gangsta.jpeg"
 			style="position: absolute; top: 0; bottom: 0; right: 0; width: auto; height: 100%; filter: brightness(0.95); z-index: -1;"
 		/>
-		<div class="boot-progress"></div>
+		{BootProgress()}
 		<br id="systemstatus-br" style="display: none;" />
 		<h2 id="systemstatus" class="boot-status" style="display: none;"></h2>
 	</div>
@@ -67,7 +83,7 @@ const TNBootSplash = (
 	<div class="bootsplash">
 		{BootMark()}
 		<div class="boot-wordmark">{BRANDING.name}</div>
-		<div class="boot-progress"></div>
+		{BootProgress()}
 		<br id="systemstatus-br" style="display: none;" />
 		<h2 id="systemstatus" class="boot-status" style="display: none;"></h2>
 		<span style="position: absolute; bottom: 1.25rem; left: 1.25rem; text-align: left; font-size: 12px; color: var(--ink-faint);">

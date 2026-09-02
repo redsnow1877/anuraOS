@@ -1,0 +1,263 @@
+/* ==========================================================================
+   Aether — refraction
+   --------------------------------------------------------------------------
+   The edge treatment that makes a window read as a slab of glass rather than
+   a rectangle with a border: an iridescent rim that shifts hue around the
+   frame, a specular highlight where light catches the top edge, and a soft
+   inner shadow pooling at the bottom.
+
+   TECHNIQUE — pure CSS, deliberately.
+   The obvious "real" approach is an SVG feTurbulence + feDisplacementMap and
+   it looks great in isolation, but `filter:` rasterises the whole subtree and
+   every window here contains a live iframe running an app. One displaced
+   window would cost a full-surface per-pixel pass on every frame it moves or
+   scrolls. So instead:
+
+     ::after   1px gradient rim, drawn with the border-box/content-box mask
+               XOR trick. One painted layer, no filter, no compositing cost.
+     ::before  specular + inner shadow, plain gradients and inset shadows.
+
+   Both are `pointer-events: none` and sit above the content, so nothing in
+   the window loses a click. Neither animates by default — a hue rotation on
+   a window-sized gradient repaints every frame for very little payoff.
+
+   Applied automatically to `.aliceWMwin`. Panels opt in with `.refract-panel`
+   (or the lighter `.refract-edge`, which is the top hairline only).
+
+   File order note: this file is concatenated after AliceWM.css but before
+   Taskbar.css, so nothing here relies on out-cascading a later file — the
+   selectors below are all specific enough to stand on their own.
+   ========================================================================== */
+
+:root {
+	/* Rim thickness. 1px reads best; 1.25 on hidpi if you want it juicier. */
+	--refract-rim: 1px;
+	/* Master intensity for idle vs focused surfaces. */
+	--refract-idle: 0.42;
+	--refract-focus: 1;
+}
+
+/* --------------------------------------------------------------------------
+   The iridescent rim
+   -------------------------------------------------------------------------- */
+
+.aliceWMwin::after,
+.refract-panel::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	padding: var(--refract-rim);
+	pointer-events: none;
+	z-index: 6;
+	opacity: var(--refract-idle);
+	transition: opacity 0.24s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+
+	background:
+		/* light catching the very top lip, on top of the hue sweep */
+		linear-gradient(
+			180deg,
+			rgba(255, 255, 255, 0.85) 0%,
+			rgba(255, 255, 255, 0) 26%
+		),
+		/* the refraction itself: accent -> cyan -> white -> magenta -> accent */
+			conic-gradient(
+				from 208deg at 50% 50%,
+				color-mix(in srgb, var(--theme-accent, #7a6cff) 70%, transparent) 0deg,
+				rgba(94, 214, 255, 0.46) 66deg,
+				rgba(255, 255, 255, 0.58) 138deg,
+				rgba(255, 150, 226, 0.44) 214deg,
+				color-mix(in srgb, var(--theme-accent, #7a6cff) 70%, transparent) 300deg,
+				color-mix(in srgb, var(--theme-accent, #7a6cff) 70%, transparent) 360deg
+			);
+
+	/* Keep only the padding band: fill minus content-box. */
+	-webkit-mask:
+		linear-gradient(#000 0 0) content-box,
+		linear-gradient(#000 0 0);
+	-webkit-mask-composite: xor;
+	mask:
+		linear-gradient(#000 0 0) content-box,
+		linear-gradient(#000 0 0);
+	mask-composite: exclude;
+}
+
+.aliceWMwin:hover::after {
+	opacity: calc(var(--refract-idle) + 0.16);
+}
+
+.aliceWMwin.focused::after,
+.refract-panel::after {
+	opacity: var(--refract-focus);
+}
+
+/* No mask-composite (old WebKit): fall back to a flat hairline stroke so the
+   window still has a defined edge instead of a solid gradient block. */
+@supports not ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+	.aliceWMwin::after,
+	.refract-panel::after {
+		background: none;
+		padding: 0;
+		box-shadow: inset 0 0 0 1px var(--glass-stroke, rgba(255, 255, 255, 0.11));
+	}
+}
+
+/* --------------------------------------------------------------------------
+   Specular highlight + inner shadow
+   -------------------------------------------------------------------------- */
+
+.aliceWMwin::before,
+.refract-panel::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	pointer-events: none;
+	z-index: 5;
+	transition: box-shadow 0.24s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+
+	background:
+		/* thin bright lip along the top */
+		linear-gradient(
+			180deg,
+			rgba(255, 255, 255, 0.16) 0px,
+			rgba(255, 255, 255, 0) 2.5px
+		),
+		/* the light source: a soft bloom off the top-left shoulder */
+			radial-gradient(
+				90% 46% at 22% -6%,
+				rgba(255, 255, 255, 0.1) 0%,
+				rgba(255, 255, 255, 0) 72%
+			);
+
+	box-shadow:
+		/* glass thickness: a dark hairline just inside the rim */
+		inset 0 0 0 0.5px rgba(0, 0, 0, 0.42),
+		/* shadow pooling at the bottom of the pane */ inset 0 -26px 32px -30px
+			rgba(0, 0, 0, 0.9);
+}
+
+/* Focused windows get a faint accent halo bled in from the edges — the same
+   colour the rim is throwing, one step further in. */
+.aliceWMwin.focused::before {
+	box-shadow:
+		inset 0 0 0 0.5px rgba(0, 0, 0, 0.42),
+		inset 0 -26px 32px -30px rgba(0, 0, 0, 0.9),
+		inset 0 0 26px -14px
+			color-mix(in srgb, var(--theme-accent, #7a6cff) 55%, transparent);
+}
+
+/* --------------------------------------------------------------------------
+   .refract-edge — the cheap version
+   Just the specular hairline. For long, wide surfaces (menu bar, dock) where
+   a full conic rim is overkill and would repaint on every dock hover.
+   -------------------------------------------------------------------------- */
+
+.refract-edge {
+	position: relative;
+}
+
+.refract-edge::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	pointer-events: none;
+	z-index: 4;
+	background: linear-gradient(
+		180deg,
+		rgba(255, 255, 255, 0.2) 0px,
+		rgba(255, 255, 255, 0) 2px
+	);
+	box-shadow:
+		inset 0 0 0 0.5px var(--glass-stroke-soft, rgba(255, 255, 255, 0.06)),
+		inset 0 -18px 26px -24px rgba(0, 0, 0, 0.8);
+}
+
+/* --------------------------------------------------------------------------
+   Panels
+   -------------------------------------------------------------------------- */
+
+.refract-panel {
+	position: relative;
+	isolation: isolate;
+}
+
+/* The shared .glass helper gets the light treatment for free. It is used for
+   popovers and menus, which are small — the rim would be more noise than
+   signal at that size. */
+.glass:not(.refract-panel) {
+	position: relative;
+}
+
+.glass:not(.refract-panel)::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	pointer-events: none;
+	z-index: 1;
+	background: linear-gradient(
+		180deg,
+		rgba(255, 255, 255, 0.14) 0px,
+		rgba(255, 255, 255, 0) 2px
+	);
+}
+
+/* --------------------------------------------------------------------------
+   Degradation
+   -------------------------------------------------------------------------- */
+
+/* "Reduce transparency" / performance mode. Same contract Glass.css uses:
+   the surface must still look deliberate with the effects stripped, so the
+   iridescence collapses to a single flat stroke rather than disappearing. */
+body.blur-disable .aliceWMwin::after,
+body.blur-disable .refract-panel::after {
+	background: var(--glass-stroke, rgba(255, 255, 255, 0.11));
+	opacity: 1;
+}
+
+body.blur-disable .aliceWMwin.focused::after,
+body.blur-disable .refract-panel.focused::after {
+	background: color-mix(
+		in srgb,
+		var(--theme-accent, #7a6cff) 34%,
+		rgba(255, 255, 255, 0.16)
+	);
+}
+
+body.blur-disable .aliceWMwin::before,
+body.blur-disable .refract-panel::before,
+body.blur-disable .aliceWMwin.focused::before {
+	background: none;
+	box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.42);
+}
+
+body.blur-disable .glass:not(.refract-panel)::before,
+body.blur-disable .refract-edge::before {
+	background: none;
+}
+
+/* Compact layouts: windows are edge-to-edge and square, a rim just adds a
+   seam against the wallpaper. */
+body.platform-mobile .aliceWMwin::after,
+body.platform-tablet .aliceWMwin::after,
+body.platform-mobile .aliceWMwin::before,
+body.platform-tablet .aliceWMwin::before {
+	display: none;
+}
+
+/* Maximised windows lose their radius; keep the rim but drop the corner
+   iridescence so it doesn't fight the screen edge. */
+.aliceWMwin.maximized::after {
+	opacity: calc(var(--refract-focus) * 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.aliceWMwin::after,
+	.aliceWMwin::before,
+	.refract-panel::after,
+	.refract-panel::before {
+		transition: none;
+	}
+}

@@ -53,6 +53,17 @@ class NotificationService {
 		});
 
 		this.element.appendChild(notif.element);
+		notif.element.classList.add("notif-in");
+		notif.element.addEventListener(
+			"animationend",
+			() => notif.element.classList.remove("notif-in"),
+			{ once: true },
+		);
+		try {
+			aetherSound.play("notify");
+		} catch {
+			/* sound is best-effort — a missing Sound.js must not drop a notice */
+		}
 
 		this.state.notifications = [...this.state.notifications, notif];
 	}
@@ -64,7 +75,10 @@ class NotificationService {
 			);
 		}
 
-		notification.element.style.opacity = "0";
+		// `notif-out` fills to opacity 0, so the node stays invisible for the
+		// gap between the animation ending and the timeout firing.
+		notification.element.classList.remove("notif-in");
+		notification.element.classList.add("notif-out");
 		setTimeout(() => {
 			notification.element.remove();
 		}, 360);

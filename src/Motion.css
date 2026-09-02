@@ -1,0 +1,961 @@
+/* ==========================================================================
+   Aether — motion system
+   --------------------------------------------------------------------------
+   All shell animation lives here. Glass.css owns the look; this file owns the
+   *timing*. It only ever adds tokens, keyframes and opt-in classes — nothing
+   here changes the resting appearance of a surface, so removing the classes
+   removes the motion and leaves the layout untouched.
+
+   Bundle position: the CSS bundler (cat over src, flat files then subdirs) puts this file between Launcher.css and
+   Notifications.css, so the small number of deliberate overrides of Launcher
+   rules below win on source order at equal specificity. Nothing here relies on
+   ordering against Taskbar.css / AliceWM.css — those are all new class names.
+
+   ==========================================================================
+   WIRING CONTRACT — everything an integrator needs
+   ==========================================================================
+
+   ---- 0. GLOBAL KILL SWITCH ---------------------------------------------
+   Add `reduce-motion` to <body> to disable every animation in this file
+   (transitions collapse to 1ms, animations to none, blur to 0). Keep it in
+   sync with the existing setting:
+
+       const m = () => document.body.classList.toggle(
+           "reduce-motion", !!anura.settings.get("disable-animation"));
+
+   `Sound.ts` ships a tiny helper that does exactly this and re-runs it on
+   `anura-settings-change` — call `AetherMotion.sync()` if you want it, or
+   wire it yourself. `@media (prefers-reduced-motion: reduce)` is honoured
+   automatically, no JS required.
+
+   ---- 1. WINDOWS (AliceWM) ----------------------------------------------
+   Add the class to the `.aliceWMwin` element, remove it on `animationend`
+   (each class is `both`-filled, so it holds the final frame until removed).
+
+     .wm-open          on create. 380ms. Remove on animationend.
+     .wm-close         before removing the node. 220ms. Remove the node on
+                       animationend (the class fills to opacity 0).
+     .wm-minimize      when minimizing. 400ms. On animationend set
+                       `visibility: hidden` / your existing hidden state and
+                       remove the class.
+     .wm-unminimize    when restoring. 380ms. Make the window visible first,
+                       then add. Remove on animationend.
+     .wm-maximize      340ms zoom accent — add *together with* your existing
+                       `.maxtransition` width/height/top/left transition.
+     .wm-restore       300ms, same idea in reverse.
+     .wm-focus-pop     120ms nudge when a window is raised. Optional.
+     .wm-attention     560ms horizontal shake for "can't do that". Optional.
+
+     Minimize/unminimize aim at the dock. Set two inline custom properties on
+     the window *before* adding the class, otherwise it defaults to the dock's
+     centre (bottom-centre of the screen):
+
+         const w = win.getBoundingClientRect();
+         const d = dockIconEl.getBoundingClientRect();
+         win.style.setProperty("--min-x",
+             (d.left + d.width / 2 - (w.left + w.width / 2)) + "px");
+         win.style.setProperty("--min-y",
+             (d.top  + d.height / 2 - (w.top  + w.height / 2)) + "px");
+
+     Guard all of the above with `if (!anura.settings.get("disable-animation"))`
+     exactly like the existing AliceWM code does; the CSS also degrades on its
+     own, so a missed guard is harmless.
+
+   ---- 2. LAUNCHPAD "BUTTERFLY" ------------------------------------------
+   The entrance needs NO JavaScript: it keys off the existing
+   `#launcher.launcher-active` class, and CSS restarts the animation every
+   time that class is re-added.
+
+   What it *does* need is per-tile geometry. Set these inline on each
+   `#launcher .appsView .app` (recompute on resize / when the app list or the
+   search filter changes the column count):
+
+     --i     flat tile index, 0-based        → micro-jitter so the wave isn't
+                                               mechanically uniform
+     --ring  integer ring distance from the  → the main outward stagger
+             grid centre (0 = centre tile)     (0,1,2,3…)
+     --dx    signed horizontal direction     → wing hinge + fold direction,
+             from centre, ~-1…1                clamped internally
+     --dy    signed vertical direction       → fall direction
+             from centre, ~-1…1
+
+   `--i` alone already produces a usable stagger (the rest default to 0), but
+   `--ring`/`--dx`/`--dy` are what make it read as wings. Reference snippet:
+
+       function layoutLaunchpad(grid) {
+         const tiles = [...grid.querySelectorAll(".app")]
+                         .filter(t => t.style.display !== "none");
+         if (!tiles.length) return;
+         // column count straight from the resolved grid
+         const cols = getComputedStyle(grid)
+                        .gridTemplateColumns.split(" ").length;
+         const rows = Math.ceil(tiles.length / cols);
+         const cx = (cols - 1) / 2, cy = (rows - 1) / 2;
+         tiles.forEach((t, i) => {
+           const col = i % cols, row = (i / cols) | 0;
+           const dx = col - cx, dy = row - cy;
+           t.style.setProperty("--i", i);
+           t.style.setProperty("--ring",
+             Math.round(Math.hypot(dx / Math.max(cx, 1),
+                                   dy / Math.max(cy, 1)) * 3));
+           t.style.setProperty("--dx", (dx / Math.max(cx, 1)).toFixed(3));
+           t.style.setProperty("--dy", (dy / Math.max(cy, 1)).toFixed(3));
+         });
+       }
+
+   Exit: add `lp-closing` to `#launcher` *before* removing `launcher-active`,
+   and drop it after 340ms. Outer rings leave first, so it collapses inward.
+
+       launcherEl.classList.add("lp-closing");
+       launcherEl.classList.remove("launcher-active");
+       setTimeout(() => launcherEl.classList.remove("lp-closing"), 340);
+
+   Search-filter re-runs: add `lp-refilter` to `.appsView` for one frame to
+   replay a short, cheap version of the reveal on the surviving tiles.
+
+   ---- 3. PANELS, MENUS, NOTIFICATIONS -----------------------------------
+     .panel-drop-in / .panel-drop-out    Control Center + Calendar, hinged on
+                                         the menu bar. Add in / add out then
+                                         hide on animationend.
+     .ctx-in                             context menus — add when `.custom-menu`
+                                         is positioned and shown; the origin
+                                         follows `--ctx-ox` / `--ctx-oy`
+                                         (default `0% 0%`), set it to
+                                         `100% 0%` for a left-flipped menu and
+                                         `0% 100%` / `100% 100%` when it flips up.
+     .notif-in / .notif-out              notification toasts (slide from the
+                                         right edge). `.notif-out` fills to
+                                         opacity 0 — remove the node on
+                                         animationend.
+     .sheet-in                           generic modal/dialog entrance.
+
+   ---- 4. DOCK ------------------------------------------------------------
+     .dock-bounce   add to the `.dock-item` (not the <img>) when an app is
+                    launched; remove on animationend. 620ms.
+     .lightbar      picks up a springier show/hide automatically — no wiring,
+                    it just restyles the existing transition.
+     .dock-pop-in   add to a `.dock-item` that was just appended.
+
+   ---- 5. WHAT NOT TO DO --------------------------------------------------
+   Do not leave any of these classes on an element at rest. Every one of them
+   ramps `filter: blur()` through the middle of its timeline and returns to
+   blur(0) — a stuck class means permanently soft text.
+   ========================================================================== */
+
+:root {
+	/* --- easing scale ---------------------------------------------------
+	   --ease-out and --ease-spring already exist in Glass.css; these extend
+	   the set rather than redefining them. */
+	--ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+	--ease-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+	--ease-accelerate: cubic-bezier(0.35, 0, 0.85, 0.15);
+	/* Softer than --ease-spring: settles without a visible second bounce. */
+	--ease-spring-soft: cubic-bezier(0.34, 1.22, 0.48, 1);
+	/* Deliberately past 1 — for things that should feel "popped" into place. */
+	--ease-overshoot: cubic-bezier(0.18, 1.62, 0.42, 1);
+	/* Long tail, used by the launchpad reveal so tiles glide the last 20%. */
+	--ease-glide: cubic-bezier(0.16, 0.9, 0.18, 1);
+
+	/* --- duration scale -------------------------------------------------- */
+	--dur-instant: 90ms;
+	--dur-fast: 160ms;
+	--dur-normal: 260ms;
+	--dur-slow: 400ms;
+	--dur-slower: 620ms;
+
+	/* --- motion blur -----------------------------------------------------
+	   Only ever applied at the *middle* of a timeline. `--motion-blur` is the
+	   default mid-transit amount; the soft/heavy variants exist so a big
+	   travelling surface can smear more than a small one without every
+	   keyframe hard-coding a number. */
+	--motion-blur-soft: 2.5px;
+	--motion-blur: 6px;
+	--motion-blur-heavy: 11px;
+
+	/* --- stagger --------------------------------------------------------- */
+	--stagger-i: 9ms; /* per flat index — jitter only */
+	--stagger-ring: 52ms; /* per ring — the actual outward wave */
+	--stagger-ring-out: 30ms; /* faster on the way out */
+
+	/* --- launchpad ------------------------------------------------------- */
+	--lp-perspective: 1500px;
+	--lp-dur-in: 720ms;
+	--lp-dur-out: 300ms;
+	/* How far a tile is pulled toward the grid centre before it flies out.
+	   Multiplied by --ring, so outer tiles travel further. */
+	--lp-gather: 30px;
+	--lp-fold: 62deg; /* wing fold around the inner hinge */
+	--lp-pitch: -54deg; /* how far the tile is pitched back before it falls */
+
+	/* --- window lifecycle ------------------------------------------------ */
+	--wm-dur-open: 380ms;
+	--wm-dur-close: 220ms;
+	--wm-dur-min: 400ms;
+	/* Fallback minimise target: straight down toward the dock. Overridden
+	   inline per-window with the real dock-icon offset. */
+	--min-x: 0px;
+	--min-y: 46vh;
+}
+
+/* ==========================================================================
+   1. WINDOW LIFECYCLE
+   ========================================================================== */
+
+@keyframes wm-open {
+	0% {
+		opacity: 0;
+		transform: scale(0.92) translateY(10px);
+		filter: blur(var(--motion-blur-soft));
+	}
+	55% {
+		opacity: 1;
+		filter: blur(1px);
+	}
+	100% {
+		opacity: 1;
+		transform: scale(1) translateY(0);
+		filter: blur(0);
+	}
+}
+
+@keyframes wm-close {
+	0% {
+		opacity: 1;
+		transform: scale(1);
+		filter: blur(0);
+	}
+	60% {
+		filter: blur(var(--motion-blur-soft));
+	}
+	100% {
+		opacity: 0;
+		transform: scale(0.94) translateY(6px);
+		filter: blur(var(--motion-blur));
+	}
+}
+
+/* Genie-ish: squash horizontally while shrinking and travelling to the dock,
+   with the blur peaking at the fastest part of the arc. transform-origin sits
+   at the bottom so the window "pours" downward instead of shrinking evenly. */
+@keyframes wm-minimize {
+	0% {
+		opacity: 1;
+		transform: translate3d(0, 0, 0) scale(1, 1);
+		filter: blur(0);
+	}
+	35% {
+		opacity: 0.95;
+		transform: translate3d(
+				calc(var(--min-x) * 0.3),
+				calc(var(--min-y) * 0.28),
+				0
+			)
+			scale(0.72, 0.62);
+		filter: blur(var(--motion-blur));
+	}
+	75% {
+		opacity: 0.55;
+		filter: blur(var(--motion-blur-heavy));
+	}
+	100% {
+		opacity: 0;
+		transform: translate3d(var(--min-x), var(--min-y), 0) scale(0.16, 0.05);
+		filter: blur(var(--motion-blur-heavy));
+	}
+}
+
+@keyframes wm-unminimize {
+	0% {
+		opacity: 0;
+		transform: translate3d(var(--min-x), var(--min-y), 0) scale(0.16, 0.05);
+		filter: blur(var(--motion-blur-heavy));
+	}
+	40% {
+		opacity: 0.8;
+		filter: blur(var(--motion-blur));
+	}
+	100% {
+		opacity: 1;
+		transform: translate3d(0, 0, 0) scale(1, 1);
+		filter: blur(0);
+	}
+}
+
+@keyframes wm-maximize {
+	0% {
+		transform: scale(1);
+		filter: blur(0);
+	}
+	45% {
+		transform: scale(1.012);
+		filter: blur(var(--motion-blur-soft));
+	}
+	100% {
+		transform: scale(1);
+		filter: blur(0);
+	}
+}
+
+@keyframes wm-restore {
+	0% {
+		transform: scale(1);
+		filter: blur(0);
+	}
+	45% {
+		transform: scale(0.988);
+		filter: blur(var(--motion-blur-soft));
+	}
+	100% {
+		transform: scale(1);
+		filter: blur(0);
+	}
+}
+
+@keyframes wm-focus-pop {
+	0% {
+		transform: scale(1);
+	}
+	40% {
+		transform: scale(1.008);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+@keyframes wm-attention {
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+	12% {
+		transform: translateX(-9px);
+	}
+	28% {
+		transform: translateX(8px);
+	}
+	44% {
+		transform: translateX(-6px);
+	}
+	60% {
+		transform: translateX(4px);
+	}
+	78% {
+		transform: translateX(-2px);
+	}
+}
+
+.wm-open {
+	animation: wm-open var(--wm-dur-open) var(--ease-spring-soft) both;
+	transform-origin: center center;
+	will-change: transform, opacity, filter;
+}
+
+.wm-close {
+	animation: wm-close var(--wm-dur-close) var(--ease-accelerate) both;
+	transform-origin: center center;
+	pointer-events: none;
+	will-change: transform, opacity, filter;
+}
+
+.wm-minimize {
+	animation: wm-minimize var(--wm-dur-min) var(--ease-accelerate) both;
+	transform-origin: center bottom;
+	pointer-events: none;
+	will-change: transform, opacity, filter;
+}
+
+.wm-unminimize {
+	animation: wm-unminimize var(--wm-dur-open) var(--ease-glide) both;
+	transform-origin: center bottom;
+	will-change: transform, opacity, filter;
+}
+
+.wm-maximize {
+	animation: wm-maximize 340ms var(--ease-out) both;
+}
+
+.wm-restore {
+	animation: wm-restore 300ms var(--ease-out) both;
+}
+
+.wm-focus-pop {
+	animation: wm-focus-pop 120ms var(--ease-out) both;
+}
+
+.wm-attention {
+	animation: wm-attention 560ms var(--ease-standard) both;
+}
+
+/* Focus shadow lift reads better with a spring than the linear ease the base
+   sheet uses. Same properties, richer curve — safe to override. */
+.aliceWMwin {
+	transition:
+		visibility 0s,
+		opacity var(--dur-fast) var(--ease-out),
+		box-shadow var(--dur-normal) var(--ease-out);
+}
+
+/* ==========================================================================
+   2. LAUNCHPAD — the butterfly reveal
+   --------------------------------------------------------------------------
+   Tiles start gathered near the centre of the grid, pitched back and folded
+   about their inner edge (the edge nearest the centre), then fall forward and
+   outward as the fold opens — wings unfurling. Ring distance drives the
+   stagger, so the wave visibly propagates from the middle out.
+   ========================================================================== */
+
+/* Grid becomes the 3D stage. Perspective origin sits slightly above centre so
+   the top rows read as falling toward the viewer rather than away. */
+#launcher .appsView {
+	perspective: var(--lp-perspective);
+	perspective-origin: 50% 38%;
+	transform-style: preserve-3d;
+}
+
+/* The base sheet scales the whole grid from 1.06 → 1 and cross-fades it. That
+   fights the per-tile choreography (everything appears at once behind a
+   uniform fade), so the container is pinned and the tiles carry the entrance
+   on their own. */
+#launcher .appsView {
+	transform: none;
+	opacity: 1;
+	transition: none;
+}
+
+#launcher.launcher-active .appsView {
+	transform: none;
+	opacity: 1;
+}
+
+@keyframes lp-butterfly-in {
+	0% {
+		opacity: 0;
+		transform: translate3d(
+				calc(var(--dx, 0) * var(--ring, 0) * var(--lp-gather) * -1),
+				calc(var(--dy, 0) * var(--ring, 0) * var(--lp-gather) * -1 - 46px),
+				-190px
+			)
+			rotateX(var(--lp-pitch))
+			rotateY(calc(clamp(-1, var(--dx, 0), 1) * var(--lp-fold)))
+			rotateZ(calc(clamp(-1, var(--dx, 0), 1) * -7deg)) scale(0.58);
+		filter: blur(var(--motion-blur-heavy));
+	}
+	/* Wings snap open and the tile clears the pile — fastest moment, so this
+	   is where the smear lives. */
+	38% {
+		opacity: 1;
+		transform: translate3d(
+				calc(var(--dx, 0) * var(--ring, 0) * var(--lp-gather) * -0.28),
+				calc(var(--dy, 0) * var(--ring, 0) * var(--lp-gather) * -0.28 - 12px),
+				-52px
+			)
+			rotateX(calc(var(--lp-pitch) * 0.3))
+			rotateY(calc(clamp(-1, var(--dx, 0), 1) * var(--lp-fold) * 0.34))
+			rotateZ(calc(clamp(-1, var(--dx, 0), 1) * -2.5deg)) scale(0.9);
+		filter: blur(var(--motion-blur));
+	}
+	/* Slight past-target settle: the tile drops a hair below and rocks back. */
+	68% {
+		transform: translate3d(0, 5px, 12px) rotateX(7deg)
+			rotateY(calc(clamp(-1, var(--dx, 0), 1) * -5deg)) scale(1.035);
+		filter: blur(1.2px);
+	}
+	100% {
+		opacity: 1;
+		transform: translate3d(0, 0, 0) rotateX(0) rotateY(0) rotateZ(0) scale(1);
+		filter: blur(0);
+	}
+}
+
+@keyframes lp-butterfly-out {
+	0% {
+		opacity: 1;
+		transform: translate3d(0, 0, 0) rotateX(0) rotateY(0) scale(1);
+		filter: blur(0);
+	}
+	100% {
+		opacity: 0;
+		transform: translate3d(
+				calc(var(--dx, 0) * var(--ring, 0) * var(--lp-gather) * -0.6),
+				calc(var(--dy, 0) * var(--ring, 0) * var(--lp-gather) * -0.6 - 18px),
+				-120px
+			)
+			rotateX(calc(var(--lp-pitch) * 0.55))
+			rotateY(calc(clamp(-1, var(--dx, 0), 1) * var(--lp-fold) * 0.7))
+			scale(0.74);
+		filter: blur(var(--motion-blur));
+	}
+}
+
+/* Short, flat replay used after a search filter — no 3D, just a lift. */
+@keyframes lp-settle {
+	0% {
+		opacity: 0;
+		transform: translateY(12px) scale(0.94);
+		filter: blur(var(--motion-blur-soft));
+	}
+	100% {
+		opacity: 1;
+		transform: none;
+		filter: blur(0);
+	}
+}
+
+#launcher.launcher-active .appsView .app {
+	/* Hinge on the edge facing the grid centre: --dx = +1 (right of centre)
+	   hinges at 0% (its left edge), --dx = -1 hinges at 100%. */
+	transform-origin: calc(50% - clamp(-1, var(--dx, 0), 1) * 50%) 34%;
+	transform-style: preserve-3d;
+	backface-visibility: hidden;
+	animation: lp-butterfly-in var(--lp-dur-in) var(--ease-glide) both;
+	animation-delay: calc(
+		var(--ring, 0) * var(--stagger-ring) + var(--i, 0) * var(--stagger-i)
+	);
+	will-change: transform, opacity, filter;
+}
+
+/* Outer rings leave first, so the grid collapses back toward the centre. The
+   `max()` keeps the delay non-negative for grids deeper than 4 rings. */
+#launcher.lp-closing .appsView .app {
+	animation: lp-butterfly-out var(--lp-dur-out) var(--ease-accelerate) both;
+	animation-delay: max(
+		0ms,
+		calc((4 - var(--ring, 0)) * var(--stagger-ring-out))
+	);
+}
+
+#launcher .appsView.lp-refilter .app {
+	animation: lp-settle 260ms var(--ease-out) both;
+	animation-delay: calc(var(--i, 0) * 14ms);
+}
+
+/* The search field drops out of the menu bar just ahead of the tiles. */
+@keyframes lp-search-in {
+	0% {
+		opacity: 0;
+		transform: translateY(-22px) scale(0.94);
+		filter: blur(var(--motion-blur-soft));
+	}
+	100% {
+		opacity: 1;
+		transform: none;
+		filter: blur(0);
+	}
+}
+
+#launcher.launcher-active .launcher-search {
+	animation: lp-search-in 340ms var(--ease-spring-soft) both;
+}
+
+#launcher .launcher-empty {
+	animation: lp-settle 240ms var(--ease-out) both;
+}
+
+/* The frosted backdrop ramps its blur in rather than snapping to 72px. */
+@keyframes lp-scrim-in {
+	0% {
+		backdrop-filter: blur(0) saturate(100%) brightness(1);
+		-webkit-backdrop-filter: blur(0) saturate(100%) brightness(1);
+	}
+	100% {
+		backdrop-filter: blur(72px) saturate(160%) brightness(0.92);
+		-webkit-backdrop-filter: blur(72px) saturate(160%) brightness(0.92);
+	}
+}
+
+#launcher.launcher-active {
+	animation: lp-scrim-in 300ms var(--ease-out) both;
+}
+
+body.blur-disable #launcher.launcher-active {
+	animation: none;
+}
+
+/* Tiles keep their own hover/press feel; make the press springier. */
+#launcher .appsView .app {
+	transition:
+		background-color var(--dur-instant) ease,
+		transform var(--dur-fast) var(--ease-spring-soft);
+}
+
+/* ==========================================================================
+   3. PANELS, MENUS, NOTIFICATIONS
+   ========================================================================== */
+
+/* Control Center / Calendar: hinged on the menu bar, so they tip forward as
+   they drop instead of just sliding. */
+@keyframes panel-drop-in {
+	0% {
+		opacity: 0;
+		transform: translateY(-14px) scale(0.96) rotateX(-9deg);
+		filter: blur(var(--motion-blur-soft));
+	}
+	60% {
+		opacity: 1;
+		filter: blur(0.6px);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0) scale(1) rotateX(0);
+		filter: blur(0);
+	}
+}
+
+@keyframes panel-drop-out {
+	0% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+		filter: blur(0);
+	}
+	100% {
+		opacity: 0;
+		transform: translateY(-10px) scale(0.97);
+		filter: blur(var(--motion-blur-soft));
+	}
+}
+
+.panel-drop-in {
+	transform-origin: top center;
+	perspective: 900px;
+	animation: panel-drop-in 300ms var(--ease-spring-soft) both;
+	will-change: transform, opacity, filter;
+}
+
+.panel-drop-out {
+	transform-origin: top center;
+	animation: panel-drop-out 170ms var(--ease-accelerate) both;
+	pointer-events: none;
+}
+
+@keyframes ctx-in {
+	0% {
+		opacity: 0;
+		transform: scale(0.9) translateY(-5px);
+		filter: blur(var(--motion-blur-soft));
+	}
+	100% {
+		opacity: 1;
+		transform: scale(1) translateY(0);
+		filter: blur(0);
+	}
+}
+
+.ctx-in,
+.custom-menu.ctx-in {
+	transform-origin: var(--ctx-ox, 0%) var(--ctx-oy, 0%);
+	animation: ctx-in 150ms var(--ease-out) both;
+}
+
+/* Context-menu rows brighten rather than jump. */
+.custom-menu-item {
+	transition:
+		background-color var(--dur-instant) linear,
+		color var(--dur-instant) linear;
+}
+
+@keyframes notif-in {
+	0% {
+		opacity: 0;
+		transform: translateX(46px) scale(0.94);
+		filter: blur(var(--motion-blur-soft));
+	}
+	65% {
+		opacity: 1;
+		filter: blur(0.5px);
+	}
+	100% {
+		opacity: 1;
+		transform: translateX(0) scale(1);
+		filter: blur(0);
+	}
+}
+
+@keyframes notif-out {
+	0% {
+		opacity: 1;
+		transform: translateX(0) scale(1);
+		filter: blur(0);
+	}
+	100% {
+		opacity: 0;
+		transform: translateX(56px) scale(0.96);
+		filter: blur(var(--motion-blur));
+	}
+}
+
+.notif-in {
+	animation: notif-in 380ms var(--ease-spring-soft) both;
+	will-change: transform, opacity, filter;
+}
+
+.notif-out {
+	animation: notif-out 220ms var(--ease-accelerate) both;
+	pointer-events: none;
+}
+
+@keyframes sheet-in {
+	0% {
+		opacity: 0;
+		transform: scale(0.94) translateY(14px);
+		filter: blur(var(--motion-blur-soft));
+	}
+	100% {
+		opacity: 1;
+		transform: none;
+		filter: blur(0);
+	}
+}
+
+.sheet-in {
+	animation: sheet-in 300ms var(--ease-spring-soft) both;
+}
+
+/* Menu bar items and the notification badge */
+.menubar-item {
+	transition:
+		background-color var(--dur-instant) linear,
+		color var(--dur-instant) linear;
+}
+
+.notification-badge {
+	transition:
+		transform var(--dur-fast) var(--ease-overshoot),
+		opacity var(--dur-fast) ease;
+}
+
+/* ==========================================================================
+   4. DOCK
+   ========================================================================== */
+
+@keyframes dock-bounce {
+	0% {
+		transform: translateY(0) scaleY(1);
+	}
+	14% {
+		transform: translateY(2px) scaleY(0.9);
+	}
+	38% {
+		transform: translateY(-24px) scaleY(1.08);
+	}
+	56% {
+		transform: translateY(0) scaleY(0.95);
+	}
+	72% {
+		transform: translateY(-9px) scaleY(1.03);
+	}
+	88% {
+		transform: translateY(0) scaleY(0.99);
+	}
+	100% {
+		transform: translateY(0) scaleY(1);
+	}
+}
+
+/* Applied to the .dock-item wrapper so it composes with the magnification
+   transform the JS writes onto the inner .dock-icon. */
+.dock-item.dock-bounce {
+	animation: dock-bounce 620ms var(--ease-standard) both;
+	transform-origin: bottom center;
+}
+
+@keyframes dock-pop-in {
+	0% {
+		opacity: 0;
+		transform: translateY(18px) scale(0.6);
+		filter: blur(var(--motion-blur-soft));
+	}
+	100% {
+		opacity: 1;
+		transform: none;
+		filter: blur(0);
+	}
+}
+
+.dock-item.dock-pop-in {
+	animation: dock-pop-in 340ms var(--ease-overshoot) both;
+	transform-origin: bottom center;
+}
+
+/* Running indicator: springs open, shrinks away. */
+.dock-item .lightbar {
+	transition:
+		opacity var(--dur-fast) var(--ease-out),
+		transform var(--dur-normal) var(--ease-overshoot);
+}
+
+.dock-item .lightbar-hidden {
+	transition:
+		opacity var(--dur-instant) var(--ease-accelerate),
+		transform var(--dur-fast) var(--ease-accelerate);
+}
+
+.dock-item .dock-icon {
+	transition:
+		transform 130ms var(--ease-out),
+		filter var(--dur-normal) ease;
+}
+
+.dock-item::after {
+	transition:
+		opacity var(--dur-instant) ease,
+		transform var(--dur-instant) var(--ease-out);
+}
+
+/* Dock itself fades/lifts on show — useful if the dock ever auto-hides. */
+@keyframes dock-slide-in {
+	0% {
+		opacity: 0;
+		transform: translateX(-50%) translateY(28px);
+		filter: blur(var(--motion-blur-soft));
+	}
+	100% {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0);
+		filter: blur(0);
+	}
+}
+
+#dock.dock-slide-in {
+	animation: dock-slide-in 420ms var(--ease-spring-soft) both;
+}
+
+/* ==========================================================================
+   5. SMALL SHARED UTILITIES
+   ========================================================================== */
+
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes fade-out {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+
+.fade-in {
+	animation: fade-in var(--dur-normal) var(--ease-out) both;
+}
+
+.fade-out {
+	animation: fade-out var(--dur-fast) var(--ease-accelerate) both;
+}
+
+/* Opt-in stagger for any list: set --i on the children. */
+.stagger-children > * {
+	animation: lp-settle 300ms var(--ease-out) both;
+	animation-delay: calc(var(--i, 0) * 34ms);
+}
+
+/* ==========================================================================
+   6. REDUCED MOTION
+   --------------------------------------------------------------------------
+   One class kills everything. Kept last in the file so it always wins, and
+   duplicated for the OS-level preference. Durations collapse to 1ms rather
+   than 0 so `animationend` / `transitionend` listeners still fire — the
+   integration above removes classes and nodes in those handlers, and a
+   `animation: none` would strand them.
+   ========================================================================== */
+
+body.reduce-motion *,
+body.reduce-motion *::before,
+body.reduce-motion *::after {
+	animation-duration: 1ms !important;
+	animation-delay: 0ms !important;
+	animation-iteration-count: 1 !important;
+	transition-duration: 1ms !important;
+	transition-delay: 0ms !important;
+	scroll-behavior: auto !important;
+}
+
+/* Blur and 3D are the expensive, nausea-adjacent parts — strip them outright
+   rather than just shortening them. */
+body.reduce-motion .wm-open,
+body.reduce-motion .wm-close,
+body.reduce-motion .wm-minimize,
+body.reduce-motion .wm-unminimize,
+body.reduce-motion .wm-maximize,
+body.reduce-motion .wm-restore,
+body.reduce-motion #launcher .appsView .app,
+body.reduce-motion .panel-drop-in,
+body.reduce-motion .panel-drop-out,
+body.reduce-motion .notif-in,
+body.reduce-motion .notif-out,
+body.reduce-motion .ctx-in,
+body.reduce-motion .sheet-in {
+	animation: none !important;
+	filter: none !important;
+	transform: none !important;
+	opacity: 1 !important;
+}
+
+body.reduce-motion #launcher .appsView,
+body.reduce-motion .panel-drop-in {
+	perspective: none !important;
+}
+
+/* `.wm-close` and `.notif-out` must still end up gone, or the caller's
+   animationend handler never runs and the node lingers at full opacity. */
+body.reduce-motion .wm-close,
+body.reduce-motion .notif-out,
+body.reduce-motion .panel-drop-out,
+body.reduce-motion .fade-out {
+	opacity: 0 !important;
+	animation: fade-out 1ms linear both !important;
+}
+
+body.reduce-motion #launcher.lp-closing .appsView .app {
+	opacity: 0 !important;
+	animation: fade-out 1ms linear both !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 1ms !important;
+		animation-delay: 0ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 1ms !important;
+		transition-delay: 0ms !important;
+		scroll-behavior: auto !important;
+	}
+
+	.wm-open,
+	.wm-minimize,
+	.wm-unminimize,
+	.wm-maximize,
+	.wm-restore,
+	#launcher .appsView .app,
+	.panel-drop-in,
+	.notif-in,
+	.ctx-in,
+	.sheet-in {
+		animation: none !important;
+		filter: none !important;
+		transform: none !important;
+		opacity: 1 !important;
+	}
+
+	#launcher .appsView {
+		perspective: none !important;
+	}
+
+	.wm-close,
+	.notif-out,
+	.panel-drop-out,
+	.fade-out,
+	#launcher.lp-closing .appsView .app {
+		opacity: 0 !important;
+		animation: fade-out 1ms linear both !important;
+	}
+}

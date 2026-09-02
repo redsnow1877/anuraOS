@@ -3,6 +3,25 @@
  * magnifying dock at the bottom. Both live inside a single `display: contents`
  * root so the rest of the OS can keep treating `taskbar.element` as one node.
  */
+/**
+ * The launch bounce. It goes on the `.dock-item`, never the <img> — the icon is
+ * also what the magnification transform scales, and stacking a keyframed
+ * transform on top of that makes the whole row jitter.
+ */
+function bounceDockItem(from: HTMLElement | null): void {
+	const item = from?.closest?.(".dock-item") as HTMLElement | null;
+	if (!item) return;
+	if (anura?.settings?.get("disable-animation")) return;
+	item.classList.remove("dock-bounce");
+	void item.offsetWidth;
+	item.classList.add("dock-bounce");
+	item.addEventListener(
+		"animationend",
+		() => item.classList.remove("dock-bounce"),
+		{ once: true },
+	);
+}
+
 class Taskbar {
 	timeformat = new Intl.DateTimeFormat(navigator.language, {
 		hour: "numeric",
@@ -241,6 +260,12 @@ class Taskbar {
 			c.style.top = "";
 			c.style.bottom = "calc(var(--dock-reserve) + 6px)";
 		} else {
+			bounceDockItem(e.target as HTMLElement | null);
+			try {
+				aetherSound.play("open");
+			} catch {
+				/* best-effort */
+			}
 			const potentialFuture = app.open();
 			if (
 				typeof potentialFuture !== "undefined" &&

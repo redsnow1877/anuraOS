@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <defs>
+    <linearGradient id="calcBody" x1="16" y1="8" x2="80" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4a4a55"/>
+      <stop offset="1" stop-color="#1c1c22"/>
+    </linearGradient>
+    <linearGradient id="calcScreen" x1="24" y1="18" x2="72" y2="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9d92ff"/>
+      <stop offset="1" stop-color="#5d4fe0"/>
+    </linearGradient>
+    <linearGradient id="calcGloss" x1="20" y1="6" x2="52" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <circle cx="48" cy="48" r="46" fill="url(#calcBody)"/>
+  <circle cx="48" cy="48" r="45" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="1.5"/>
+  <rect x="24" y="18" width="48" height="18" rx="5" fill="url(#calcScreen)"/>
+  <rect x="26.5" y="20.5" width="43" height="6" rx="3" fill="#ffffff" fill-opacity="0.22"/>
+  <g fill="#ffffff" fill-opacity="0.9">
+    <rect x="24" y="44" width="12" height="12" rx="4"/>
+    <rect x="42" y="44" width="12" height="12" rx="4"/>
+    <rect x="60" y="44" width="12" height="12" rx="4" fill="#7c6cf5"/>
+    <rect x="24" y="62" width="12" height="12" rx="4"/>
+    <rect x="42" y="62" width="12" height="12" rx="4"/>
+    <rect x="60" y="62" width="12" height="12" rx="4" fill="#7c6cf5"/>
+  </g>
+  <path d="M48 2a46 46 0 0 1 32.5 13.5A46 46 0 0 0 15.5 80.5 46 46 0 0 1 48 2Z" fill="url(#calcGloss)"/>
+</svg>

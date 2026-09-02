@@ -18,8 +18,50 @@ class Launcher {
 
 	element = (<div>Not Initialized</div>);
 
+	/** Set once init() builds the rail; null when widgets are unavailable. */
+	widgetHost: any = null;
+
 	clickoffChecker: HTMLDivElement;
 	updateClickoffChecker: (show: boolean) => void;
+
+	/**
+	 * Feeds Motion.css the per-tile geometry its "butterfly" reveal keys off.
+	 *
+	 * `--ring` (distance from the grid centre) drives the outward stagger and
+	 * `--dx`/`--dy` give each tile its hinge direction, so the grid unfolds from
+	 * the middle rather than sweeping in reading order. Hidden tiles are skipped
+	 * so a filtered grid re-centres on what's actually left.
+	 */
+	layoutGrid() {
+		const grid = this.state.appsView;
+		if (!grid) return;
+
+		const tiles = Array.from(grid.querySelectorAll<HTMLElement>(".app")).filter(
+			(t) => t.style.display !== "none",
+		);
+		if (!tiles.length) return;
+
+		const cols = getComputedStyle(grid).gridTemplateColumns.split(" ").length;
+		const rows = Math.ceil(tiles.length / cols);
+		const cx = (cols - 1) / 2;
+		const cy = (rows - 1) / 2;
+
+		tiles.forEach((tile, i) => {
+			const dx = (i % cols) - cx;
+			const dy = Math.floor(i / cols) - cy;
+			// Normalise against the grid's own extent so a wide grid and a tall
+			// one both peak at ring 3 rather than scaling with column count.
+			const nx = dx / Math.max(cx, 1);
+			const ny = dy / Math.max(cy, 1);
+			tile.style.setProperty("--i", String(i));
+			tile.style.setProperty(
+				"--ring",
+				String(Math.round(Math.hypot(nx, ny) * 3)),
+			);
+			tile.style.setProperty("--dx", nx.toFixed(3));
+			tile.style.setProperty("--dy", ny.toFixed(3));
+		});
+	}
 
 	handleSearch(event: Event) {
 		const searchQuery = (event.target as HTMLInputElement).value
@@ -38,22 +80,67 @@ class Launcher {
 		});
 
 		this.state.empty = visible === 0;
+
+		// Re-centre the wave on the surviving tiles, then replay a short version
+		// of the reveal so filtering feels like a re-deal rather than a jump cut.
+		this.layoutGrid();
+		const grid = this.state.appsView;
+		if (grid && !anura.settings.get("disable-animation")) {
+			grid.classList.remove("lp-refilter");
+			void grid.offsetWidth; // force reflow so the animation restarts
+			grid.classList.add("lp-refilter");
+		}
 	}
 
 	toggleVisible() {
-		this.state.active = !this.state.active;
-		this.clearSearch();
-		if (this.state.active) this.focusSearch();
+		if (this.state.active) {
+			this.hide();
+			return;
+		}
+		this.show();
 	}
 
 	setActive(active: boolean) {
-		this.state.active = active;
-		if (active) this.focusSearch();
+		if (active) this.show();
+		else this.hide();
+	}
+
+	show() {
+		this.clearSearch();
+		// Geometry has to be on the tiles before the reveal starts, and the grid
+		// only has a resolved column count once it's laid out.
+		this.layoutGrid();
+		this.state.active = true;
+		requestAnimationFrame(() => this.layoutGrid());
+		this.focusSearch();
+		// Widgets poll (clock, weather, system stats) — only while on screen.
+		try {
+			this.widgetHost?.setActive(true);
+		} catch (e) {
+			console.warn("widget rail failed to start", e);
+		}
+		(globalThis as any).aetherSound?.play?.("launchpadOpen");
 	}
 
 	hide() {
+		if (!this.state.active) return;
+		const el = this.element as HTMLElement;
+
+		// Motion.css collapses the grid inward off `lp-closing`; it has to go on
+		// before `launcher-active` comes off, and come back off once it's done.
+		if (el && !anura.settings.get("disable-animation")) {
+			el.classList.add("lp-closing");
+			setTimeout(() => el.classList.remove("lp-closing"), 340);
+		}
+
 		this.state.active = false;
 		this.clearSearch();
+		try {
+			this.widgetHost?.setActive(false);
+		} catch {
+			/* a stopped rail is not worth surfacing */
+		}
+		(globalThis as any).aetherSound?.play?.("launchpadClose");
 	}
 
 	focusSearch() {
@@ -134,30 +221,64 @@ class Launcher {
 					/>
 				</div>
 
-				<div
-					id="appsView"
-					class="appsView"
-					bind:this={use(this.state.appsView)}
-				>
-					{use(this.state.apps, (apps) =>
-						(apps || []).map((app: App) => (
-							<LauncherShortcut
-								app={app}
-								onclick={() => {
-									this.hide();
-									app.open();
-								}}
-							/>
-						)),
-					)}
-				</div>
+				<div class="launcher-body">
+					<div class="launcher-apps">
+						<div
+							id="appsView"
+							class="appsView"
+							bind:this={use(this.state.appsView)}
+						>
+							{use(this.state.apps, (apps) =>
+								(apps || []).map((app: App) => (
+									<LauncherShortcut
+										app={app}
+										onclick={() => {
+											this.hide();
+											app.open();
+										}}
+									/>
+								)),
+							)}
+						</div>
 
-				{$if(
-					use(this.state.empty),
-					<div class="launcher-empty">No results</div>,
-				)}
+						{$if(
+							use(this.state.empty),
+							<div class="launcher-empty">No results</div>,
+						)}
+					</div>
+
+					{this.buildWidgetRail()}
+				</div>
 			</div>
 		);
+	}
+
+	/**
+	 * The start-menu half of the launcher. Widgets are optional by design: if
+	 * Widgets.tsx failed to load, or every widget declined to render, the rail
+	 * is simply absent and the app grid takes the full width.
+	 */
+	buildWidgetRail(): HTMLElement | string {
+		try {
+			const Host = (globalThis as any).WidgetHost;
+			if (!Host) return "";
+			this.widgetHost = new Host({
+				heading: BRANDING.name,
+				onLaunch: (pkg: string) => {
+					this.hide();
+					anura.apps[pkg]?.open();
+				},
+			});
+			if (!this.widgetHost.widgets.length) {
+				this.widgetHost = null;
+				return "";
+			}
+			return this.widgetHost.element;
+		} catch (e) {
+			console.warn("widget rail unavailable", e);
+			this.widgetHost = null;
+			return "";
+		}
 	}
 }
 

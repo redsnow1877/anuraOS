@@ -23,6 +23,10 @@
 		"applist": ["anura.browser", "anura.settings", "anura.fsapp"],
 		"clampWindows": true,
 		"launcher-keybind": true,
+		"sound-enabled": true,
+		"sound-volume": 0.4,
+		"custom-cursor": true,
+		"preloader-variant": "orbit",
 		"relay-url": "wss://relay.widgetry.org/"
 	},
 	"x86": {

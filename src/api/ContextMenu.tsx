@@ -81,6 +81,22 @@ class ContextMenu {
 			this.#element.style.right = "0px";
 		}
 
+		// Grow from whichever corner the menu is actually anchored to, so a
+		// menu that flipped up or left doesn't appear to slide out of the
+		// pointer. Origin is read back from the style we just settled on.
+		this.#element.style.setProperty(
+			"--ctx-ox",
+			this.#element.style.right ? "100%" : "0%",
+		);
+		this.#element.style.setProperty(
+			"--ctx-oy",
+			this.#element.style.bottom ? "100%" : "0%",
+		);
+		this.#element.classList.remove("ctx-in");
+		// Force a reflow so re-showing the same menu replays the animation.
+		void this.#element.offsetWidth;
+		this.#element.classList.add("ctx-in");
+
 		return this.#element;
 	}
 	hide() {
