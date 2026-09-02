@@ -149,8 +149,22 @@ libv86.js: v86/src/*.js v86/lib/*.js v86/src/browser/*.js
 	cd v86; make build/libv86.js
 	cp v86/build/libv86.js build/lib/libv86.js
 
+# Current Rust nightlies ship a newer wasm-ld that changed two defaults v86's
+# own build (tools/rust-lld-wrapper, Makefile) doesn't account for:
+#   - "stack-first" placement is now the default, so v86's hardcoded
+#     --global-base=4096 (4KB) sits below the ~1MB stack and lld refuses to
+#     link ("--global-base cannot be less than stack size when --stack-first
+#     is used").
+#   - undefined symbols (the extern "C" host-import functions v86 declares,
+#     e.g. console_log_from_wasm) are no longer turned into wasm imports by
+#     default and fail as unresolved instead.
+# --no-stack-first and --import-undefined restore the old behavior. RUSTFLAGS
+# is additive with the -C link-args v86's own Makefile passes on the cargo
+# command line, not a replacement for them. Scoped to this recipe (rather than
+# a repo-wide .cargo/config.toml) so it can't silently affect some other
+# wasm32-unknown-unknown build added to this tree later.
 build/lib/v86.wasm: $(RUST_FILES) v86/build/softfloat.o v86/build/zstddeclib.o v86/Cargo.toml
-	cd v86; make build/v86.wasm
+	cd v86; RUSTFLAGS="-C link-arg=--no-stack-first -C link-arg=--import-undefined" make build/v86.wasm
 	cp v86/build/v86.wasm build/lib/v86.wasm
 
 build/cache-load.json: FORCE
