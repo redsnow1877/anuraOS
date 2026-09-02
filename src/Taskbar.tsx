@@ -153,11 +153,11 @@ class Taskbar {
 				/>
 				{
 					((this as any).lightbar = (
+						// A plain template string (not an array of pointers) resolves
+						// via setAttribute, so an empty conditional segment is just
+						// absent from the string rather than a literal "false" class.
 						<div
-							class={[
-								"lightbar",
-								app.windows?.length === 0 && "lightbar-hidden",
-							]}
+							class={`lightbar${app.windows?.length === 0 ? " lightbar-hidden" : ""}`}
 						></div>
 					))
 				}
@@ -404,7 +404,11 @@ class Taskbar {
 			<div id="shell-root">
 				<header
 					id="menubar"
-					class={[use(this.state.solidMenubar, (solid) => solid && "solid")]}
+					// See the launcher's `class` for why this is a single pointer,
+					// not an array containing one.
+					class={use(this.state.solidMenubar, (solid) =>
+						solid ? "solid" : "",
+					)}
 				>
 					<div
 						class="menubar-item"

@@ -104,9 +104,13 @@ class Launcher {
 		this.element = (
 			<div
 				id="launcher"
-				class={[
-					use(this.state.active, (active) => active && "launcher-active"),
-				]}
+				// A single pointer (not wrapped in an array) is the form dreamland
+				// filters empty strings for; inside a `class={[...]}` array it
+				// would call classList.add(false) on the inactive branch instead
+				// of skipping it — no crash, but a literal "false" class.
+				class={use(this.state.active, (active) =>
+					active ? "launcher-active" : "",
+				)}
 				on:pointerdown={(e: PointerEvent) => {
 					// Clicking the frosted background (not a tile) dismisses.
 					if (e.target === e.currentTarget) this.hide();
