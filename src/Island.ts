@@ -21,7 +21,13 @@ class AetherIsland {
 	static #expanded = false;
 	static #hoverTimer = 0;
 	static #tick = 0;
-	static #hud: { icon: string; level: number; until: number } | null = null;
+	static #hud: {
+		icon: string;
+		level: number;
+		until: number;
+		label: string;
+		tone: string;
+	} | null = null;
 	static #hudTimer = 0;
 	/** Music stays up a few seconds after pausing, so the pill doesn't flicker. */
 	static #musicGrace = 0;
@@ -58,15 +64,29 @@ class AetherIsland {
 			this.#tick = window.setInterval(() => this.#update(), 1000);
 	}
 
-	/** Flash a level: `icon` is a Material Symbols name, `level` 0..1. */
-	static hud(icon: string, level: number) {
+	/**
+	 * Flash a level: `icon` is a Material Symbols name, `level` 0..1. A
+	 * `label` shows beside the bar; `tone` ("green", "red") tints it.
+	 */
+	static hud(
+		icon: string,
+		level: number,
+		opts: { label?: string; tone?: string; ms?: number } = {},
+	) {
 		if (!this.#el) return;
-		this.#hud = { icon, level, until: Date.now() + 1400 };
+		const ms = opts.ms ?? 1400;
+		this.#hud = {
+			icon,
+			level,
+			until: Date.now() + ms,
+			label: opts.label || "",
+			tone: opts.tone || "",
+		};
 		clearTimeout(this.#hudTimer);
 		this.#hudTimer = window.setTimeout(() => {
 			this.#hud = null;
 			this.refresh();
-		}, 1400);
+		}, ms);
 		this.refresh();
 	}
 
@@ -79,7 +99,7 @@ class AetherIsland {
 			case "timer":
 				return `<span class="material-symbols-outlined isl-amber">timer</span><span class="isl-grow"></span><span class="isl-time isl-amber"></span>`;
 			case "hud":
-				return `<span class="material-symbols-outlined isl-hud-icon"></span><span class="isl-level"><span class="isl-level-fill"></span></span>`;
+				return `<span class="material-symbols-outlined isl-hud-icon"></span><span class="isl-level"><span class="isl-level-fill"></span></span><span class="isl-hud-label"></span>`;
 			case "music":
 				return `
 					<div class="isl-compact">
@@ -148,6 +168,8 @@ class AetherIsland {
 				const icon = q(".isl-hud-icon");
 				if (!h || !icon) break;
 				icon.textContent = h.icon;
+				el.dataset.tone = h.tone;
+				q(".isl-hud-label")!.textContent = h.label;
 				q(".isl-level-fill")!.style.scale =
 					Math.max(0, Math.min(1, h.level)) + " 1";
 				break;

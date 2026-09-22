@@ -43,7 +43,6 @@ class Taskbar {
 		activeApp: string;
 		time: string;
 		date: string;
-		bat_icon: string;
 		net_icon: string;
 	} = $state({
 		pinnedApps: [],
@@ -53,7 +52,6 @@ class Taskbar {
 		activeApp: BRANDING.name,
 		time: "",
 		date: "",
-		bat_icon: "battery_0_bar",
 		net_icon: navigator.onLine ? "wifi" : "wifi_off",
 	});
 
@@ -322,57 +320,7 @@ class Taskbar {
 			this.state.activeApp = BRANDING.name;
 		});
 
-		// Battery Status API is deprecated, so Microsoft refuses to create type definitions. :(
-
-		// @ts-ignore
-		if (navigator.getBattery) {
-			// @ts-ignore
-			navigator.getBattery().then((battery) => {
-				battery.onchargingchange = () => {
-					if (battery.charging) {
-						this.state.bat_icon = "battery_charging_full";
-						return;
-					} else {
-						const bat_bars = Math.round(battery.level * 7) - 1;
-						this.state.bat_icon = `battery_${bat_bars}_bar`;
-						return;
-					}
-				};
-
-				battery.onlevelchange = () => {
-					if (battery.charging) {
-						this.state.bat_icon = "battery_charging_full";
-						return;
-					} else {
-						const bat_bars = Math.round(battery.level * 7) - 1;
-						if (bat_bars === -1) {
-							this.state.bat_icon = `battery_alert`;
-							return;
-						}
-						this.state.bat_icon = `battery_${bat_bars}_bar`;
-						return;
-					}
-				};
-
-				// This literally just checks if the battery is charging and fully charged
-				// which is a *close enough* approximation of whether it's a laptop or not.
-				if (battery.charging && battery.chargingTime === 0) {
-					this.state.bat_icon = "";
-					return;
-				}
-
-				if (battery.charging) {
-					this.state.bat_icon = "battery_charging_full";
-					return;
-				}
-				const bat_bars = Math.round(battery.level * 7) - 1;
-				if (bat_bars === -1) {
-					this.state.bat_icon = `battery_alert`;
-					return;
-				}
-				this.state.bat_icon = `battery_${bat_bars}_bar`;
-			});
-		}
+		// Battery: AetherBattery (Battery.ts) owns its own menu bar item.
 	}
 
 	/**
@@ -573,9 +521,6 @@ class Taskbar {
 						>
 							<span class="material-symbols-outlined">
 								{use(this.state.net_icon)}
-							</span>
-							<span class="material-symbols-outlined">
-								{use(this.state.bat_icon)}
 							</span>
 						</div>
 

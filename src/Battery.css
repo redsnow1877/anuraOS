@@ -1,0 +1,50 @@
+/* Aether — menu bar battery (Battery.ts) */
+
+.battery-indicator {
+	gap: 5px;
+	font-variant-numeric: tabular-nums;
+}
+
+.battery-indicator[hidden] {
+	display: none !important;
+}
+
+.battery-indicator .batt-pct {
+	font-size: 12px;
+}
+
+.battery-indicator .batt-pct:empty {
+	display: none;
+}
+
+.batt-svg {
+	width: 25px;
+	height: 12px;
+	color: var(--ink);
+	overflow: visible;
+}
+
+.batt-svg .batt-lvl {
+	fill: currentColor;
+	transition: width 0.4s ease;
+}
+
+.batt-svg .batt-bolt {
+	display: none;
+	fill: #fff;
+	stroke: rgba(0, 0, 0, 0.55);
+	stroke-width: 0.8;
+	paint-order: stroke;
+}
+
+.battery-indicator.is-charging .batt-lvl {
+	fill: #30d158;
+}
+
+.battery-indicator.is-charging .batt-bolt {
+	display: block;
+}
+
+.battery-indicator.is-low .batt-lvl {
+	fill: #ff453a;
+}

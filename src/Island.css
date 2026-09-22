@@ -138,6 +138,34 @@
 	overflow: hidden;
 }
 
+.isl-hud-label {
+	min-width: 0;
+	font-size: 11.5px;
+	color: rgba(255, 255, 255, 0.85);
+}
+
+.isl-hud-label:empty {
+	display: none;
+}
+
+#island[data-mode="hud"][data-tone="green"] .isl-hud-icon,
+#island[data-mode="hud"][data-tone="green"] .isl-hud-label {
+	color: #30d158;
+}
+
+#island[data-mode="hud"][data-tone="green"] .isl-level-fill {
+	background: #30d158;
+}
+
+#island[data-mode="hud"][data-tone="red"] .isl-hud-icon,
+#island[data-mode="hud"][data-tone="red"] .isl-hud-label {
+	color: #ff453a;
+}
+
+#island[data-mode="hud"][data-tone="red"] .isl-level-fill {
+	background: #ff453a;
+}
+
 .isl-level-fill {
 	display: block;
 	height: 100%;

@@ -849,6 +849,17 @@ class SettingsApp extends App {
 						<h3 class="settings-category-name">Desktop</h3>
 						<div class="settings-group">
 							<HotCornerPicker />
+							<SettingSwitch
+								title="Battery percentage in the menu bar"
+								setting="aether.battery.percent"
+								callback={() => {
+									try {
+										AetherBattery.refresh();
+									} catch {
+										/* Battery.js may be absent in a trimmed build */
+									}
+								}}
+							/>
 							<ScreensaverSettings />
 							<LockSettings />
 							<NightShiftSettings />
