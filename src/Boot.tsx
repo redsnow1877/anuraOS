@@ -635,6 +635,30 @@ document.addEventListener("anura-login-completed", async () => {
 		console.warn("shell chrome init failed", e);
 	}
 
+	// Global shortcuts and Spotlight. Each registration is independent, so a
+	// feature whose script failed to load just doesn't get its shortcut.
+	try {
+		AetherShortcuts.init();
+		AetherSpotlight.init();
+		const spotlight = {
+			group: "System",
+			description: "Spotlight search",
+			handler: () => AetherSpotlight.toggle(),
+		};
+		AetherShortcuts.register({ ...spotlight, combo: "Ctrl+Space" });
+		AetherShortcuts.register({ ...spotlight, combo: "Ctrl+K" });
+		AetherShortcuts.register({ ...spotlight, combo: "Alt+Space" });
+		AetherCommands.register({
+			id: "spotlight",
+			title: "Spotlight Search",
+			icon: "search",
+			shortcut: "Ctrl+Space",
+			run: () => AetherSpotlight.init().open(),
+		});
+	} catch (e) {
+		console.warn("spotlight init failed", e);
+	}
+
 	(window as any).taskbar = taskbar;
 
 	// Initializes apps and libs from userApps/ and userLibs/ and runs any user specified init scripts
@@ -679,22 +703,38 @@ document.addEventListener("anura-login-completed", async () => {
 			e.preventDefault();
 			alttab.onComboPress();
 		}
-		if (
-			e.key.toLowerCase() === "meta" &&
-			anura.settings.get("launcher-keybind")
-		) {
-			quickSettings.close();
-			calendar.close();
-			launcher.toggleVisible();
-			return;
+		// The Launchpad key is Meta pressed *alone*. It used to fire on Meta's
+		// keydown, so every Meta+key combination opened the Launchpad before
+		// the second key even arrived. Now a press only counts if no other key
+		// joined it before release.
+		if (e.key === "Meta") {
+			metaAlone = true;
+		} else if (e.metaKey) {
+			metaAlone = false;
 		}
 	});
+	let metaAlone = false;
 	document.addEventListener("keyup", (e) => {
-		// console.log("keyup", e);
 		if (e.key.toLowerCase() === "shift") {
 			alttab.onModRelease();
 			return;
 		}
+		if (e.key === "Meta") {
+			const alone = metaAlone;
+			metaAlone = false;
+			if (alone && anura.settings.get("launcher-keybind")) {
+				quickSettings.close();
+				calendar.close();
+				launcher.toggleVisible();
+			}
+		}
+	});
+	// Clicking or switching away while Meta is down must not count as "alone".
+	document.addEventListener("pointerdown", () => {
+		metaAlone = false;
+	});
+	window.addEventListener("blur", () => {
+		metaAlone = false;
 	});
 
 	anura.initComplete = true;

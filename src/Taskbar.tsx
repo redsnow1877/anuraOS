@@ -543,6 +543,14 @@ class Taskbar {
 
 						<div
 							class="menubar-item"
+							title="Spotlight (Ctrl+Space)"
+							on:click={() => AetherSpotlight.toggle()}
+						>
+							<span class="material-symbols-outlined">search</span>
+						</div>
+
+						<div
+							class="menubar-item"
 							title="Control Center"
 							on:click={() => {
 								launcher.hide();

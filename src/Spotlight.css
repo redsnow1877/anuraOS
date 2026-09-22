@@ -1,0 +1,317 @@
+/* ==========================================================================
+   Aether — Spotlight
+   --------------------------------------------------------------------------
+   Presentation for Spotlight.ts. The overlay is always in the DOM but
+   `visibility: hidden` at rest, so it costs nothing until opened — no
+   backdrop-filter layer exists while it's closed.
+   ========================================================================== */
+
+#spotlight {
+	position: fixed;
+	inset: 0;
+	z-index: 9800;
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	padding-top: 16vh;
+	background: rgba(6, 7, 12, 0);
+	visibility: hidden;
+	pointer-events: none;
+	transition:
+		background-color 0.2s var(--ease-out),
+		visibility 0s linear 0.2s;
+}
+
+#spotlight.is-open {
+	visibility: visible;
+	pointer-events: auto;
+	background: rgba(6, 7, 12, 0.28);
+	transition:
+		background-color 0.2s var(--ease-out),
+		visibility 0s;
+}
+
+.spotlight-panel {
+	position: relative;
+	width: min(680px, calc(100vw - 32px));
+	display: flex;
+	flex-direction: column;
+	border-radius: 18px;
+	background: rgba(28, 28, 36, 0.62);
+	border: 1px solid var(--glass-stroke, rgba(255, 255, 255, 0.14));
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.12),
+		0 30px 80px -20px rgba(0, 0, 0, 0.7),
+		0 0 0 0.5px rgba(0, 0, 0, 0.4);
+	backdrop-filter: blur(42px) saturate(180%);
+	-webkit-backdrop-filter: blur(42px) saturate(180%);
+	overflow: hidden;
+	color: var(--ink, #f2f2f5);
+	opacity: 0;
+	transform: translateY(-10px) scale(0.975);
+	filter: blur(var(--motion-blur-soft, 6px));
+	transition:
+		opacity 0.16s var(--ease-out),
+		transform 0.34s var(--ease-spring-soft, cubic-bezier(0.34, 1.3, 0.64, 1)),
+		filter 0.22s var(--ease-out);
+}
+
+#spotlight.is-open .spotlight-panel {
+	opacity: 1;
+	transform: none;
+	filter: none;
+}
+
+#spotlight.is-closing .spotlight-panel {
+	transition-duration: 0.14s;
+}
+
+/* ---- search bar ---------------------------------------------------------- */
+
+.spotlight-bar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 0 18px;
+	height: 60px;
+	flex-shrink: 0;
+}
+
+.spotlight-glass {
+	font-size: 24px;
+	color: var(--ink-dim, rgba(255, 255, 255, 0.6));
+}
+
+.spotlight-input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	background: transparent;
+	border: none;
+	outline: none !important;
+	box-shadow: none !important;
+	color: var(--ink, #fff);
+	font-family: var(--theme-font-sans);
+	font-size: 21px;
+	font-weight: 400;
+	letter-spacing: -0.01em;
+}
+
+.spotlight-input::placeholder {
+	color: var(--ink-faint, rgba(255, 255, 255, 0.38));
+}
+
+.spotlight-kbd,
+.spotlight-foot kbd {
+	font-family: var(--theme-font-sans);
+	font-size: 11px;
+	padding: 2px 6px;
+	border-radius: 5px;
+	background: rgba(255, 255, 255, 0.1);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	color: var(--ink-dim, rgba(255, 255, 255, 0.6));
+}
+
+/* ---- results ------------------------------------------------------------- */
+
+.spotlight-results {
+	max-height: min(52vh, 480px);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+	padding: 6px 8px 8px;
+}
+
+.spotlight-results:empty {
+	display: none;
+}
+
+.spotlight-group + .spotlight-group {
+	margin-top: 4px;
+}
+
+.spotlight-group-title {
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--ink-faint, rgba(255, 255, 255, 0.4));
+	padding: 9px 10px 5px;
+}
+
+.spotlight-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 7px 10px;
+	border-radius: 10px;
+	cursor: default;
+	min-height: 40px;
+}
+
+.spotlight-item.is-selected {
+	background: color-mix(in srgb, var(--theme-accent, #6a5cf0) 78%, transparent);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.spotlight-item.is-top {
+	min-height: 56px;
+}
+
+.spotlight-icon {
+	width: 30px;
+	height: 30px;
+	flex-shrink: 0;
+	object-fit: contain;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 22px;
+	color: var(--ink-dim, rgba(255, 255, 255, 0.72));
+}
+
+.spotlight-item.is-top .spotlight-icon {
+	width: 42px;
+	height: 42px;
+	font-size: 30px;
+}
+
+span.spotlight-icon {
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.08);
+}
+
+.spotlight-item.is-selected span.spotlight-icon {
+	background: rgba(255, 255, 255, 0.18);
+	color: #fff;
+}
+
+.spotlight-text {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+}
+
+.spotlight-title {
+	font-size: 14px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.spotlight-item.is-top .spotlight-title {
+	font-size: 17px;
+	font-weight: 500;
+}
+
+.spotlight-title mark {
+	background: none;
+	color: inherit;
+	font-weight: 700;
+	text-decoration: underline;
+	text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+	text-underline-offset: 3px;
+}
+
+.spotlight-subtitle {
+	font-size: 11.5px;
+	color: var(--ink-faint, rgba(255, 255, 255, 0.45));
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.spotlight-item.is-selected .spotlight-subtitle {
+	color: rgba(255, 255, 255, 0.78);
+}
+
+.spotlight-accessory {
+	flex-shrink: 0;
+	font-size: 11.5px;
+	color: var(--ink-faint, rgba(255, 255, 255, 0.4));
+	opacity: 0;
+	transition: opacity 0.1s linear;
+}
+
+.spotlight-item.is-selected .spotlight-accessory {
+	opacity: 1;
+	color: rgba(255, 255, 255, 0.85);
+}
+
+.spotlight-empty {
+	padding: 22px 12px;
+	text-align: center;
+	font-size: 13px;
+	color: var(--ink-faint, rgba(255, 255, 255, 0.45));
+}
+
+/* ---- footer + toast ------------------------------------------------------ */
+
+.spotlight-foot {
+	display: flex;
+	gap: 16px;
+	padding: 8px 16px;
+	border-top: 1px solid rgba(255, 255, 255, 0.07);
+	font-size: 11px;
+	color: var(--ink-faint, rgba(255, 255, 255, 0.4));
+}
+
+.spotlight-foot span {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.spotlight-foot kbd {
+	padding: 1px 5px;
+	font-size: 10px;
+}
+
+.spotlight-toast {
+	position: absolute;
+	right: 16px;
+	top: 16px;
+	padding: 6px 12px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.16);
+	font-size: 12px;
+	opacity: 0;
+	pointer-events: none;
+	transform: translateY(-4px);
+}
+
+.spotlight-toast.is-shown {
+	animation: spotlight-toast 1.6s var(--ease-out) both;
+}
+
+@keyframes spotlight-toast {
+	0% {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	12%,
+	75% {
+		opacity: 1;
+		transform: none;
+	}
+	100% {
+		opacity: 0;
+		transform: none;
+	}
+}
+
+/* ---- degraded modes ------------------------------------------------------ */
+
+body.blur-disable .spotlight-panel {
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
+	background: rgba(30, 30, 38, 0.97);
+}
+
+body.reduce-motion .spotlight-panel,
+body.reduce-motion #spotlight {
+	transition-duration: 1ms !important;
+	filter: none !important;
+}
