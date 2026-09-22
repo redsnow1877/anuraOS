@@ -546,6 +546,11 @@ document.addEventListener("anura-login-completed", async () => {
 	const textEditor = new TextEditorApp();
 	anura.registerApp(textEditor);
 
+	anura.registerApp(new NotesApp());
+	anura.registerApp(new ClockApp());
+	anura.registerApp(new SketchApp());
+	anura.registerApp(new Game2048App());
+
 	const explore = new ExploreApp();
 	anura.registerApp(explore);
 

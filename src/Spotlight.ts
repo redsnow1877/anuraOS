@@ -330,6 +330,21 @@ class AetherSpotlight {
 	static instance: AetherSpotlight | null = null;
 	static readonly RECENT_KEY = "aether.spotlight.recent";
 
+	/**
+	 * Providers contributed by apps (Notes registers one). They're searched
+	 * after the built-ins, and `search` must be synchronous — keep an index
+	 * and return from it.
+	 */
+	static readonly extraProviders: SpotlightProvider[] = [];
+
+	static registerProvider(provider: SpotlightProvider) {
+		const i = AetherSpotlight.extraProviders.findIndex(
+			(p) => p.id === provider.id,
+		);
+		if (i >= 0) AetherSpotlight.extraProviders[i] = provider;
+		else AetherSpotlight.extraProviders.push(provider);
+	}
+
 	element: HTMLElement;
 	private panel: HTMLElement;
 	private input: HTMLInputElement;
@@ -488,7 +503,14 @@ class AetherSpotlight {
 
 		const all: { provider: SpotlightProvider; results: SpotlightResult[] }[] =
 			[];
-		for (const provider of this.providers) {
+		// Built-ins first, then app-contributed providers, with web search
+		// kept last so it stays the fallback at the bottom of the list.
+		const ordered = [
+			...this.providers.filter((p) => p.id !== "web"),
+			...AetherSpotlight.extraProviders,
+			...this.providers.filter((p) => p.id === "web"),
+		];
+		for (const provider of ordered) {
 			let results: SpotlightResult[] = [];
 			try {
 				results = provider
