@@ -1,0 +1,303 @@
+/* ==========================================================================
+   Aether — Emoji & Symbols panel (Clipboard.ts)
+   ========================================================================== */
+
+#emoji-panel {
+	position: fixed;
+	z-index: 9900;
+	width: 372px;
+	height: 420px;
+	display: flex;
+	flex-direction: column;
+	border-radius: 16px;
+	background: var(--glass-tint-strong, rgba(30, 30, 38, 0.72));
+	backdrop-filter: var(--glass-blur, blur(30px) saturate(170%));
+	-webkit-backdrop-filter: var(--glass-blur, blur(30px) saturate(170%));
+	border: 1px solid var(--glass-stroke, rgba(255, 255, 255, 0.12));
+	box-shadow:
+		var(--glass-highlight, inset 0 1px 0 rgba(255, 255, 255, 0.08)),
+		0 24px 60px -12px rgba(0, 0, 0, 0.6);
+	color: var(--ink);
+	overflow: hidden;
+	opacity: 0;
+	scale: 0.96;
+	translate: 0 6px;
+	transition:
+		opacity 0.16s ease,
+		scale 0.2s var(--ease-out),
+		translate 0.2s var(--ease-out);
+}
+
+#emoji-panel.is-shown {
+	opacity: 1;
+	scale: 1;
+	translate: 0 0;
+}
+
+body.blur-disable #emoji-panel {
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
+	background: rgba(32, 32, 38, 0.97);
+}
+
+.ep-head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 10px 10px 6px;
+	padding: 0 10px;
+	height: 32px;
+	border-radius: 9px;
+	background: rgba(255, 255, 255, 0.07);
+}
+
+.ep-head .material-symbols-outlined {
+	font-size: 18px;
+	color: var(--ink-faint);
+}
+
+.ep-search,
+.ep-search:focus,
+.ep-search:focus-visible {
+	flex: 1;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	height: auto;
+	border: none !important;
+	box-shadow: none !important;
+	outline: none !important;
+	background: transparent;
+	color: var(--ink);
+	font: inherit;
+	font-size: 13px;
+}
+
+.ep-tabs {
+	display: flex;
+	gap: 2px;
+	padding: 0 10px 6px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.ep-tabs button {
+	flex: 1;
+	height: 30px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--ink-dim);
+	font: inherit;
+	font-size: 14px;
+	cursor: pointer;
+}
+
+.ep-tabs button .material-symbols-outlined {
+	font-size: 18px;
+}
+
+.ep-tabs button:hover {
+	background: rgba(255, 255, 255, 0.07);
+}
+
+.ep-tabs button.is-on {
+	background: color-mix(in srgb, var(--theme-accent) 30%, transparent);
+	color: var(--ink);
+}
+
+.ep-body {
+	flex: 1;
+	overflow-y: auto;
+	padding: 4px 10px 12px;
+	overscroll-behavior: contain;
+}
+
+.ep-section {
+	position: sticky;
+	top: -4px;
+	z-index: 1;
+	padding: 8px 2px 5px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	color: var(--ink-faint);
+	background: linear-gradient(
+		var(--glass-tint-strong, rgba(30, 30, 38, 0.95)) 70%,
+		transparent
+	);
+}
+
+.ep-grid {
+	display: grid;
+	gap: 2px;
+}
+
+.ep-grid.is-emoji {
+	grid-template-columns: repeat(8, 1fr);
+}
+
+.ep-grid.is-kaomoji {
+	grid-template-columns: repeat(2, 1fr);
+}
+
+.ep-item {
+	border: none;
+	background: transparent;
+	color: var(--ink);
+	cursor: pointer;
+	border-radius: 8px;
+	font: inherit;
+}
+
+.ep-grid .ep-item {
+	height: 40px;
+	font-size: 24px;
+	line-height: 1;
+	padding: 0;
+	font-family:
+		"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui,
+		sans-serif;
+}
+
+.ep-grid.is-kaomoji .ep-item {
+	font-size: 13px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	padding: 0 6px;
+	font-family: system-ui, sans-serif;
+}
+
+.ep-item:hover,
+.ep-item.is-focused {
+	background: rgba(255, 255, 255, 0.1);
+}
+
+.ep-item.is-focused {
+	box-shadow: inset 0 0 0 1.5px
+		color-mix(in srgb, var(--theme-accent) 70%, transparent);
+}
+
+.ep-grid.is-emoji .ep-item:hover {
+	scale: 1.12;
+}
+
+/* ---- clipboard ------------------------------------------------------- */
+
+.ep-clip-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.ep-clear {
+	border: none;
+	background: transparent;
+	color: var(--theme-accent);
+	font: inherit;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: none;
+	letter-spacing: 0;
+	cursor: pointer;
+}
+
+.ep-clip {
+	position: relative;
+	display: flex;
+	align-items: flex-start;
+	gap: 6px;
+	padding: 9px 10px;
+	margin-bottom: 4px;
+	background: rgba(255, 255, 255, 0.05);
+	text-align: left;
+}
+
+.ep-clip-text {
+	flex: 1;
+	min-width: 0;
+	font-size: 12.5px;
+	line-height: 1.4;
+	white-space: pre-wrap;
+	word-break: break-word;
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.ep-clip-actions {
+	display: flex;
+	gap: 2px;
+	opacity: 0;
+	transition: opacity 0.12s;
+}
+
+.ep-clip:hover .ep-clip-actions,
+.ep-clip.is-pinned .ep-clip-actions {
+	opacity: 1;
+}
+
+.ep-clip-actions button {
+	width: 24px;
+	height: 24px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--ink-dim);
+	cursor: pointer;
+}
+
+.ep-clip-actions button:hover {
+	background: rgba(255, 255, 255, 0.12);
+	color: var(--ink);
+}
+
+.ep-clip-actions .material-symbols-outlined {
+	font-size: 16px;
+}
+
+.ep-clip.is-pinned .ep-pin {
+	color: var(--theme-accent);
+}
+
+.ep-clip:not(.is-pinned) .ep-del,
+.ep-clip.is-pinned .ep-del {
+	visibility: visible;
+}
+
+.ep-empty {
+	padding: 30px 16px;
+	text-align: center;
+	font-size: 12.5px;
+	color: var(--ink-faint);
+}
+
+.ep-toast {
+	position: absolute;
+	left: 50%;
+	bottom: 12px;
+	translate: -50% 8px;
+	padding: 6px 12px;
+	border-radius: 999px;
+	font-size: 12px;
+	background: rgba(0, 0, 0, 0.75);
+	color: #fff;
+	opacity: 0;
+	pointer-events: none;
+	transition:
+		opacity 0.15s ease,
+		translate 0.2s var(--ease-out);
+}
+
+.ep-toast.is-shown {
+	opacity: 1;
+	translate: -50% 0;
+}
