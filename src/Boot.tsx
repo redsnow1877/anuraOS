@@ -648,6 +648,37 @@ document.addEventListener("anura-login-completed", async () => {
 		AetherShortcuts.register({ ...spotlight, combo: "Ctrl+Space" });
 		AetherShortcuts.register({ ...spotlight, combo: "Ctrl+K" });
 		AetherShortcuts.register({ ...spotlight, combo: "Alt+Space" });
+		const mc = {
+			group: "Windows",
+			description: "Mission Control",
+			handler: () => AetherMissionControl.toggle(),
+		};
+		AetherShortcuts.register({ ...mc, combo: "F3" });
+		AetherShortcuts.register({ ...mc, combo: "Ctrl+ArrowUp" });
+		AetherShortcuts.register({
+			combo: "Ctrl+Alt+D",
+			group: "Windows",
+			description: "Show Desktop",
+			handler: () => AetherMissionControl.toggleDesktop(),
+		});
+		AetherCommands.register({
+			id: "mission-control",
+			title: "Mission Control",
+			subtitle: "See all open windows",
+			icon: "view_quilt",
+			keywords: ["expose", "overview", "windows", "switch"],
+			shortcut: "F3",
+			run: () => AetherMissionControl.enter(),
+		});
+		AetherCommands.register({
+			id: "show-desktop",
+			title: "Show Desktop",
+			icon: "desktop_windows",
+			keywords: ["hide windows", "clear"],
+			shortcut: "Ctrl+Alt+D",
+			run: () => AetherMissionControl.toggleDesktop(),
+		});
+		AetherHotCorners.init();
 		AetherCommands.register({
 			id: "spotlight",
 			title: "Spotlight Search",

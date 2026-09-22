@@ -84,6 +84,13 @@ const settingsCSS = css`
 		width: calc(100% - 20px);
 	}
 
+	/* The hot-corner picker is a diagram, not a row. */
+	.settings-item.hotcorner-item {
+		height: auto;
+		justify-content: center;
+		padding: 4px 0 8px;
+	}
+
 	.settings-group .settings-item:not(:last-of-type) {
 		border-bottom: 1px solid var(--theme-border);
 	}
@@ -268,6 +275,56 @@ const SettingChoice: Component<{
 	);
 };
 
+/**
+ * Hot corners: a miniature screen with a picker in each corner, so the
+ * mapping reads spatially instead of as four rows of labels.
+ */
+const HotCornerPicker: Component<Record<string, never>> = function () {
+	const corners: [string, string][] = [
+		["tl", "Top left"],
+		["tr", "Top right"],
+		["bl", "Bottom left"],
+		["br", "Bottom right"],
+	];
+	const picker = (corner: string, label: string) => {
+		const select = (
+			<select
+				class={`aether-select hc-${corner}`}
+				aria-label={`${label} corner`}
+				on:change={(e: Event) => {
+					const next = {
+						...AetherHotCorners.config,
+						[corner]: (e.target as HTMLSelectElement).value,
+					};
+					anura.settings.set(AetherHotCorners.SETTING_KEY, next);
+				}}
+			>
+				{AETHER_HOT_CORNER_ACTIONS.map((a) => (
+					<option value={a.id}>{a.label}</option>
+				))}
+			</select>
+		) as HTMLSelectElement;
+		// Set imperatively: a `selected` attribute can't express "false".
+		select.value = AetherHotCorners.config[corner] || "none";
+		return select;
+	};
+	return (
+		<div class="settings-item hotcorner-item">
+			<div class="hotcorner-picker">
+				<span class="hc-title">Hot corners</span>
+				<div class="hc-screen">
+					<span class="hc-dot hc-dot-tl"></span>
+					<span class="hc-dot hc-dot-tr"></span>
+					<span class="hc-dot hc-dot-bl"></span>
+					<span class="hc-dot hc-dot-br"></span>
+					<span class="hc-caption">Move the pointer into a corner</span>
+				</div>
+				{corners.map(([c, l]) => picker(c, l))}
+			</div>
+		</div>
+	);
+};
+
 const SettingText: Component<{
 	title: string;
 	setting: string;
@@ -369,6 +426,19 @@ class SettingsApp extends App {
 						<span class="sidebar-settings-item-name">
 							<span class="material-symbols-outlined">graphic_eq</span>
 							<a>Sound &amp; Feel</a>
+						</span>
+					</div>
+					<div
+						class="sidebar-settings-item"
+						on:click={() => {
+							document
+								.getElementById("desktop")
+								?.scrollIntoView({ behavior: "smooth", block: "start" });
+						}}
+					>
+						<span class="sidebar-settings-item-name">
+							<span class="material-symbols-outlined">desktop_windows</span>
+							<a>Desktop</a>
 						</span>
 					</div>
 					<div
@@ -520,6 +590,12 @@ class SettingsApp extends App {
 								fallback="orbit"
 								options={AetherPreloader.VARIANTS}
 							/>
+						</div>
+					</div>
+					<div id="desktop" class="desktop settings-category">
+						<h3 class="settings-category-name">Desktop</h3>
+						<div class="settings-group">
+							<HotCornerPicker />
 						</div>
 					</div>
 					<div id="v86" class="v86 settings-category">
