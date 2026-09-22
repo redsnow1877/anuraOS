@@ -197,8 +197,9 @@ class ExploreApp extends App {
 			<p>
 				<kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>L</kbd> locks the screen. An
 				optional passcode and auto-lock live under Desktop in Settings. Control
-				Center now has Focus (Do Not Disturb), Night Shift and Performance mode
-				toggles, plus display brightness and system volume sliders.
+				Center now has Focus (Do Not Disturb), Night Shift, Performance mode and
+				RGB toggles, display brightness and system volume sliders, and Now
+				Playing. On a laptop, the menu bar shows your battery.
 			</p>
 
 			<h2>Music</h2>
@@ -213,6 +214,36 @@ class ExploreApp extends App {
 				("Next Song") and your keyboard's media keys control them. No music yet?
 				Music can compose a small demo album for you, synthesized right in the
 				browser.
+			</p>
+
+			<h2>The island</h2>
+			<p>
+				A black pill in the middle of the menu bar shows what's happening right
+				now: the song that's playing (hover it for the full player), a running
+				Clock timer, a screen recording, and volume, brightness and battery
+				levels as they change.
+			</p>
+
+			<h2>RGB mode</h2>
+			<p>
+				Because a setup without RGB is just a setup: rainbow lighting chases
+				around the dock, the island and the focused window. Turn it on in
+				Control Center; Settings has a speed slider from chill to party.
+			</p>
+
+			<h2>Emoji, symbols and clipboard history</h2>
+			<p>
+				<kbd>Ctrl</kbd> <kbd>⇧</kbd> <kbd>Space</kbd> opens searchable emoji,
+				kaomoji ¯\_(ツ)_/¯ and symbols, and types your pick wherever you were
+				typing. <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>V</kbd> shows everything
+				you've copied recently; pin the things you paste often.
+			</p>
+
+			<h2>Screen savers</h2>
+			<p>
+				Starfield, Aurora, Flurry, and Bounce: the clock bouncing around the
+				screen like a certain DVD logo. Pick one and the idle time under Desktop
+				in Settings, or give a hot corner the job.
 			</p>
 
 			<h2>Screenshots and screen recording</h2>

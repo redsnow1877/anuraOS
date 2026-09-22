@@ -387,7 +387,7 @@ window.addEventListener("load", async () => {
 		}
 	});
 
-	if ((await fetch("/fs/")).status !== 404) {
+	if ((await fetch("/fs/?probe")).status !== 404) {
 		try {
 			const files = await anura.fs.promises.readdir(directories["init"]);
 			if (files) {
@@ -580,21 +580,31 @@ document.addEventListener("anura-login-completed", async () => {
 	]);
 	bootMark("core-apps");
 
-	for (const bin of anura.config.bin) {
-		const path = bin.split("/").slice(-1)[0];
-		try {
-			await anura.fs.promises.stat(directories.bin + "/" + path);
-		} catch (e) {
-			await anura.fs.promises.writeFile(
-				directories.bin + "/" + path,
-				await fetch(bin).then((r) => r.text()),
-			);
-		}
-	}
+	// Restore any missing /usr/bin scripts. Only shells and terminals use
+	// them, so this runs alongside the rest of boot instead of in front of
+	// it (one stat after another cost ~250 ms of every boot).
+	void Promise.all(
+		anura.config.bin.map(async (bin: string) => {
+			const path = directories.bin + "/" + bin.split("/").slice(-1)[0];
+			try {
+				await anura.fs.promises.stat(path);
+			} catch {
+				try {
+					await anura.fs.promises.writeFile(
+						path,
+						await fetch(bin).then((r) => r.text()),
+					);
+				} catch (e) {
+					console.warn("[boot] couldn't restore", path, e);
+				}
+			}
+		}),
+	).then(() => bootMark("bin-checked"));
 
 	for (const lib of anura.config.libs) {
 		await anura.registerExternalLib(lib);
 	}
+	bootMark("external-libs");
 
 	for (const app of anura.config.apps) {
 		await anura.registerExternalApp(app);
@@ -963,7 +973,7 @@ async function bootx86() {
 async function bootUserCustomizations() {
 	const directories = anura.settings.get("directories");
 	console.debug("directories", directories);
-	if ((await fetch("/fs/")).status === 404) {
+	if ((await fetch("/fs/?probe")).status === 404) {
 		// Safe mode
 		// Register recovery helper app
 		const recovery = new RecoveryApp();

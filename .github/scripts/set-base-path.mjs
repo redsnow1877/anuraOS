@@ -60,7 +60,7 @@ const DIRS = [
  * The worker's own route patterns are unanchored regexes, so they still match
  * once the scope moves under a sub-path — but callers that request them with a
  * leading slash would escape the scope entirely and hit the real server. In
- * particular Boot.tsx probes `fetch("/fs/")` to decide whether the worker is
+ * particular Boot.tsx probes `fetch("/fs/?probe")` to decide whether the worker is
  * alive, and a 404 there drops the whole desktop into safe mode.
  */
 const ROUTES = [

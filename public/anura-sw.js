@@ -561,6 +561,10 @@ const corsheaders = {
 workbox.routing.registerRoute(
 	fsRegex,
 	async ({ url }) => {
+		// Boot asks "is the /fs/ route up?" with ?probe. Answer at once: serving
+		// a real listing would wait (up to a second) for the reloading page's
+		// filesystem connection, and that wait sat in front of every boot.
+		if (url.searchParams.has("probe")) return new Response("ok");
 		let path = url.pathname.match(fsRegex)[1];
 		path = decodeURI(path);
 		return serveFile(path);

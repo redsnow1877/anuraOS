@@ -217,6 +217,7 @@ static: all
 	cp -r bin/. static/bin/
 	cp -r build/* static/
 	cp -r public/* static/
+	node tools/bundle-scripts.mjs static
 
 # Everything `all` builds except the v86 emulator.
 #
@@ -253,6 +254,7 @@ static-nov86: all-nov86
 	cp -r bin/. static/bin/
 	cp -r build/* static/
 	cp -r public/* static/
+	node tools/bundle-scripts.mjs static
 
 server: FORCE
 	cd server; node server.js
