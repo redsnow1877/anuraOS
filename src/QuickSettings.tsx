@@ -17,6 +17,8 @@ class QuickSettings {
 			description: string;
 			value: any;
 			onChange?: string;
+			/** Preferred over `onChange`: a function, no string eval. */
+			onToggle?: (value: any) => void;
 		}>;
 		date: string;
 	}> = $state({
@@ -386,6 +388,9 @@ class QuickSettings {
 												this.state.pinnedSettings[i]!.registry,
 											);
 											this.state.pinnedSettings = pinnedSettings;
+											this.state.pinnedSettings[i]!.onToggle?.(
+												this.state.pinnedSettings[i]!.value,
+											);
 											if (this.state.pinnedSettings[i]!.onChange) {
 												new Function(
 													"value",

@@ -52,6 +52,13 @@ class NotificationService {
 			if (timedOut) this.remove(notif, true);
 		});
 
+		// Do Not Disturb: the notification is still recorded (the notification
+		// centre and its badge still show it) but no toast and no sound.
+		const quiet = (globalThis as any).AetherDND?.on;
+		if (quiet) {
+			this.state.notifications = [...this.state.notifications, notif];
+			return;
+		}
 		this.element.appendChild(notif.element);
 		notif.element.classList.add("notif-in");
 		notif.element.addEventListener(

@@ -547,6 +547,14 @@ class Taskbar {
 						<span class="systray"></span>
 
 						<div
+							class="menubar-item dnd-indicator"
+							title="Do Not Disturb is on — click to turn off"
+							on:click={() => (globalThis as any).AetherDND?.set(false)}
+						>
+							<span class="material-symbols-outlined">bedtime</span>
+						</div>
+
+						<div
 							class="menubar-item"
 							title="Spotlight (Ctrl+Space)"
 							on:click={() => AetherSpotlight.toggle()}

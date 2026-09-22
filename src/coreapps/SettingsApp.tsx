@@ -425,6 +425,63 @@ const LockSettings: Component<
 	);
 };
 
+/** Night Shift: on/off, schedule and warmth. */
+const NightShiftSettings: Component<Record<string, never>> = function () {
+	const c = AetherNightShift.config;
+	const onSwitch = (
+		<input type="checkbox" class="aether-switch" aria-label="Night Shift" />
+	) as HTMLInputElement;
+	onSwitch.checked = c.on;
+	onSwitch.addEventListener("change", () =>
+		AetherNightShift.save({ on: onSwitch.checked }),
+	);
+
+	const schedule = (
+		<select class="aether-select" aria-label="Night Shift schedule">
+			<option value="manual">Manually</option>
+			<option value="evening">Evenings (7 PM – 7 AM)</option>
+		</select>
+	) as HTMLSelectElement;
+	schedule.value = c.schedule;
+	schedule.addEventListener("change", () =>
+		AetherNightShift.save({ schedule: schedule.value as "manual" | "evening" }),
+	);
+
+	const warmth = (
+		<input type="range" class="aether-slider" min="10" max="100" />
+	) as HTMLInputElement;
+	const paint = () =>
+		warmth.style.setProperty(
+			"--v",
+			((Number(warmth.value) - 10) / 90) * 100 + "%",
+		);
+	warmth.value = String(Math.round(c.strength * 100));
+	paint();
+	warmth.addEventListener("input", () => {
+		paint();
+		AetherNightShift.save({ strength: Number(warmth.value) / 100 });
+	});
+
+	return (
+		<div>
+			<div class="settings-item">
+				<span class="settings-item-name">Night Shift</span>
+				{onSwitch}
+			</div>
+			<div class="settings-item">
+				<span class="settings-item-name">Schedule</span>
+				{schedule}
+			</div>
+			<div class="settings-item">
+				<span class="settings-item-name">Warmth</span>
+				<div class="aether-slider-row" style="max-width: 60%;">
+					{warmth}
+				</div>
+			</div>
+		</div>
+	);
+};
+
 const SettingText: Component<{
 	title: string;
 	setting: string;
@@ -697,6 +754,7 @@ class SettingsApp extends App {
 						<div class="settings-group">
 							<HotCornerPicker />
 							<LockSettings />
+							<NightShiftSettings />
 						</div>
 					</div>
 					<div id="v86" class="v86 settings-category">

@@ -687,6 +687,76 @@ document.addEventListener("anura-login-completed", async () => {
 		AetherLockScreen.init();
 		AetherSnapLayouts.init();
 		AetherSnapLayouts.registerShortcuts();
+
+		AetherDND.sync();
+		AetherNightShift.init();
+		AetherShortcuts.register({
+			combo: "Ctrl+/",
+			group: "System",
+			description: "Show keyboard shortcuts",
+			handler: () => AetherShortcutSheet.toggle(),
+		});
+		AetherCommands.register({
+			id: "shortcuts",
+			title: "Keyboard Shortcuts",
+			icon: "keyboard",
+			keywords: ["keys", "hotkeys", "help", "cheat sheet"],
+			shortcut: "Ctrl+/",
+			run: () => AetherShortcutSheet.open(),
+		});
+		AetherCommands.register({
+			id: "dnd",
+			title: () => `Turn ${AetherDND.on ? "Off" : "On"} Do Not Disturb`,
+			subtitle: "Focus",
+			icon: "bedtime",
+			keywords: ["focus", "silence", "notifications", "quiet", "dnd"],
+			run: () => AetherDND.toggle(),
+		});
+		AetherCommands.register({
+			id: "night-shift",
+			title: () => `Turn ${AetherNightShift.active ? "Off" : "On"} Night Shift`,
+			subtitle: "Display",
+			icon: "nightlight",
+			keywords: ["warm", "blue light", "night", "eyes"],
+			run: () => AetherNightShift.toggle(),
+		});
+
+		// Control Center's toggle grid has always been empty; give it the
+		// switches people actually reach for.
+		const tile = (
+			registry: string,
+			name: string,
+			icon: string,
+			description: string,
+			onToggle?: (v: any) => void,
+		) => ({
+			registry,
+			name,
+			icon,
+			description,
+			type: "boolean",
+			value: anura.settings.get(registry),
+			onToggle,
+		});
+		quickSettings.state.pinnedSettings = [
+			tile("aether.dnd", "Focus", "bedtime", "Do Not Disturb", () =>
+				AetherDND.sync(),
+			),
+			{
+				...tile(
+					"aether.nightshift.on",
+					"Night Shift",
+					"nightlight",
+					"Warmer colours",
+				),
+				value: AetherNightShift.active,
+				onToggle: (v: boolean) => AetherNightShift.save({ on: !!v }),
+			},
+			tile("blur-disable", "Performance", "speed", "Turn off blur", (v) =>
+				document.body.classList.toggle("blur-disable", !!v),
+			),
+			tile("sound-enabled", "Sounds", "volume_up", "Interface sounds"),
+		];
 		AetherShortcuts.register({
 			combo: "Ctrl+Alt+L",
 			group: "System",
