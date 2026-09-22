@@ -481,6 +481,11 @@ class Taskbar {
 			() => anura.apps["anura.taskmgr"]?.open(),
 			"monitoring",
 		);
+		this.brandMenu.addItem(
+			"Lock Screen",
+			() => (globalThis as any).AetherLockScreen?.lock(),
+			"lock",
+		);
 		this.brandMenu.addItem("Restart", () => location.reload(), "restart_alt");
 	}
 

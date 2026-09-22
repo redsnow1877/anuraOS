@@ -1,0 +1,238 @@
+/* ==========================================================================
+   Aether — lock screen
+   ========================================================================== */
+
+#aether-lock {
+	position: fixed;
+	inset: 0;
+	z-index: 2147483000; /* over everything but the custom cursor */
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12vh 24px 9vh;
+	color: #fff;
+	outline: none;
+	background: rgba(6, 7, 14, 0.2);
+	backdrop-filter: blur(0px) saturate(100%);
+	-webkit-backdrop-filter: blur(0px) saturate(100%);
+	opacity: 0;
+	transition:
+		opacity 0.4s var(--ease-out),
+		backdrop-filter 0.55s var(--ease-out),
+		-webkit-backdrop-filter 0.55s var(--ease-out),
+		background-color 0.55s var(--ease-out);
+	cursor: default;
+	user-select: none;
+}
+
+#aether-lock.is-shown {
+	opacity: 1;
+	background: rgba(6, 7, 14, 0.38);
+	backdrop-filter: blur(48px) saturate(160%);
+	-webkit-backdrop-filter: blur(48px) saturate(160%);
+}
+
+#aether-lock.is-leaving {
+	opacity: 0;
+	transition-duration: 0.45s;
+}
+
+.lock-center {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	transform: translateY(18px) scale(0.97);
+	opacity: 0;
+	transition:
+		transform 0.7s var(--ease-spring-soft, cubic-bezier(0.34, 1.3, 0.64, 1)),
+		opacity 0.5s var(--ease-out);
+}
+
+#aether-lock.is-shown .lock-center {
+	transform: none;
+	opacity: 1;
+}
+
+#aether-lock.is-leaving .lock-center {
+	transform: translateY(-40px) scale(1.02);
+	opacity: 0;
+	transition-duration: 0.45s;
+}
+
+.lock-date {
+	font-size: 21px;
+	font-weight: 500;
+	letter-spacing: 0.01em;
+	color: rgba(255, 255, 255, 0.82);
+	text-shadow: 0 1px 12px rgba(0, 0, 0, 0.25);
+}
+
+.lock-clock {
+	font-size: clamp(88px, 14vw, 150px);
+	font-weight: 200;
+	line-height: 1;
+	letter-spacing: -0.03em;
+	font-variant-numeric: tabular-nums;
+	text-shadow: 0 2px 30px rgba(0, 0, 0, 0.25);
+	background: linear-gradient(180deg, #ffffff 30%, rgba(255, 255, 255, 0.72));
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+.lock-bottom {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 14px;
+	opacity: 0;
+	transform: translateY(10px);
+	transition:
+		opacity 0.5s var(--ease-out) 0.12s,
+		transform 0.6s var(--ease-out) 0.12s;
+}
+
+#aether-lock.is-shown .lock-bottom {
+	opacity: 1;
+	transform: none;
+}
+
+.lock-avatar {
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(
+		145deg,
+		rgba(169, 156, 255, 0.55),
+		rgba(90, 76, 220, 0.55)
+	);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.35),
+		0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+.lock-avatar .material-symbols-outlined {
+	font-size: 36px;
+	color: rgba(255, 255, 255, 0.92);
+}
+
+.lock-pin {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	height: 0;
+	opacity: 0;
+	overflow: hidden;
+	transition:
+		height 0.3s var(--ease-out),
+		opacity 0.2s var(--ease-out);
+}
+
+.lock-pin.is-shown {
+	height: 40px;
+	opacity: 1;
+}
+
+.lock-pin.shake {
+	animation: lock-shake 0.42s var(--ease-out);
+}
+
+@keyframes lock-shake {
+	0%,
+	100% {
+		transform: none;
+	}
+	20% {
+		transform: translateX(-10px);
+	}
+	40% {
+		transform: translateX(9px);
+	}
+	60% {
+		transform: translateX(-6px);
+	}
+	80% {
+		transform: translateX(4px);
+	}
+}
+
+.lock-pin input {
+	width: 200px;
+	height: 36px;
+	padding: 0 14px;
+	border-radius: 999px;
+	border: 1px solid rgba(255, 255, 255, 0.24);
+	background: rgba(255, 255, 255, 0.14);
+	color: #fff;
+	font-family: inherit;
+	font-size: 15px;
+	letter-spacing: 0.2em;
+	text-align: center;
+	outline: none;
+}
+
+.lock-pin input::placeholder {
+	letter-spacing: 0.02em;
+	color: rgba(255, 255, 255, 0.55);
+}
+
+.lock-pin input:focus,
+.lock-pin input:focus-visible {
+	border-color: rgba(255, 255, 255, 0.55);
+	/* The global input focus ring is square-cornered; this pill draws its own. */
+	box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.14) !important;
+	outline: none !important;
+}
+
+.lock-go {
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	border: 1px solid rgba(255, 255, 255, 0.24);
+	background: rgba(255, 255, 255, 0.16);
+	color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	padding: 0;
+}
+
+.lock-go .material-symbols-outlined {
+	font-size: 20px;
+}
+
+.lock-hint {
+	font-size: 13px;
+	color: rgba(255, 255, 255, 0.62);
+}
+
+/* ---- degraded modes ------------------------------------------------------ */
+
+body.blur-disable #aether-lock.is-shown {
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
+	background: rgba(12, 12, 20, 0.94);
+}
+
+body.reduce-motion #aether-lock,
+body.reduce-motion #aether-lock * {
+	transition-duration: 1ms !important;
+	animation: none !important;
+}
+
+/* The backdrop blur thins out toward the viewport edges, so the menu bar —
+   a 28px strip right at the edge — stayed readable through it, frontmost
+   app name included. Like macOS, the shell chrome simply steps away while
+   the screen is locked. */
+body.aether-locked #menubar,
+body.aether-locked #dock,
+body.aether-locked .aliceWMwin {
+	opacity: 0 !important;
+	transition: opacity 0.35s var(--ease-out) !important;
+}

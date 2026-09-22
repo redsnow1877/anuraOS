@@ -679,6 +679,21 @@ document.addEventListener("anura-login-completed", async () => {
 			run: () => AetherMissionControl.toggleDesktop(),
 		});
 		AetherHotCorners.init();
+		AetherLockScreen.init();
+		AetherShortcuts.register({
+			combo: "Ctrl+Alt+L",
+			group: "System",
+			description: "Lock screen",
+			handler: () => AetherLockScreen.lock(),
+		});
+		AetherCommands.register({
+			id: "lock-screen",
+			title: "Lock Screen",
+			icon: "lock",
+			keywords: ["sleep", "away", "privacy"],
+			shortcut: "Ctrl+Alt+L",
+			run: () => AetherLockScreen.lock(),
+		});
 		AetherCommands.register({
 			id: "spotlight",
 			title: "Spotlight Search",

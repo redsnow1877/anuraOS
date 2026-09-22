@@ -84,6 +84,18 @@ const settingsCSS = css`
 		width: calc(100% - 20px);
 	}
 
+	.settings-item-hint {
+		display: block;
+		font-size: 11.5px;
+		color: var(--ink-faint);
+		margin-top: 2px;
+	}
+
+	.settings-item-actions {
+		display: flex;
+		gap: 8px;
+	}
+
 	/* The hot-corner picker is a diagram, not a row. */
 	.settings-item.hotcorner-item {
 		height: auto;
@@ -320,6 +332,94 @@ const HotCornerPicker: Component<Record<string, never>> = function () {
 					<span class="hc-caption">Move the pointer into a corner</span>
 				</div>
 				{corners.map(([c, l]) => picker(c, l))}
+			</div>
+		</div>
+	);
+};
+
+/** Auto-lock timeout and the (privacy-only) passcode. */
+const LockSettings: Component<
+	Record<string, never>,
+	{ hasPin: boolean }
+> = function () {
+	this.hasPin = AetherLockScreen.hasPin;
+	const idle = (
+		<select
+			class="aether-select"
+			aria-label="Lock after inactivity"
+			on:change={(e: Event) =>
+				anura.settings.set(
+					AetherLockScreen.IDLE_KEY,
+					Number((e.target as HTMLSelectElement).value),
+				)
+			}
+		>
+			<option value="0">Never</option>
+			<option value="1">After 1 minute</option>
+			<option value="5">After 5 minutes</option>
+			<option value="15">After 15 minutes</option>
+			<option value="30">After 30 minutes</option>
+			<option value="60">After 1 hour</option>
+		</select>
+	) as HTMLSelectElement;
+	idle.value = String(AetherLockScreen.idleMinutes);
+
+	return (
+		<div>
+			<div class="settings-item">
+				<span class="settings-item-name">Lock screen</span>
+				{idle}
+			</div>
+			<div class="settings-item">
+				<span class="settings-item-name">
+					Passcode
+					<span class="settings-item-hint">
+						A privacy screen, not a security boundary
+					</span>
+				</span>
+				<div class="settings-item-actions">
+					{$if(
+						use(this.hasPin),
+						<button
+							class="matter-button-outlined"
+							on:click={async () => {
+								await AetherLockScreen.setPin(null);
+								this.hasPin = false;
+							}}
+						>
+							Remove
+						</button>,
+					)}
+					<button
+						class="matter-button-contained"
+						on:click={async () => {
+							const pin = await anura.dialog.prompt(
+								"Choose a passcode for the lock screen:",
+							);
+							if (!pin) return;
+							const again = await anura.dialog.prompt(
+								"Enter it again to confirm:",
+							);
+							if (again !== pin) {
+								anura.dialog.alert("Those didn't match — passcode unchanged.");
+								return;
+							}
+							await AetherLockScreen.setPin(String(pin));
+							this.hasPin = true;
+						}}
+					>
+						{use(this.hasPin, (p) => (p ? "Change…" : "Set passcode…"))}
+					</button>
+				</div>
+			</div>
+			<div class="settings-item">
+				<span class="settings-item-name">Lock now</span>
+				<button
+					class="matter-button-outlined"
+					on:click={() => AetherLockScreen.lock()}
+				>
+					Lock
+				</button>
 			</div>
 		</div>
 	);
@@ -596,6 +696,7 @@ class SettingsApp extends App {
 						<h3 class="settings-category-name">Desktop</h3>
 						<div class="settings-group">
 							<HotCornerPicker />
+							<LockSettings />
 						</div>
 					</div>
 					<div id="v86" class="v86 settings-category">

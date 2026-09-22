@@ -47,6 +47,8 @@ interface AetherCommand {
 class AetherShortcuts {
 	static readonly list: AetherShortcut[] = [];
 	static #bound = new WeakSet<Window>();
+	/** Set while the lock screen is up: no shortcut may reach past it. */
+	static suspended = false;
 
 	static register(shortcut: AetherShortcut) {
 		const combo = AetherShortcuts.normalize(shortcut.combo);
@@ -111,7 +113,7 @@ class AetherShortcuts {
 	}
 
 	static #onKey(e: KeyboardEvent, inFrame: boolean) {
-		if (e.repeat) return;
+		if (e.repeat || AetherShortcuts.suspended) return;
 		const combo = AetherShortcuts.fromEvent(e);
 		const hit = AetherShortcuts.list.find((s) => s.combo === combo);
 		if (!hit) return;
