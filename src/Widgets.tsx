@@ -149,7 +149,8 @@ class AetherWidget {
 	onLaunch: () => void = () => {};
 
 	private timers: number[] = [];
-	private frames: number[] = [];
+	/** Live rAF handles only: a loop swaps its old handle for the new one. */
+	private frames = new Set<number>();
 
 	/** Synchronous capability probe. A false result hides the widget. */
 	available(): boolean {
@@ -185,18 +186,26 @@ class AetherWidget {
 		this.timers.push(setInterval(tick, ms) as unknown as number);
 	}
 
-	/** Register a guarded rAF loop, cancelled on hide. */
-	frame(fn: (now: number) => void): void {
+	/**
+	 * Register a guarded rAF loop, cancelled on hide. The loop ends when `fn`
+	 * returns false. Keep loops short: a running one wakes the page every
+	 * frame, even when nothing on screen changes.
+	 */
+	frame(fn: (now: number) => boolean | void): void {
+		let handle = 0;
 		const step = (now: number) => {
+			this.frames.delete(handle);
 			try {
-				fn(now);
+				if (fn(now) === false) return;
 			} catch (e) {
 				console.warn(`[widgets] ${this.id} frame failed`, e);
 				return;
 			}
-			this.frames.push(requestAnimationFrame(step));
+			handle = requestAnimationFrame(step);
+			this.frames.add(handle);
 		};
-		this.frames.push(requestAnimationFrame(step));
+		handle = requestAnimationFrame(step);
+		this.frames.add(handle);
 	}
 
 	/** Internal — called by the host. */
@@ -212,8 +221,8 @@ class AetherWidget {
 	stop(): void {
 		for (const t of this.timers) clearInterval(t);
 		for (const f of this.frames) cancelAnimationFrame(f);
+		this.frames.clear();
 		this.timers = [];
-		this.frames = [];
 		try {
 			this.onHide();
 		} catch (e) {
@@ -960,9 +969,6 @@ class SystemWidget extends AetherWidget {
 		uptime: "0s",
 	});
 
-	private frameCount = 0;
-	private windowStart = 0;
-
 	override render(): HTMLElement {
 		return (
 			<div class="sys">
@@ -1045,17 +1051,24 @@ class SystemWidget extends AetherWidget {
 	}
 
 	override onShow(): void {
-		this.frameCount = 0;
-		this.windowStart = performance.now();
-		this.frame((now) => {
-			this.frameCount++;
-			if (now - this.windowStart >= 1000) {
-				const fps = (this.frameCount * 1000) / (now - this.windowStart);
-				this.frameCount = 0;
-				this.windowStart = now;
+		// Frame rate in half-second bursts every two seconds. Counting frames
+		// needs requestAnimationFrame, and a loop that never stops keeps the
+		// whole page awake 60 times a second, which on the desktop is forever.
+		this.every(2000, () => {
+			let start = -1;
+			let frames = 0;
+			this.frame((now) => {
+				if (start < 0) {
+					start = now;
+					return;
+				}
+				frames++;
+				if (now - start < 500) return;
+				const fps = (frames * 1000) / (now - start);
 				this.state.fps = [...this.state.fps, fps].slice(-36);
 				this.state.fpsNow = Math.round(fps) + " fps";
-			}
+				return false;
+			});
 		});
 
 		this.every(1000, () => {

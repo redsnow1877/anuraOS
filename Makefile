@@ -209,8 +209,12 @@ milestone:
 static: all
 	mkdir -p static/
 	cp -r aboutproxy/static/* static/
-	cp -r apps/ static/apps/
-	cp -r bin/ static/bin/
+	# Copy the directories' contents: "cp -r apps/ static/apps/" nests a
+	# second copy inside when static/apps already exists, leaving the served
+	# files stale on every rebuild after the first.
+	mkdir -p static/apps static/bin
+	cp -r apps/. static/apps/
+	cp -r bin/. static/bin/
 	cp -r build/* static/
 	cp -r public/* static/
 
@@ -241,8 +245,12 @@ v86-stub: FORCE
 static-nov86: all-nov86
 	mkdir -p static/
 	cp -r aboutproxy/static/* static/
-	cp -r apps/ static/apps/
-	cp -r bin/ static/bin/
+	# Copy the directories' contents: "cp -r apps/ static/apps/" nests a
+	# second copy inside when static/apps already exists, leaving the served
+	# files stale on every rebuild after the first.
+	mkdir -p static/apps static/bin
+	cp -r apps/. static/apps/
+	cp -r bin/. static/bin/
 	cp -r build/* static/
 	cp -r public/* static/
 
