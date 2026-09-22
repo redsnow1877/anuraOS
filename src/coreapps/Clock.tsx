@@ -497,6 +497,11 @@ class ClockApp extends App {
 
 	/* ---- timer (app-level, survives the window) --------------------------- */
 
+	/** The menu bar island shows a running timer. */
+	#timerChanged() {
+		(globalThis as any).AetherIsland?.refresh();
+	}
+
 	startTimer(ms: number) {
 		if (ms <= 0) return;
 		this.timer = {
@@ -507,6 +512,7 @@ class ClockApp extends App {
 			active: true,
 		};
 		this.#armTimer();
+		this.#timerChanged();
 	}
 
 	#armTimer() {
@@ -525,6 +531,7 @@ class ClockApp extends App {
 				"Timer done",
 				ClockApp.formatRemaining(this.timer.total) + " is up",
 			);
+			this.#timerChanged();
 		}, this.timer.endsAt - Date.now());
 	}
 
@@ -533,6 +540,7 @@ class ClockApp extends App {
 		this.timer.remaining = Math.max(0, this.timer.endsAt - Date.now());
 		this.timer.running = false;
 		clearTimeout(this.#timerCheck);
+		this.#timerChanged();
 	}
 
 	resumeTimer() {
@@ -540,6 +548,7 @@ class ClockApp extends App {
 		this.timer.endsAt = Date.now() + this.timer.remaining;
 		this.timer.running = true;
 		this.#armTimer();
+		this.#timerChanged();
 	}
 
 	cancelTimer() {
@@ -551,6 +560,7 @@ class ClockApp extends App {
 			running: false,
 			active: false,
 		};
+		this.#timerChanged();
 	}
 
 	/* ---- window ---------------------------------------------------------- */

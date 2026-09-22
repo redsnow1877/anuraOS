@@ -140,6 +140,10 @@ class AetherBrightness {
 	static set(v: number) {
 		anura.settings.set(this.KEY, Math.max(this.MIN, Math.min(1, v)));
 		this.sync();
+		(globalThis as any).AetherIsland?.hud(
+			"brightness_6",
+			(this.value - this.MIN) / (1 - this.MIN),
+		);
 	}
 
 	static sync() {

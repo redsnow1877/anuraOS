@@ -268,6 +268,11 @@ class AetherScreenshot {
 		return !!this.#recorder;
 	}
 
+	/** When the current recording began (epoch ms), for the island's clock. */
+	static get recordingStart(): number {
+		return this.#recorder ? this.#recStart : 0;
+	}
+
 	static async toggleRecording() {
 		if (this.#recorder) return this.stopRecording();
 		if (!this.supported || typeof MediaRecorder === "undefined")
@@ -297,6 +302,7 @@ class AetherScreenshot {
 			clearInterval(this.#recTimer);
 			this.#indicator?.remove();
 			this.#indicator = null;
+			(globalThis as any).AetherIsland?.refresh();
 			const blob = new Blob(chunks, { type: "video/webm" });
 			const path = await this.#write(
 				this.MOVIES,
@@ -317,6 +323,7 @@ class AetherScreenshot {
 		this.#recorder = rec;
 		this.#recStart = Date.now();
 		this.#showIndicator();
+		(globalThis as any).AetherIsland?.refresh();
 		(globalThis as any).aetherSound?.play?.("toggleOn");
 	}
 

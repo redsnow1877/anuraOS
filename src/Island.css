@@ -1,0 +1,326 @@
+/* ==========================================================================
+   Aether — the island (Island.ts)
+   A solid black pill: no backdrop blur, so morphing it costs next to nothing.
+   Its size is set per mode below; width/height changes only relayout the pill.
+   ========================================================================== */
+
+#island {
+	--isl-w: 90px;
+	--isl-h: 22px;
+	--isl-r: 11px;
+	position: absolute;
+	top: 3px;
+	left: 50%;
+	translate: -50% 0;
+	width: var(--isl-w);
+	height: var(--isl-h);
+	border-radius: var(--isl-r);
+	background: #000;
+	color: #fff;
+	font-size: 12px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	box-shadow:
+		0 0 0 1px rgba(255, 255, 255, 0.06),
+		0 6px 20px -6px rgba(0, 0, 0, 0.6);
+	overflow: hidden;
+	contain: layout paint;
+	z-index: 2;
+	cursor: default;
+	transition:
+		width 0.5s cubic-bezier(0.34, 1.26, 0.5, 1),
+		height 0.5s cubic-bezier(0.34, 1.26, 0.5, 1),
+		border-radius 0.5s cubic-bezier(0.34, 1.26, 0.5, 1),
+		opacity 0.25s ease,
+		scale 0.35s cubic-bezier(0.34, 1.26, 0.5, 1);
+}
+
+#island[data-mode="idle"] {
+	opacity: 0;
+	scale: 0.6;
+	pointer-events: none;
+}
+
+#island[data-mode="rec"] {
+	--isl-w: 112px;
+}
+#island[data-mode="timer"] {
+	--isl-w: 118px;
+}
+#island[data-mode="hud"] {
+	--isl-w: 200px;
+}
+#island[data-mode="music"] {
+	--isl-w: 132px;
+}
+#island[data-mode="music"].is-expanded {
+	--isl-w: 360px;
+	--isl-h: 92px;
+	--isl-r: 26px;
+}
+
+/* Phones and narrow windows: the menu bar has no room for it. */
+@media (max-width: 700px) {
+	#island {
+		display: none;
+	}
+}
+
+@media (min-width: 701px) {
+	/* The island shows recording; the menu bar's own indicator is redundant. */
+	.rec-indicator {
+		display: none !important;
+	}
+}
+
+.isl-inner {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	height: 100%;
+	padding: 0 9px;
+	transition: opacity 0.12s ease;
+}
+
+#island.is-swapping .isl-inner {
+	opacity: 0;
+}
+
+.isl-grow {
+	flex: 1;
+}
+
+.isl-inner .material-symbols-outlined {
+	font-size: 15px;
+}
+
+.isl-red {
+	color: #ff453a;
+}
+
+.isl-amber {
+	color: #ff9f0a;
+}
+
+#island.is-paused .isl-time {
+	opacity: 0.55;
+}
+
+.isl-rec-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #ff453a;
+	box-shadow: 0 0 8px #ff453a;
+	animation: isl-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes isl-pulse {
+	50% {
+		opacity: 0.35;
+	}
+}
+
+/* ---- HUD ---------------------------------------------------------------- */
+
+.isl-hud-icon {
+	width: 18px;
+	text-align: center;
+}
+
+.isl-level {
+	flex: 1;
+	height: 4px;
+	margin-right: 4px;
+	border-radius: 4px;
+	background: rgba(255, 255, 255, 0.22);
+	overflow: hidden;
+}
+
+.isl-level-fill {
+	display: block;
+	height: 100%;
+	background: #fff;
+	transform-origin: left;
+	scale: 0 1;
+	transition: scale 0.12s ease-out;
+}
+
+/* ---- music -------------------------------------------------------------- */
+
+#island[data-mode="music"] .isl-inner {
+	padding: 0;
+}
+
+.isl-compact,
+.isl-full {
+	position: absolute;
+	transition: opacity 0.2s ease;
+}
+
+.isl-compact {
+	inset: 0;
+	display: flex;
+	align-items: center;
+	padding: 0 8px 0 3px;
+}
+
+/* Laid out at its final size so nothing reflows while the pill grows. */
+.isl-full {
+	left: 0;
+	top: 0;
+	width: 360px;
+	height: 92px;
+	box-sizing: border-box;
+	padding: 14px 16px 0 14px;
+	display: grid;
+	grid-template-columns: 48px minmax(0, 1fr) auto;
+	grid-template-rows: 48px auto;
+	column-gap: 11px;
+	row-gap: 11px;
+	align-items: center;
+	opacity: 0;
+	pointer-events: none;
+}
+
+#island.is-expanded .isl-compact {
+	opacity: 0;
+	pointer-events: none;
+}
+
+#island.is-expanded .isl-full {
+	opacity: 1;
+	pointer-events: auto;
+	transition-delay: 0.08s;
+}
+
+.isl-art {
+	width: 16px;
+	height: 16px;
+	border-radius: 5px;
+	object-fit: cover;
+}
+
+.isl-full-art {
+	width: 48px;
+	height: 48px;
+	border-radius: 11px;
+	object-fit: cover;
+}
+
+.isl-title,
+.isl-artist {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.isl-title {
+	font-size: 13.5px;
+	font-weight: 650;
+}
+
+.isl-artist {
+	font-size: 12px;
+	font-weight: 500;
+	color: rgba(255, 255, 255, 0.55);
+	margin-top: 1px;
+}
+
+.isl-controls {
+	display: flex;
+	align-items: center;
+}
+
+.isl-controls button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	min-width: 0;
+	min-height: 0;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	background: transparent;
+	box-shadow: none;
+	color: #fff;
+	cursor: pointer;
+}
+
+.isl-controls button:hover {
+	background: rgba(255, 255, 255, 0.14);
+}
+
+.isl-controls .media-icon {
+	width: 19px;
+	height: 19px;
+}
+
+.isl-controls .isl-play .media-icon {
+	width: 23px;
+	height: 23px;
+}
+
+.isl-bar {
+	grid-column: 1 / -1;
+	height: 3px;
+	border-radius: 3px;
+	background: rgba(255, 255, 255, 0.18);
+	overflow: hidden;
+}
+
+.isl-bar-fill {
+	height: 100%;
+	background: #fff;
+	transform-origin: left;
+	scale: 0 1;
+}
+
+/* The equaliser: four bars on the compositor, frozen while paused. */
+.isl-eq {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	height: 12px;
+}
+
+.isl-eq i {
+	width: 2.5px;
+	height: 100%;
+	border-radius: 2px;
+	background: color-mix(in srgb, var(--theme-accent) 55%, #fff);
+	scale: 1 0.3;
+	animation: isl-eq 0.8s ease-in-out infinite alternate;
+	animation-play-state: paused;
+}
+
+.isl-eq i:nth-child(2) {
+	animation-duration: 0.55s;
+	animation-delay: -0.3s;
+}
+
+.isl-eq i:nth-child(3) {
+	animation-duration: 0.95s;
+	animation-delay: -0.6s;
+}
+
+.isl-eq i:nth-child(4) {
+	animation-duration: 0.7s;
+	animation-delay: -0.15s;
+}
+
+#island.is-playing .isl-eq i {
+	animation-play-state: running;
+}
+
+@keyframes isl-eq {
+	from {
+		scale: 1 0.25;
+	}
+	to {
+		scale: 1 1;
+	}
+}
