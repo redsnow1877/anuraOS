@@ -97,6 +97,24 @@ class ExploreApp extends App {
 				margin-block: 1.5rem 0;
 			}
 
+			& kbd {
+				font-family: var(--theme-font-sans);
+				font-size: 0.8em;
+				padding: 0.1em 0.45em;
+				border-radius: 0.35em;
+				border: 1px solid rgba(255, 255, 255, 0.18);
+				border-bottom-width: 2px;
+				background: rgba(255, 255, 255, 0.08);
+				white-space: nowrap;
+			}
+
+			& .app-link img {
+				width: 1.1em;
+				height: 1.1em;
+				vertical-align: -0.2em;
+				margin-right: 0.2em;
+			}
+
 			& h2:first-of-type {
 				margin-block-start: 0.25rem;
 			}
@@ -138,51 +156,146 @@ class ExploreApp extends App {
 			<h1>
 				What's new in {BRANDING.name} {anura.version.pretty}?
 			</h1>
-			<h2>A brand new shell</h2>
 			<p>
-				The desktop has been rebuilt around a menu bar, a magnifying dock, and
-				translucent window chrome. Windows have traffic lights, the launcher is
-				now a full-screen Launchpad, and Control Center drops down from the top
-				right. Almost every surface is frosted glass — you can turn that off
-				under Appearance in{" "}
-				<span>
-					<a href="javascript:anura.apps['anura.settings'].open();">
-						<img src="/assets/icons/settings.png" alt="Settings Icon" />
-						Settings
-					</a>
-					.
-				</span>
+				Press <kbd>Ctrl</kbd> <kbd>/</kbd> at any time to see every keyboard
+				shortcut.
 			</p>
-			<h2>Experimental OPFS filesystem driver</h2>
+
+			<h2>Spotlight</h2>
 			<p>
-				{BRANDING.name} includes an experimental filesystem driver for the
-				Origin Private File System (OPFS). This greatly improves the speed of
-				file operations. You can enable it in{" "}
-				<span>
-					<a href="javascript:anura.apps['anura.ui.settings'].open();">
-						<img src="/assets/icons/settings.png" alt="Settings Icon" />
-						Settings
-					</a>
-					.
-				</span>
+				<kbd>Ctrl</kbd> <kbd>Space</kbd> (or the search icon in the menu bar)
+				searches everything at once: apps, open windows, files, notes and
+				settings. It also does maths (<code>12*(3+4)^2</code>), converts units (
+				<code>5 km to mi</code>, <code>72 f in c</code>), runs commands like
+				"Lock Screen" or "Turn On Night Shift", and opens web addresses.
 			</p>
-			<h2>VSCode Support</h2>
+
+			<h2>Mission Control and hot corners</h2>
 			<p>
-				{BRANDING.name} supports Visual Studio Code. You can download it from
-				the Developer Repository in{" "}
-				<span>
-					<img
-						src="/apps/marketplace.app/playstore.webp"
-						alt="Marketplace Icon"
-					/>
-					<a href="javascript:anura.apps['anura.store'].open();">Marketplace</a>
-					.
-				</span>
+				<kbd>F3</kbd> spreads every open window out so you can pick one — they
+				stay live while you look. <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>D</kbd>{" "}
+				slides everything aside to show the desktop. Push the pointer into the
+				top-left corner for Mission Control, or the bottom-right for the
+				desktop; each corner is configurable under Desktop in Settings.
 			</p>
-			<h2>Other changes</h2>
+
+			<h2>Snap layouts</h2>
+			<p>
+				Rest the pointer on a window's green button to pick a layout — halves,
+				thirds, quarters and more. From the keyboard, <kbd>Ctrl</kbd>{" "}
+				<kbd>Alt</kbd> with the arrow keys snaps, maximises and restores.
+			</p>
+
+			<h2>Widgets, on the desktop too</h2>
+			<p>
+				The Launchpad has a rail of widgets — weather, clocks, calendar, system
+				stats, a scratchpad and more. Pin any of them to the desktop with the
+				pin on its card, or right-click the desktop and choose Widgets.
+			</p>
+
+			<h2>Lock screen, Focus and Night Shift</h2>
+			<p>
+				<kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>L</kbd> locks the screen. An
+				optional passcode and auto-lock live under Desktop in Settings. Control
+				Center now has Focus (Do Not Disturb), Night Shift and Performance mode
+				toggles.
+			</p>
+
+			<h2>Screenshots and screen recording</h2>
+			<p>
+				<kbd>Ctrl</kbd> <kbd>⇧</kbd> <kbd>3</kbd> captures the screen,{" "}
+				<kbd>Ctrl</kbd> <kbd>⇧</kbd> <kbd>4</kbd> a region, and <kbd>Ctrl</kbd>{" "}
+				<kbd>⇧</kbd> <kbd>5</kbd> records it. Your browser asks for permission
+				each time.
+			</p>
+
+			<h2>New apps</h2>
 			<ul>
-				<li>Added WebDAV endpoint at /dav/*</li>
-				<li>Fix UI bugs in the file picker</li>
+				<li>
+					<a
+						class="app-link"
+						href="javascript:anura.apps['anura.notes'].open();"
+					>
+						<img src="/assets/icons/notes.svg" alt="" />
+						Notes
+					</a>{" "}
+					— quick notes, saved as files and searchable from Spotlight
+				</li>
+				<li>
+					<a
+						class="app-link"
+						href="javascript:anura.apps['anura.clock'].open();"
+					>
+						<img src="/assets/icons/clock.svg" alt="" />
+						Clock
+					</a>{" "}
+					— world clock, alarms, stopwatch and timer
+				</li>
+				<li>
+					<a
+						class="app-link"
+						href="javascript:anura.apps['anura.sketch'].open();"
+					>
+						<img src="/assets/icons/sketch.svg" alt="" />
+						Sketch
+					</a>{" "}
+					— draw and paint, with pen pressure
+				</li>
+				<li>
+					<a
+						class="app-link"
+						href="javascript:anura.apps['anura.photos'].open();"
+					>
+						<img src="/assets/icons/photos.svg" alt="" />
+						Photos
+					</a>{" "}
+					— your screenshots, sketches and imported pictures
+				</li>
+				<li>
+					<a
+						class="app-link"
+						href="javascript:anura.apps['anura.calculator'].open();"
+					>
+						<img src="/assets/icons/calculator.svg" alt="" />
+						Calculator
+					</a>
+					,{" "}
+					<a
+						class="app-link"
+						href="javascript:anura.apps['anura.texteditor'].open();"
+					>
+						<img src="/assets/icons/texteditor.svg" alt="" />
+						Text Editor
+					</a>{" "}
+					and{" "}
+					<a
+						class="app-link"
+						href="javascript:anura.apps['anura.2048'].open();"
+					>
+						<img src="/assets/icons/2048.svg" alt="" />
+						2048
+					</a>
+				</li>
+			</ul>
+
+			<h2>Faster</h2>
+			<p>
+				The desktop appears in well under a second on a returning visit, and an
+				idle desktop does no background work at all.
+			</p>
+
+			<h2>Also</h2>
+			<ul>
+				<li>
+					An experimental OPFS filesystem driver for much faster file access,
+					under{" "}
+					<a href="javascript:anura.apps['anura.settings'].open();">Settings</a>
+				</li>
+				<li>
+					Visual Studio Code, from the Developer Repository in{" "}
+					<a href="javascript:anura.apps['anura.store'].open();">Marketplace</a>
+				</li>
+				<li>A WebDAV endpoint at /dav/*</li>
 			</ul>
 		</div>
 	);
