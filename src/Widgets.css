@@ -958,3 +958,155 @@ body.blur-disable .widget-card {
 		grid-row: auto;
 	}
 }
+
+/* ---- now playing --------------------------------------------------------- */
+
+.widget-rail .npw {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-height: 76px;
+	cursor: default;
+}
+
+/* The cover, blurred, as the card's own light. Static: rasterised once. */
+.widget-rail .npw-bg {
+	position: absolute;
+	inset: -40px -30px;
+	width: calc(100% + 60px);
+	height: calc(100% + 80px);
+	object-fit: cover;
+	filter: blur(28px) saturate(1.6);
+	opacity: 0.32;
+	pointer-events: none;
+	transition: opacity 0.4s ease;
+}
+
+.widget-rail .npw.is-idle .npw-bg {
+	opacity: 0;
+}
+
+.widget-rail .npw-art {
+	position: relative;
+	width: 72px;
+	height: 72px;
+	border-radius: 10px;
+	object-fit: cover;
+	flex-shrink: 0;
+	background: linear-gradient(
+		145deg,
+		rgba(255, 255, 255, 0.14),
+		rgba(255, 255, 255, 0.04)
+	);
+	box-shadow:
+		0 8px 18px -8px rgba(0, 0, 0, 0.6),
+		0 0 0 1px rgba(255, 255, 255, 0.08);
+	transition: scale 0.3s var(--ease-out);
+}
+
+.widget-rail .npw.is-idle .npw-art {
+	content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-12 -12 48 48' fill='%23ffffff' opacity='.45'%3E%3Cpath d='M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6Z'/%3E%3C/svg%3E");
+}
+
+.widget-rail .npw:not(.is-playing):not(.is-idle) .npw-art {
+	scale: 0.92;
+}
+
+.widget-rail .npw-body {
+	position: relative;
+	flex: 1;
+	min-width: 0;
+}
+
+.widget-rail .npw-title,
+.widget-rail .npw-artist {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.widget-rail .npw-title {
+	font-size: 14px;
+	font-weight: 650;
+}
+
+.widget-rail .npw-artist {
+	font-size: 12px;
+	color: var(--ink-dim);
+	margin-top: 1px;
+}
+
+.widget-rail .npw-bar {
+	height: 3px;
+	margin: 9px 0 4px;
+	border-radius: 3px;
+	background: rgba(255, 255, 255, 0.12);
+	overflow: hidden;
+}
+
+.widget-rail .npw-fill {
+	height: 100%;
+	background: var(--ink);
+	transform-origin: left;
+	scale: 0 1;
+}
+
+.widget-rail .npw.is-idle .npw-bar {
+	visibility: hidden;
+}
+
+.widget-rail .npw-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.widget-rail .npw-time {
+	font-size: 11px;
+	color: var(--ink-faint);
+	font-variant-numeric: tabular-nums;
+}
+
+.widget-rail .npw-controls {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.widget-rail .npw-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	min-width: 0;
+	min-height: 0;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	background: transparent;
+	box-shadow: none;
+	color: var(--ink);
+	cursor: pointer;
+}
+
+.widget-rail .npw-btn:hover {
+	background: rgba(255, 255, 255, 0.12);
+}
+
+.widget-rail .npw-btn .media-icon {
+	width: 18px;
+	height: 18px;
+}
+
+.widget-rail .npw-play .media-icon {
+	width: 22px;
+	height: 22px;
+}
+
+.widget-rail .npw.is-idle .npw-btn[data-a="prev"],
+.widget-rail .npw.is-idle .npw-btn[data-a="next"] {
+	opacity: 0.35;
+	pointer-events: none;
+}

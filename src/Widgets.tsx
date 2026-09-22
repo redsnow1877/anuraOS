@@ -244,6 +244,7 @@ const AETHER_WIDGET_DEFAULT_ORDER = [
 	"clock",
 	"system",
 	"calendar",
+	"nowplaying",
 	"battery",
 	"worldclock",
 	"notes",
@@ -1349,6 +1350,111 @@ class NotesWidget extends AetherWidget {
 registerAetherWidget("notes", () => new NotesWidget());
 
 // ---------------------------------------------------------------------------
+// Now Playing
+// ---------------------------------------------------------------------------
+
+class NowPlayingWidget extends AetherWidget {
+	override id = "nowplaying";
+	override title = "Now Playing";
+	override icon = "music_note";
+	override size: AetherWidgetSize = "wide";
+
+	private root: HTMLElement | null = null;
+	private life: AbortController | null = null;
+
+	override available(): boolean {
+		return typeof (globalThis as any).AetherMusic !== "undefined";
+	}
+
+	override render(): HTMLElement {
+		const el = document.createElement("div");
+		el.className = "npw is-idle";
+		el.innerHTML = `
+			<img class="npw-bg" alt="" />
+			<img class="npw-art" alt="" />
+			<div class="npw-body">
+				<div class="npw-title"></div>
+				<div class="npw-artist"></div>
+				<div class="npw-bar"><div class="npw-fill"></div></div>
+				<div class="npw-row">
+					<span class="npw-time"></span>
+					<div class="npw-controls">
+						<button class="npw-btn" data-a="prev" title="Previous">${aetherMediaIcon("prev")}</button>
+						<button class="npw-btn npw-play" data-a="toggle" title="Play">${aetherMediaIcon("play")}</button>
+						<button class="npw-btn" data-a="next" title="Next">${aetherMediaIcon("next")}</button>
+					</div>
+				</div>
+			</div>`;
+		el.addEventListener("click", (e) => {
+			const btn = (e.target as Element).closest<HTMLElement>(".npw-btn");
+			if (!btn) {
+				anura.apps["anura.music"]?.open();
+				return;
+			}
+			e.stopPropagation();
+			if (btn.dataset.a === "prev") AetherMusic.prev();
+			else if (btn.dataset.a === "next") AetherMusic.next();
+			else AetherMusic.toggle();
+		});
+		this.root = el;
+		return el;
+	}
+
+	override onShow(): void {
+		this.life = new AbortController();
+		const opts = { signal: this.life.signal };
+		for (const type of ["track", "library", "state"])
+			AetherMusic.events.addEventListener(type, () => this.paint(), opts);
+		AetherMusic.events.addEventListener("time", () => this.paintTime(), opts);
+		this.paint();
+	}
+
+	override onHide(): void {
+		this.life?.abort();
+		this.life = null;
+	}
+
+	private paint(): void {
+		const el = this.root;
+		if (!el) return;
+		const t = AetherMusic.current;
+		el.classList.toggle("is-idle", !t);
+		el.classList.toggle("is-playing", AetherMusic.playing);
+		const q = <T extends Element>(s: string) => el.querySelector<T>(s)!;
+		q<HTMLElement>(".npw-title").textContent = t ? t.title : "Not Playing";
+		q<HTMLElement>(".npw-artist").textContent = t
+			? [t.artist, t.album].filter(Boolean).join(" · ")
+			: "Pick something in Music";
+		for (const img of [
+			q<HTMLImageElement>(".npw-art"),
+			q<HTMLImageElement>(".npw-bg"),
+		]) {
+			if (t) {
+				if (img.getAttribute("src") !== t.art) img.src = t.art;
+			} else img.removeAttribute("src");
+		}
+		const play = q<HTMLElement>(".npw-play");
+		play.innerHTML = aetherMediaIcon(AetherMusic.playing ? "pause" : "play");
+		play.title = AetherMusic.playing ? "Pause" : "Play";
+		this.paintTime();
+	}
+
+	private paintTime(): void {
+		const el = this.root;
+		if (!el) return;
+		const d = AetherMusic.duration;
+		const cur = AetherMusic.time;
+		el.querySelector<HTMLElement>(".npw-fill")!.style.scale =
+			(d ? cur / d : 0) + " 1";
+		el.querySelector<HTMLElement>(".npw-time")!.textContent =
+			AetherMusic.current
+				? `${aetherFormatTime(cur)} / ${aetherFormatTime(d)}`
+				: "";
+	}
+}
+registerAetherWidget("nowplaying", () => new NowPlayingWidget());
+
+// ---------------------------------------------------------------------------
 // Battery
 // ---------------------------------------------------------------------------
 
@@ -1762,10 +1868,16 @@ class WidgetHost {
 	private active = false;
 
 	constructor(options: WidgetHostOptions = {}) {
+		// A saved order predates any widget added since; append those.
+		const saved = widgetSetting<string[] | null>("order", null);
 		const order =
 			options.ids ||
-			widgetSetting<string[]>("order", AETHER_WIDGET_DEFAULT_ORDER) ||
-			AETHER_WIDGET_DEFAULT_ORDER;
+			(Array.isArray(saved)
+				? [
+						...saved,
+						...AETHER_WIDGET_DEFAULT_ORDER.filter((id) => !saved.includes(id)),
+					]
+				: AETHER_WIDGET_DEFAULT_ORDER);
 
 		for (const id of order) {
 			const factory = AetherWidgetRegistry[id];
