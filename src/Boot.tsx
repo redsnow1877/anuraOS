@@ -551,6 +551,7 @@ document.addEventListener("anura-login-completed", async () => {
 	anura.registerApp(new SketchApp());
 	anura.registerApp(new Game2048App());
 	anura.registerApp(new PhotosApp());
+	anura.registerApp(new MusicApp());
 
 	const explore = new ExploreApp();
 	anura.registerApp(explore);
@@ -692,6 +693,7 @@ document.addEventListener("anura-login-completed", async () => {
 		AetherDND.sync();
 		AetherNightShift.init();
 		AetherBrightness.sync();
+		AetherMusic.init();
 		AetherDesktopWidgets.init();
 		AetherCommands.register({
 			id: "widgets",
@@ -807,7 +809,9 @@ document.addEventListener("anura-login-completed", async () => {
 			tile("blur-disable", "Performance", "speed", "Turn off blur", (v) =>
 				document.body.classList.toggle("blur-disable", !!v),
 			),
-			tile("sound-enabled", "Sounds", "volume_up", "Interface sounds"),
+			tile("sound-enabled", "Sounds", "volume_up", "Interface sounds", () =>
+				aetherSound.refresh(),
+			),
 		];
 		AetherShortcuts.register({
 			combo: "Ctrl+Alt+L",

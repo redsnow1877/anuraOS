@@ -324,6 +324,8 @@ class AetherSound {
 				/* ignore */
 			}
 		}
+		// sound-volume is the system-wide level: let Music and friends follow.
+		(globalThis as any).AetherVolume?.dispatchEvent?.(new Event("change"));
 	}
 
 	/** Re-read from anura.settings — call after the settings store is ready. */

@@ -48,6 +48,11 @@ export function openFile(path) {
 	}
 
 	async function openAudio(path, mimetype) {
+		// Aether's Music app plays it, with the rest of the library queued.
+		if (anura.apps["anura.music"]) {
+			anura.apps["anura.music"].open([path]);
+			return;
+		}
 		const data = await fs.promises.readFile(path);
 		let fileView = anura.wm.createGeneric("Audio File");
 		fileView.content.parentElement.style.width = "300px";

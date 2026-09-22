@@ -699,6 +699,7 @@ class SettingsApp extends App {
 								setting="sound-enabled"
 								callback={() => {
 									try {
+										aetherSound.refresh();
 										if (anura.settings.get("sound-enabled"))
 											aetherSound.play("toggleOn");
 									} catch {
@@ -712,6 +713,8 @@ class SettingsApp extends App {
 								fallback={0.4}
 								callback={() => {
 									try {
+										// Re-reads the level and tells Music & co. it moved.
+										aetherSound.volume = anura.settings.get("sound-volume");
 										aetherSound.play("click");
 									} catch {
 										/* as above */

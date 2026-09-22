@@ -209,11 +209,22 @@ function aetherControlSliders(): HTMLElement {
 				return Number.isFinite(v) ? v : 0.4;
 			})(),
 			(v) => {
-				anura.settings.set("sound-volume", v);
-				(globalThis as any).AetherVolume?.dispatchEvent?.(new Event("change"));
+				// Through the sound engine so its cached level (and the gain
+				// node) follow; it persists the setting and fires AetherVolume.
+				const snd = (globalThis as any).aetherSound;
+				if (snd) snd.volume = v;
+				else {
+					anura.settings.set("sound-volume", v);
+					AetherVolume.dispatchEvent(new Event("change"));
+				}
 			},
 		),
 	);
+	try {
+		wrap.append(aetherNowPlayingCard());
+	} catch {
+		/* MusicPlayer.js not loaded */
+	}
 	// A tick on release, at the new volume, so the level is audible.
 	wrap
 		.querySelectorAll("input")[1]

@@ -198,7 +198,21 @@ class ExploreApp extends App {
 				<kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>L</kbd> locks the screen. An
 				optional passcode and auto-lock live under Desktop in Settings. Control
 				Center now has Focus (Do Not Disturb), Night Shift and Performance mode
-				toggles.
+				toggles, plus display brightness and system volume sliders.
+			</p>
+
+			<h2>Music</h2>
+			<p>
+				<a class="app-link" href="javascript:anura.apps['anura.music'].open();">
+					<img src="/assets/icons/music.svg" alt="" />
+					Music
+				</a>{" "}
+				plays everything in /Documents/Music, with a live visualizer (Orb, Bars
+				or Wave) that takes its colours from the album art. Songs keep playing
+				when the window closes; Control Center's Now Playing card, Spotlight
+				("Next Song") and your keyboard's media keys control them. No music yet?
+				Music can compose a small demo album for you, synthesized right in the
+				browser.
 			</p>
 
 			<h2>Screenshots and screen recording</h2>
@@ -244,6 +258,16 @@ class ExploreApp extends App {
 				<li>
 					<a
 						class="app-link"
+						href="javascript:anura.apps['anura.music'].open();"
+					>
+						<img src="/assets/icons/music.svg" alt="" />
+						Music
+					</a>{" "}
+					— your library, a visualizer, and a demo album it writes itself
+				</li>
+				<li>
+					<a
+						class="app-link"
 						href="javascript:anura.apps['anura.photos'].open();"
 					>
 						<img src="/assets/icons/photos.svg" alt="" />
@@ -281,7 +305,8 @@ class ExploreApp extends App {
 			<h2>Faster</h2>
 			<p>
 				The desktop appears in well under a second on a returning visit, and an
-				idle desktop does no background work at all.
+				idle desktop does next to no background work: animations and meters
+				sleep whenever there's nothing new to show.
 			</p>
 
 			<h2>Also</h2>
