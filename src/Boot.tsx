@@ -695,6 +695,7 @@ document.addEventListener("anura-login-completed", async () => {
 		AetherBrightness.sync();
 		AetherMusic.init();
 		AetherIsland.init();
+		AetherRGB.init();
 		AetherDesktopWidgets.init();
 		AetherCommands.register({
 			id: "widgets",
@@ -812,6 +813,9 @@ document.addEventListener("anura-login-completed", async () => {
 			),
 			tile("sound-enabled", "Sounds", "volume_up", "Interface sounds", () =>
 				aetherSound.refresh(),
+			),
+			tile("aether.rgb", "RGB", "palette", "RGB lighting", () =>
+				AetherRGB.sync(),
 			),
 		];
 		AetherShortcuts.register({

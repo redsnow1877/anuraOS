@@ -1,0 +1,97 @@
+/* ==========================================================================
+   Aether — RGB mode (RGBMode.ts)
+   ========================================================================== */
+
+/* A ring: the rim's padding box minus its content box. Whatever spins inside
+   only shows through that thin band. */
+.rgb-rim {
+	position: absolute;
+	inset: 0;
+	padding: 1.5px;
+	border-radius: inherit;
+	overflow: hidden;
+	pointer-events: none;
+	container-type: size;
+	-webkit-mask:
+		linear-gradient(#000 0 0) content-box,
+		linear-gradient(#000 0 0);
+	-webkit-mask-composite: xor;
+	mask:
+		linear-gradient(#000 0 0) content-box exclude,
+		linear-gradient(#000 0 0);
+}
+
+/* Big enough to cover the ring's corners at any angle (√2 ≈ 1.42). */
+.rgb-spin {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 150cqmax;
+	height: 150cqmax;
+	translate: -50% -50%;
+	animation: rgb-spin 4s linear infinite;
+}
+
+@keyframes rgb-spin {
+	to {
+		rotate: 360deg;
+	}
+}
+
+.rgb-dock {
+	inset: -1px;
+	padding: 2px;
+	z-index: 1;
+}
+
+/* Underglow: the dock's ring, blurred after masking so it fades both ways. */
+.rgb-glow {
+	position: absolute;
+	inset: -1px;
+	border-radius: inherit;
+	z-index: -1;
+	filter: blur(10px);
+	opacity: 1;
+	pointer-events: none;
+}
+
+.rgb-glow-ring {
+	padding: 5px;
+}
+
+.rgb-island {
+	padding: 1.25px;
+	z-index: 3;
+	opacity: 0.9;
+}
+
+.rgb-window {
+	z-index: 50;
+	padding: 1.5px;
+}
+
+/* Reduced motion: keep the colours, drop the spin. */
+@media (prefers-reduced-motion: reduce) {
+	.rgb-spin {
+		animation: none;
+	}
+}
+
+/* Control Center's RGB tile lights up in the colours it switches on. */
+.pinnedSetting[title="RGB lighting"] .settingsIcon.enabled {
+	background: conic-gradient(
+		#ff1f5a,
+		#ff8a00,
+		#ffe600,
+		#3dff6e,
+		#00e5ff,
+		#2b6bff,
+		#b400ff,
+		#ff1f5a
+	) !important;
+}
+
+.pinnedSetting[title="RGB lighting"] .settingsIcon.enabled span {
+	color: #fff !important;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}

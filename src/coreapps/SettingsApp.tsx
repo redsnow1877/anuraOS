@@ -722,6 +722,29 @@ class SettingsApp extends App {
 								}}
 							/>
 							<SettingSwitch
+								title="RGB lighting"
+								setting="aether.rgb"
+								callback={() => {
+									try {
+										AetherRGB.sync();
+									} catch {
+										/* RGBMode.js may be absent in a trimmed build */
+									}
+								}}
+							/>
+							<SettingSlider
+								title="RGB speed"
+								setting="aether.rgb.speed"
+								fallback={0.45}
+								callback={() => {
+									try {
+										if (AetherRGB.on) AetherRGB.sync();
+									} catch {
+										/* as above */
+									}
+								}}
+							/>
+							<SettingSwitch
 								title="Custom cursor"
 								setting="custom-cursor"
 								callback={() => {
