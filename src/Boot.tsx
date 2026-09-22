@@ -4,6 +4,44 @@ const channel = new BroadcastChannel("tab");
 channel.postMessage("newtab");
 let activetab = true;
 let splashToRemove: HTMLElement | null = null;
+
+/*
+ * Boot phases are marked with the User Timing API, so they show up as named
+ * markers in DevTools' Performance panel and in
+ * performance.getEntriesByType("mark") — zero cost when nobody is looking.
+ */
+function bootMark(phase: string) {
+	try {
+		performance.mark("aether:" + phase);
+	} catch {
+		/* User Timing is best-effort */
+	}
+}
+
+/*
+ * The splash used to leave on two fixed timers: boot waited 500ms (1500ms on
+ * first run) before even starting to build the desktop, then hid the splash
+ * 350ms after that whether or not the desktop was ready. Now it leaves when
+ * the desktop (or OOBE) is actually on screen, with a minimum visible time so
+ * a fast boot still reads as a deliberate transition rather than a flash.
+ */
+let splashShownAt = 0;
+let splashDismissed = false;
+function dismissSplash(minVisibleMs = 350) {
+	if (splashDismissed) return;
+	splashDismissed = true;
+	const wait = Math.max(0, splashShownAt + minVisibleMs - performance.now());
+	setTimeout(() => {
+		splashToRemove?.classList.add("hide");
+		bootMark("splash-hidden");
+		setTimeout(() => {
+			bootsplash.remove();
+			bootsplashMobile.remove();
+			gangstaBootsplash.remove();
+			TNBootSplash.remove();
+		}, 550);
+	}, wait);
+}
 channel.addEventListener("message", (msg) => {
 	if (msg.data === "newtab" && activetab) {
 		// if there's a previously registered tab that can read the message, tell the other tab to kill itself
@@ -91,6 +129,7 @@ let anura: Anura;
 // global
 
 window.addEventListener("load", async () => {
+	bootMark("boot-start");
 	const swShared: any = {
 		test: true,
 	};
@@ -107,14 +146,17 @@ window.addEventListener("load", async () => {
 		bootStrapFs = (await LocalFS.newRootOPFS()) as any;
 	}
 	try {
-		conf = await (await fetch("/config.json")).json();
-		milestone = await (await fetch("/MILESTONE")).text();
+		// Independent requests — fetch them together.
+		[conf, milestone] = await Promise.all([
+			fetch("/config.json").then((r) => r.json()),
+			fetch("/MILESTONE").then((r) => r.text()),
+		]);
 
-		console.debug("writing config??");
-		await bootStrapFs.promises.writeFile(
-			"/config_cached.json",
-			JSON.stringify(conf),
-		);
+		// The cached copy only matters for a later offline boot, so this one
+		// doesn't need to hold up the current boot.
+		bootStrapFs.promises
+			.writeFile("/config_cached.json", JSON.stringify(conf))
+			.catch((e: unknown) => console.warn("config cache write failed", e));
 	} catch (e) {
 		conf = JSON.parse(
 			new TextDecoder().decode(
@@ -123,7 +165,9 @@ window.addEventListener("load", async () => {
 		);
 	}
 
+	bootMark("config");
 	anura = await Anura.new(conf);
+	bootMark("anura-ready");
 	if (bootStrapFs instanceof LocalFS) {
 		anura.settings.cache["bootFromOPFS"] = true;
 	} else {
@@ -148,11 +192,18 @@ window.addEventListener("load", async () => {
 		}
 	}
 
-	console.log(splashToRemove);
+	splashShownAt = performance.now();
+	bootMark("splash-shown");
 
 	swShared.anura = anura;
 	swShared.sh = new anura.fs.Shell();
 	async function initComlink() {
+		// On a first visit the page isn't controlled until the worker claims
+		// it; the "controllerchange" listener below calls this again then.
+		// Without the guard, the eager call threw an unhandled TypeError on
+		// every first boot.
+		const controller = navigator.serviceWorker.controller;
+		if (!controller) return;
 		const { port1, port2 } = new MessageChannel();
 
 		const msg = {
@@ -162,9 +213,9 @@ window.addEventListener("load", async () => {
 
 		comlink.expose(swShared, port1);
 
-		navigator.serviceWorker.controller!.postMessage(msg, [port2]);
+		controller.postMessage(msg, [port2]);
 		if (swShared.anura)
-			navigator.serviceWorker.controller!.postMessage({
+			controller.postMessage({
 				anura_target: "anura.nohost.set",
 			});
 	}
@@ -173,6 +224,7 @@ window.addEventListener("load", async () => {
 
 	await navigator.serviceWorker.register("/anura-sw.js");
 	initComlink();
+	bootMark("sw-registered");
 
 	navigator.serviceWorker.addEventListener("message", (event) => {
 		if (event.data.anura_target === "anura.sw.reinit") initComlink(); // this could accidentally be run twice but realistically there aren't any consequences for doing so
@@ -439,23 +491,13 @@ window.addEventListener("load", async () => {
 		anura.settings.set("handler-migration-complete", true);
 	}
 
-	setTimeout(
-		() => {
-			setTimeout(() => {
-				if (splashToRemove) {
-					splashToRemove.classList.add("hide");
-				}
-			}, 350); // give the taskbar time to init
-			setTimeout(() => {
-				bootsplash.remove();
-				bootsplashMobile.remove();
-				gangstaBootsplash.remove();
-			}, 550);
-			anura.logger.debug("boot completed");
-			document.dispatchEvent(new Event("anura-boot-completed"));
-		},
-		anura.settings.get("oobe-complete") ? 500 : 1500,
-	);
+	bootMark("boot-completed");
+	anura.logger.debug("boot completed");
+	document.dispatchEvent(new Event("anura-boot-completed"));
+
+	// Safety net only: if building the desktop throws, don't leave the user
+	// staring at the splash forever.
+	setTimeout(() => dismissSplash(0), 8000);
 });
 
 document.addEventListener("anura-boot-completed", async () => {
@@ -464,6 +506,9 @@ document.addEventListener("anura-boot-completed", async () => {
 		document.dispatchEvent(new Event("anura-login-completed"));
 	} else {
 		document.body.appendChild(oobeview.element);
+		// First run keeps the splash up a little longer — it's the first
+		// thing anyone ever sees of the system.
+		dismissSplash(1100);
 	}
 });
 
@@ -517,6 +562,17 @@ document.addEventListener("anura-login-completed", async () => {
 			"/assets/wallpaper/bundled_wallpapers/Aether.svg",
 	);
 
+	// Every manifest below is known up front — start all the requests now so
+	// the in-order registration loops only wait on the slowest one.
+	anura.prefetch([
+		...anura.config.libs.map((lib: string) => `${lib}/manifest.json`),
+		...anura.config.apps.flatMap((app: string) => [
+			app,
+			`${app}/manifest.json`,
+		]),
+	]);
+	bootMark("core-apps");
+
 	for (const bin of anura.config.bin) {
 		const path = bin.split("/").slice(-1)[0];
 		try {
@@ -536,6 +592,7 @@ document.addEventListener("anura-login-completed", async () => {
 	for (const app of anura.config.apps) {
 		await anura.registerExternalApp(app);
 	}
+	bootMark("external-apps");
 
 	// Initialize static UI components that utilize anura.ui after loading apps, scripts, libs, so that external apps and libraries can apply overrides.
 	await quickSettings.init();
@@ -559,6 +616,8 @@ document.addEventListener("anura-login-completed", async () => {
 	document.body.appendChild(quickSettings.notificationCenterElement);
 	document.body.appendChild(taskbar.element);
 	document.body.appendChild(alttab.element);
+	bootMark("desktop-mounted");
+	dismissSplash();
 	anura.systray = new Systray();
 	AnuradHelpers.setReady("anura.systray");
 
@@ -580,6 +639,7 @@ document.addEventListener("anura-login-completed", async () => {
 
 	// Initializes apps and libs from userApps/ and userLibs/ and runs any user specified init scripts
 	await bootUserCustomizations();
+	bootMark("user-customizations");
 
 	if (!anura.settings.get("x86-disabled")) {
 		await bootx86();

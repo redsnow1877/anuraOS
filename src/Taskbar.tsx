@@ -283,15 +283,23 @@ class Taskbar {
 	}
 
 	constructor() {
+		// The clock only shows minutes, but ticks every second so a change of
+		// minute (or of the 24-hour setting) lands promptly. Assigning only on
+		// an actual change keeps the other 59 ticks from re-rendering the menu
+		// bar text — each assignment was a style recalc and layout.
 		setInterval(() => {
-			const date = Date.now();
-			this.state.date = this.dateformat.format(date);
-			if (this.timeformat.resolvedOptions().hour12 === false) {
-				this.state.time = this.timeformat.format(date);
-			} else {
-				this.state.time = this.timeformat.format(date);
-			}
+			if (document.hidden) return;
+			const now = Date.now();
+			const date = this.dateformat.format(now);
+			const time = this.timeformat.format(now);
+			if (this.state.date !== date) this.state.date = date;
+			if (this.state.time !== time) this.state.time = time;
 		}, 1000);
+
+		// Dock icon centres are cached per hover; a resize can move them.
+		addEventListener("resize", () => {
+			this.#magnifyCenters = null;
+		});
 
 		addEventListener("online", () => {
 			this.state.net_icon = "wifi";
@@ -371,27 +379,81 @@ class Taskbar {
 	 * Dock magnification. Each icon's scale falls off as a gaussian of its
 	 * horizontal distance from the cursor, which is what gives the dock its
 	 * signature "wave" instead of a stepped hover.
+	 *
+	 * Pointer events are coalesced to one update per frame, and each update
+	 * reads every icon's position before writing any `--mag`. The previous
+	 * version interleaved a getBoundingClientRect() with a style write per
+	 * icon, which forced a fresh style recalc for every icon on every event —
+	 * ~5 recalcs per mouse move across the dock. Writes are also skipped when
+	 * the rounded value hasn't changed, so icons far from the cursor stop
+	 * invalidating style altogether.
 	 */
+	#magnifyX: number | null = null;
+	#magnifyFrame = 0;
+	#magnifyLast = new WeakMap<HTMLElement, string>();
+	/**
+	 * Icon centres, measured once per hover. Magnification is a transform, so
+	 * the layout positions can't move while the pointer is over the dock; the
+	 * cache is dropped on leave, on resize, and whenever the icon set changes.
+	 */
+	#magnifyCenters: { items: HTMLElement[]; centers: number[] } | null = null;
+
 	#magnify(clientX: number | null) {
+		this.#magnifyX = clientX;
+		if (this.#magnifyFrame) return;
+		this.#magnifyFrame = requestAnimationFrame(() => {
+			this.#magnifyFrame = 0;
+			this.#applyMagnify(this.#magnifyX);
+		});
+	}
+
+	#applyMagnify(clientX: number | null) {
 		const dock = document.getElementById("dock");
 		if (!dock) return;
-		if (anura.settings.get("disable-animation")) return;
+		if (clientX !== null && anura.settings.get("disable-animation")) {
+			clientX = null;
+		}
 
-		const items = dock.querySelectorAll<HTMLElement>(
-			".dock-item, #launcher-button",
+		const items = Array.from(
+			dock.querySelectorAll<HTMLElement>(".dock-item, #launcher-button"),
 		);
 		const sigma = Taskbar.MAGNIFY_SIGMA;
 
-		items.forEach((item) => {
-			if (clientX === null) {
-				item.style.setProperty("--mag", "1");
-				return;
+		// Read phase — at most once per hover. Scale is applied with
+		// transform-origin at bottom centre, so an icon's horizontal centre is
+		// stable under magnification and a cached measurement stays valid.
+		let centers: number[] | null = null;
+		if (clientX === null) {
+			this.#magnifyCenters = null;
+		} else {
+			const cached = this.#magnifyCenters;
+			const stale =
+				!cached ||
+				cached.items.length !== items.length ||
+				cached.items.some((item, i) => item !== items[i]);
+			if (stale) {
+				this.#magnifyCenters = {
+					items,
+					centers: items.map((item) => {
+						const rect = item.getBoundingClientRect();
+						return rect.left + rect.width / 2;
+					}),
+				};
 			}
-			const rect = item.getBoundingClientRect();
-			const center = rect.left + rect.width / 2;
-			const d = (clientX - center) / sigma;
-			const mag = 1 + Taskbar.MAGNIFY_PEAK * Math.exp(-d * d);
-			item.style.setProperty("--mag", mag.toFixed(3));
+			centers = this.#magnifyCenters!.centers;
+		}
+
+		// Write phase.
+		items.forEach((item, i) => {
+			let mag = "1";
+			if (centers && clientX !== null) {
+				const d = (clientX - centers[i]!) / sigma;
+				const value = 1 + Taskbar.MAGNIFY_PEAK * Math.exp(-d * d);
+				mag = value < 1.004 ? "1" : value.toFixed(3);
+			}
+			if (this.#magnifyLast.get(item) === mag) return;
+			this.#magnifyLast.set(item, mag);
+			item.style.setProperty("--mag", mag);
 		});
 	}
 

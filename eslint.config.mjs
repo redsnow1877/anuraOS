@@ -73,7 +73,7 @@ export default [
 	},
 	{
 		// Build tooling: Node ESM, not browser code.
-		files: [".github/scripts/**/*.mjs"],
+		files: [".github/scripts/**/*.mjs", "tools/**/*.mjs"],
 		languageOptions: {
 			globals: {
 				...globals.node,

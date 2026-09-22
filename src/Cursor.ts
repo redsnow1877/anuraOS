@@ -263,6 +263,7 @@ class AetherCursor {
 		this.px = e.clientX;
 		this.py = e.clientY;
 		this.lastMoveAt = performance.now();
+		this.watchdogChecked = false;
 
 		if (this.suppressed) {
 			// First move back into our document — teleport, don't fly in.
@@ -385,12 +386,19 @@ class AetherCursor {
 	 * over an iframe, so a stale timestamp plus an iframe under the last known
 	 * position is our signal to get out of the way.
 	 */
+	private watchdogChecked = false;
+
 	private startWatchdog() {
 		if (this.watchdog) return;
 		this.watchdog = window.setInterval(() => {
-			if (!this.active || document.hidden) return;
+			if (!this.active || document.hidden || this.suppressed) return;
+			// One hit-test per stillness is enough: until the next move, the
+			// answer can only change if the pointer went into a frame, and that
+			// is exactly the first check after it goes stale.
+			if (this.watchdogChecked) return;
 			const stale = performance.now() - this.lastMoveAt > 140;
 			if (!stale) return;
+			this.watchdogChecked = true;
 			let over: Element | null = null;
 			try {
 				over = document.elementFromPoint(this.px, this.py);

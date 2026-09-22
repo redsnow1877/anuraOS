@@ -195,7 +195,9 @@ tsc:
 	
 css: src/*.css
 	# shopt -s globstar; cat src/**/*.css | npx postcss --use autoprefixer -o build/bundle.css
-	shopt -s globstar; cat src/**/*.css > build/bundle.css
+	shopt -s globstar; cat src/**/*.css > build/bundle.src.css
+	node tools/minify-css.mjs build/bundle.src.css build/bundle.css
+	rm build/bundle.src.css
 lint:
 	npx prettier -w --log-level error .
 	npx eslint . --fix

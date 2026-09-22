@@ -178,6 +178,17 @@ class WMWindow extends EventTarget implements Process {
 
 	mouseover = false;
 
+	/**
+	 * Owns every listener this window registers on `document`/`window`.
+	 * Aborted in close(): before this, each closed window left its pointermove,
+	 * pointerup, blur and resize handlers attached for the rest of the session,
+	 * so the cost of every click grew with every window ever opened.
+	 */
+	#globalListeners = new AbortController();
+
+	/** Size captured at drag start, so moves don't force a layout to re-read it. */
+	#dragSize = { w: 0, h: 0 };
+
 	get title() {
 		if (!this.state.title && this.app) {
 			return this.app.name;
@@ -290,6 +301,10 @@ class WMWindow extends EventTarget implements Process {
 							this.originalTop = this.element.offsetTop;
 							this.mouseLeft = evt.clientX;
 							this.mouseTop = evt.clientY;
+							this.#dragSize = {
+								w: this.element.clientWidth,
+								h: this.element.clientHeight,
+							};
 						}
 					}}
 					on:pointerup={(evt: PointerEvent) => {
@@ -303,14 +318,11 @@ class WMWindow extends EventTarget implements Process {
 					on:dblclick={() => {
 						this.maximize();
 					}}
-					on:pointermove={(evt: PointerEvent) => {
-						// do the dragging during the mouse move
-
-						if (this.dragging) {
-							this.handleDrag(evt);
-						}
-					}}
 				>
+					{/* No pointermove here: the document-level listener registered in
+					    the constructor already receives every move (this one bubbles
+					    to it), so handling it on the titlebar too ran each drag step
+					    twice. */}
 					<div class="window-controls">
 						<button
 							class="windowButton close"
@@ -370,57 +382,75 @@ class WMWindow extends EventTarget implements Process {
 				.replace("px", ""),
 		);
 
-		document.addEventListener("pointermove", (evt: PointerEvent) => {
-			if (this.dragging) {
-				this.handleDrag(evt);
-			}
-		});
+		const signal = this.#globalListeners.signal;
+
+		document.addEventListener(
+			"pointermove",
+			(evt: PointerEvent) => {
+				if (this.dragging) {
+					this.handleDrag(evt);
+				}
+			},
+			{ signal },
+		);
 
 		// a very elegant way of detecting if the user clicked on an iframe inside of the window. credit to https://gist.github.com/jaydson/1780598
-		window.addEventListener("blur", () => {
-			if (this.mouseover) {
-				this.focus();
-			}
-		});
+		window.addEventListener(
+			"blur",
+			() => {
+				if (this.mouseover) {
+					this.focus();
+				}
+			},
+			{ signal },
+		);
 
-		window.addEventListener("resize", async () => {
-			if (this.maximized || this.snapped) {
-				this.remaximize();
-			}
-		});
+		window.addEventListener(
+			"resize",
+			async () => {
+				if (this.maximized || this.snapped) {
+					this.remaximize();
+				}
+			},
+			{ signal },
+		);
 
 		// finish the dragging when release the mouse button
-		document.addEventListener("pointerup", (evt: PointerEvent) => {
-			reactivateFrames();
+		document.addEventListener(
+			"pointerup",
+			(evt: PointerEvent) => {
+				reactivateFrames();
 
-			const snapPreview = document.getElementById("snapPreview");
+				const snapPreview = document.getElementById("snapPreview");
 
-			if (snapPreview) {
-				snapPreview.style.opacity = "0";
-				setTimeout(() => {
-					snapPreview.remove();
-				}, 200);
-			}
-
-			evt = evt || window.event;
-
-			if (this.dragging) {
-				this.handleDrag(evt);
-
-				if (this.clampWindows) {
-					const forceX = this.dragForceX;
-					const forceY = this.dragForceY;
-					this.dragForceX = 0;
-					this.dragForceY = 0;
-					const snapDirection = this.getSnapDirection(forceX, forceY);
-					if (snapDirection) {
-						this.snap(snapDirection);
-					}
+				if (snapPreview) {
+					snapPreview.style.opacity = "0";
+					setTimeout(() => {
+						snapPreview.remove();
+					}, 200);
 				}
 
-				this.dragging = false;
-			}
-		});
+				evt = evt || window.event;
+
+				if (this.dragging) {
+					this.handleDrag(evt);
+
+					if (this.clampWindows) {
+						const forceX = this.dragForceX;
+						const forceY = this.dragForceY;
+						this.dragForceX = 0;
+						this.dragForceY = 0;
+						const snapDirection = this.getSnapDirection(forceX, forceY);
+						if (snapDirection) {
+							this.snap(snapDirection);
+						}
+					}
+
+					this.dragging = false;
+				}
+			},
+			{ signal },
+		);
 
 		const resizers = [
 			//@ts-ignore
@@ -462,26 +492,32 @@ class WMWindow extends EventTarget implements Process {
 				original_mouse_y = e.pageY;
 				window.addEventListener("pointermove", resize);
 
-				window.addEventListener("pointerup", () => {
-					reactivateFrames();
-					window.removeEventListener("pointermove", resize);
-					if (!sentResize) {
-						this.dispatchEvent(
-							new MessageEvent("resize", {
-								data: {
-									width: this.width,
-									height: this.height,
-								},
-							}),
-						);
-						// TODO: Sometimes attempting to resize just does nothing?
-						// This if statement blocks against an error being spit out, but there is a bug here
-						if (typeof this.onresize === "function") {
-							this.onresize(this.width, this.height);
-							sentResize = true;
+				// `once`: this used to be added on every resize start and never
+				// removed, so the listeners piled up for the whole session.
+				window.addEventListener(
+					"pointerup",
+					() => {
+						reactivateFrames();
+						window.removeEventListener("pointermove", resize);
+						if (!sentResize) {
+							this.dispatchEvent(
+								new MessageEvent("resize", {
+									data: {
+										width: this.width,
+										height: this.height,
+									},
+								}),
+							);
+							// TODO: Sometimes attempting to resize just does nothing?
+							// This if statement blocks against an error being spit out, but there is a bug here
+							if (typeof this.onresize === "function") {
+								this.onresize(this.width, this.height);
+								sentResize = true;
+							}
 						}
-					}
-				});
+					},
+					{ once: true },
+				);
 			});
 
 			const resize = (e: PointerEvent) => {
@@ -621,13 +657,22 @@ class WMWindow extends EventTarget implements Process {
 		const offsetY = this.originalTop + clientY! - this.mouseTop;
 
 		if (this.clampWindows) {
+			// Size is fixed for the duration of a drag, so it's read once at
+			// pointerdown instead of here — reading it after the previous
+			// move's left/top write forced a synchronous layout per event.
+			if (!this.#dragSize.w) {
+				this.#dragSize = {
+					w: this.element.clientWidth,
+					h: this.element.clientHeight,
+				};
+			}
 			const newOffsetX = Math.min(
-				window.innerWidth - this.element.clientWidth,
+				window.innerWidth - this.#dragSize.w,
 				Math.max(0, offsetX),
 			);
 
 			const newOffsetY = Math.min(
-				window.innerHeight - WM_BOTTOM_INSET - this.element.clientHeight,
+				window.innerHeight - WM_BOTTOM_INSET - this.#dragSize.h,
 				Math.max(WM_TOP_INSET, offsetY),
 			);
 
@@ -675,6 +720,8 @@ class WMWindow extends EventTarget implements Process {
 			this.originalTop = this.element.offsetTop;
 			this.mouseLeft = clientX;
 			this.mouseTop = clientY;
+			// Restoring changes the window's size mid-drag.
+			this.#dragSize = { w: 0, h: 0 };
 		}
 	}
 
@@ -698,8 +745,10 @@ class WMWindow extends EventTarget implements Process {
 		this.element.classList.add("opacity0");
 		(globalThis as any).aetherSound?.play?.("close");
 		playOnce(this.element, "wm-close");
+		this.dragging = false;
 		setTimeout(() => {
 			this.element.remove();
+			this.#globalListeners.abort();
 			// Hand focus (and the menu bar title) to whatever is on top now.
 			focusTopmostWindow();
 			// TODO, Remove this and make it an event
@@ -1352,18 +1401,24 @@ let AliceWM = {
 	},
 };
 
+/*
+ * Every window's pointerup calls reactivateFrames(), so with N windows each
+ * click walked every iframe N times writing inline styles. Tracking whether
+ * frames are actually deactivated makes all but the first call a no-op.
+ */
+let framesDeactivated = false;
 function deactivateFrames() {
-	let i;
+	framesDeactivated = true;
 	const frames = document.getElementsByTagName("iframe");
-	for (i = 0; i < frames.length; ++i) {
+	for (let i = 0; i < frames.length; ++i) {
 		frames[i]!.style.pointerEvents = "none";
 	}
 }
 function reactivateFrames() {
-	let i;
-
+	if (!framesDeactivated) return;
+	framesDeactivated = false;
 	const frames = document.getElementsByTagName("iframe");
-	for (i = 0; i < frames.length; ++i) {
+	for (let i = 0; i < frames.length; ++i) {
 		frames[i]!.style.pointerEvents = "auto";
 	}
 }

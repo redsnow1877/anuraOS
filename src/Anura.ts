@@ -122,11 +122,41 @@ class Anura {
 		}
 		return app;
 	}
+	/**
+	 * Requests started ahead of time by prefetch(), consumed (once) by the
+	 * registration methods below. Boot registers libs and apps strictly in
+	 * order — the order decides Launchpad order — but each one used to wait
+	 * for its own network round-trip before the next could start. Prefetching
+	 * lets all of those round-trips overlap while registration stays ordered.
+	 */
+	#prefetched = new Map<string, Promise<Response>>();
+
+	/** Start fetching `urls` now; a later #fetch() of the same URL reuses it. */
+	prefetch(urls: string[]) {
+		for (const url of urls) {
+			if (this.#prefetched.has(url)) continue;
+			const request = fetch(url);
+			// Mark as handled: a failed prefetch should surface where the
+			// response is actually used, not as an unhandled rejection.
+			request.catch(() => {});
+			this.#prefetched.set(url, request);
+		}
+	}
+
+	#fetch(url: string): Promise<Response> {
+		const pending = this.#prefetched.get(url);
+		if (pending) {
+			this.#prefetched.delete(url);
+			return pending;
+		}
+		return fetch(url);
+	}
+
 	async registerExternalApp(
 		source: string,
 	): Promise<ExternalApp | ShortcutApp> {
 		try {
-			const shortcut = await fetch(source);
+			const shortcut = await this.#fetch(source);
 			if (shortcut.status === 200) {
 				const shortcutData = await shortcut.json();
 				if (shortcutData instanceof Array) {
@@ -146,7 +176,7 @@ class Anura {
 			// Ignore errors, its not a shortcut
 		}
 
-		const resp = await fetch(`${source}/manifest.json`);
+		const resp = await this.#fetch(`${source}/manifest.json`);
 		const manifest = (await resp.json()) as AppManifest;
 		if (
 			manifest.type === "auto" ||
@@ -201,7 +231,7 @@ class Anura {
 		return lib;
 	}
 	async registerExternalLib(source: string): Promise<ExternalLib> {
-		const resp = await fetch(`${source}/manifest.json`);
+		const resp = await this.#fetch(`${source}/manifest.json`);
 		const manifest = await resp.json();
 		const lib = new ExternalLib(manifest, source);
 		await anura.registerLib(lib); // This will let us capture error messages

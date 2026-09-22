@@ -154,7 +154,15 @@ class Calendar {
 		opacity: 1;
 		z-index: 9998;
 		transform: scale(1) translateY(0);
-		filter: blur(0);
+		/* "none", not blur(0): an at-rest filter keeps an effect node alive for
+		   nothing. It still interpolates from the hidden state's blur. */
+		filter: none;
+		visibility: visible;
+		transition:
+			opacity 0.16s var(--ease-decelerate, ease-out),
+			transform 0.3s var(--ease-spring-soft, ease-out),
+			filter 0.24s var(--ease-decelerate, ease-out),
+			visibility 0s;
 	`;
 
 	hide = css`
@@ -163,6 +171,14 @@ class Calendar {
 		pointer-events: none;
 		transform: scale(0.94) translateY(-6px);
 		filter: blur(var(--motion-blur-soft, 6px));
+		/* Drop out of rendering once the fade finishes: at opacity 0 a closed
+		   panel still kept its backdrop-filter layer alive and hit-testable. */
+		visibility: hidden;
+		transition:
+			opacity 0.16s var(--ease-decelerate, ease-out),
+			transform 0.3s var(--ease-spring-soft, ease-out),
+			filter 0.24s var(--ease-decelerate, ease-out),
+			visibility 0s linear 0.3s;
 	`;
 
 	clickoffChecker: HTMLDivElement;
