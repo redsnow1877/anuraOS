@@ -1785,13 +1785,18 @@ class WidgetHost {
 							</div>
 						) as HTMLElement)
 					: ""}
-				<div class="widget-grid">{this.widgets.map((w) => this.card(w))}</div>
+				<div class="widget-grid">
+					{this.widgets.map((w) => WidgetHost.card(w))}
+				</div>
 			</div>
 		) as HTMLElement;
 	}
 
-	/** Build one card. A throwing widget yields a placeholder, not a crash. */
-	private card(w: AetherWidget): HTMLElement {
+	/**
+	 * Build one card. A throwing widget yields a placeholder, not a crash.
+	 * Static so the desktop widget layer can reuse it.
+	 */
+	static card(w: AetherWidget): HTMLElement {
 		let body: HTMLElement;
 		try {
 			body = w.render();

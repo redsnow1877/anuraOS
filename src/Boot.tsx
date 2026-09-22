@@ -691,6 +691,14 @@ document.addEventListener("anura-login-completed", async () => {
 
 		AetherDND.sync();
 		AetherNightShift.init();
+		AetherDesktopWidgets.init();
+		AetherCommands.register({
+			id: "widgets",
+			title: "Add Widgets to Desktop",
+			icon: "widgets",
+			keywords: ["widget", "desktop", "clock", "weather"],
+			run: () => AetherDesktopWidgets.openPicker(),
+		});
 
 		const shot = (combo: string, description: string, fn: () => void) =>
 			AetherShortcuts.register({
@@ -847,6 +855,11 @@ document.addEventListener("anura-login-completed", async () => {
 
 	const desktopCtx = new ContextMenu(true); // we are init'ing before anura so this is needed
 
+	desktopCtx.addItem(
+		"Widgets…",
+		() => (globalThis as any).AetherDesktopWidgets?.openPicker(),
+		"widgets",
+	);
 	desktopCtx.addItem(
 		"Set wallpaper & style",
 		() => {

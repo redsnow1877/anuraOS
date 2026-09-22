@@ -344,6 +344,14 @@ class Launcher {
 				this.widgetHost = null;
 				return "";
 			}
+			try {
+				// Pin buttons: send a widget from the rail to the desktop.
+				AetherDesktopWidgets.decorateRail(this.widgetHost.element, () =>
+					this.hide(),
+				);
+			} catch {
+				/* DesktopWidgets.js is optional */
+			}
 			return this.widgetHost.element;
 		} catch (e) {
 			console.warn("widget rail unavailable", e);
