@@ -23,7 +23,8 @@ type HotCornerAction =
 	| "launchpad"
 	| "spotlight"
 	| "lock-screen"
-	| "control-center";
+	| "control-center"
+	| "screensaver";
 
 const AETHER_HOT_CORNER_ACTIONS: { id: HotCornerAction; label: string }[] = [
 	{ id: "none", label: "—" },
@@ -33,6 +34,7 @@ const AETHER_HOT_CORNER_ACTIONS: { id: HotCornerAction; label: string }[] = [
 	{ id: "spotlight", label: "Spotlight" },
 	{ id: "lock-screen", label: "Lock Screen" },
 	{ id: "control-center", label: "Control Center" },
+	{ id: "screensaver", label: "Screen Saver" },
 ];
 
 class AetherMissionControl {
@@ -492,6 +494,8 @@ class AetherHotCorners {
 				return AetherCommands.run("lock-screen");
 			case "control-center":
 				return quickSettings?.toggle?.();
+			case "screensaver":
+				return (globalThis as any).AetherScreensaver?.start();
 		}
 	}
 

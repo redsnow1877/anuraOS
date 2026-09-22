@@ -1,0 +1,28 @@
+/* ==========================================================================
+   Aether — screen savers (Screensaver.ts)
+   ========================================================================== */
+
+#screensaver {
+	position: fixed;
+	inset: 0;
+	z-index: 2147483050; /* over the lock screen, under Night Shift and dimming */
+	background: #000;
+	cursor: none;
+	opacity: 0;
+	transition: opacity 0.9s ease;
+}
+
+#screensaver.is-shown {
+	opacity: 1;
+}
+
+#screensaver canvas {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+
+body.saver-on #aether-cursor {
+	opacity: 0 !important;
+}

@@ -214,6 +214,11 @@ class AetherLockScreen {
 
 	/* ---- inactivity ---------------------------------------------------- */
 
+	/** Milliseconds since the last input anywhere (the screensaver uses it). */
+	static get idleFor(): number {
+		return Date.now() - this.#lastActivity;
+	}
+
 	static get idleMinutes(): number {
 		try {
 			return Number(anura.settings.get(this.IDLE_KEY)) || 0;

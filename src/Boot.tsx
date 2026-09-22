@@ -696,6 +696,7 @@ document.addEventListener("anura-login-completed", async () => {
 		AetherMusic.init();
 		AetherIsland.init();
 		AetherRGB.init();
+		AetherScreensaver.init();
 		AetherDesktopWidgets.init();
 		AetherCommands.register({
 			id: "widgets",

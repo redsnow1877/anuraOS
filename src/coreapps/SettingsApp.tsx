@@ -338,6 +338,76 @@ const HotCornerPicker: Component<Record<string, never>> = function () {
 };
 
 /** Auto-lock timeout and the (privacy-only) passcode. */
+const ScreensaverSettings: Component<
+	Record<string, never>,
+	Record<string, never>
+> = function () {
+	const mode = (
+		<select
+			class="aether-select"
+			aria-label="Screen saver"
+			on:change={(e: Event) =>
+				anura.settings.set(
+					AetherScreensaver.MODE_KEY,
+					(e.target as HTMLSelectElement).value,
+				)
+			}
+		>
+			<option value="off">Off</option>
+			<option value="random">Shuffle</option>
+			{Object.entries(AETHER_SAVERS).map(([id, s]) => (
+				<option value={id}>{s.name}</option>
+			))}
+		</select>
+	) as HTMLSelectElement;
+	mode.value = AetherScreensaver.mode;
+	const delay = (
+		<select
+			class="aether-select"
+			aria-label="Start screen saver after"
+			on:change={(e: Event) =>
+				anura.settings.set(
+					AetherScreensaver.DELAY_KEY,
+					Number((e.target as HTMLSelectElement).value),
+				)
+			}
+		>
+			<option value="1">After 1 minute</option>
+			<option value="2">After 2 minutes</option>
+			<option value="5">After 5 minutes</option>
+			<option value="10">After 10 minutes</option>
+			<option value="20">After 20 minutes</option>
+			<option value="30">After 30 minutes</option>
+		</select>
+	) as HTMLSelectElement;
+	delay.value = String(AetherScreensaver.minutes);
+
+	return (
+		<div>
+			<div class="settings-item">
+				<span class="settings-item-name">Screen saver</span>
+				<div class="settings-item-actions">
+					{mode}
+					<button
+						class="matter-button-outlined"
+						on:click={() =>
+							AetherScreensaver.start(
+								mode.value === "off" ? "random" : mode.value,
+							)
+						}
+					>
+						Preview
+					</button>
+				</div>
+			</div>
+			<div class="settings-item">
+				<span class="settings-item-name">Start screen saver</span>
+				{delay}
+			</div>
+		</div>
+	);
+};
+
 const LockSettings: Component<
 	Record<string, never>,
 	{ hasPin: boolean }
@@ -779,6 +849,7 @@ class SettingsApp extends App {
 						<h3 class="settings-category-name">Desktop</h3>
 						<div class="settings-group">
 							<HotCornerPicker />
+							<ScreensaverSettings />
 							<LockSettings />
 							<NightShiftSettings />
 						</div>
