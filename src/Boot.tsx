@@ -550,6 +550,7 @@ document.addEventListener("anura-login-completed", async () => {
 	anura.registerApp(new ClockApp());
 	anura.registerApp(new SketchApp());
 	anura.registerApp(new Game2048App());
+	anura.registerApp(new PhotosApp());
 
 	const explore = new ExploreApp();
 	anura.registerApp(explore);
@@ -690,6 +691,48 @@ document.addEventListener("anura-login-completed", async () => {
 
 		AetherDND.sync();
 		AetherNightShift.init();
+
+		const shot = (combo: string, description: string, fn: () => void) =>
+			AetherShortcuts.register({
+				combo,
+				group: "Screenshots",
+				description,
+				handler: fn,
+			});
+		shot("Ctrl+Shift+3", "Capture the screen", () =>
+			AetherScreenshot.capture(),
+		);
+		shot("Ctrl+Shift+4", "Capture a region", () =>
+			AetherScreenshot.captureRegion(),
+		);
+		shot("Ctrl+Shift+5", "Start / stop screen recording", () =>
+			AetherScreenshot.toggleRecording(),
+		);
+		AetherCommands.register({
+			id: "screenshot",
+			title: "Take Screenshot",
+			icon: "screenshot_monitor",
+			keywords: ["capture", "screen", "print screen", "snapshot"],
+			shortcut: "Ctrl+Shift+3",
+			run: () => setTimeout(() => AetherScreenshot.capture(), 250),
+		});
+		AetherCommands.register({
+			id: "screenshot-region",
+			title: "Capture Region",
+			icon: "screenshot_region",
+			keywords: ["screenshot", "crop", "snip", "area"],
+			shortcut: "Ctrl+Shift+4",
+			run: () => setTimeout(() => AetherScreenshot.captureRegion(), 250),
+		});
+		AetherCommands.register({
+			id: "record",
+			title: () =>
+				AetherScreenshot.recording ? "Stop Recording" : "Record Screen",
+			icon: "screen_record",
+			keywords: ["video", "capture", "recording"],
+			shortcut: "Ctrl+Shift+5",
+			run: () => setTimeout(() => AetherScreenshot.toggleRecording(), 250),
+		});
 		AetherShortcuts.register({
 			combo: "Ctrl+/",
 			group: "System",

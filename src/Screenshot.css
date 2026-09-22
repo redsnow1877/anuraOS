@@ -1,0 +1,124 @@
+/* ==========================================================================
+   Aether — screenshot flash, region picker, thumbnail, recording indicator
+   ========================================================================== */
+
+#shot-flash {
+	position: fixed;
+	inset: 0;
+	z-index: 2147483200;
+	background: #fff;
+	pointer-events: none;
+	animation: shot-flash 0.5s var(--ease-out) forwards;
+}
+
+@keyframes shot-flash {
+	0% {
+		opacity: 0.85;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+#shot-region {
+	position: fixed;
+	inset: 0;
+	z-index: 2147483150;
+	cursor: crosshair;
+	user-select: none;
+}
+
+#shot-region img {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	filter: brightness(0.62);
+}
+
+.shot-box {
+	position: absolute;
+	display: none;
+	outline: 1px solid rgba(255, 255, 255, 0.9);
+	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+	/* Punch the selection back up to full brightness. */
+	backdrop-filter: brightness(1.61);
+	-webkit-backdrop-filter: brightness(1.61);
+}
+
+.shot-size {
+	position: absolute;
+	display: none;
+	padding: 3px 8px;
+	border-radius: 6px;
+	font-size: 11.5px;
+	font-variant-numeric: tabular-nums;
+	color: #fff;
+	background: rgba(0, 0, 0, 0.6);
+}
+
+.shot-hint {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	padding: 10px 16px;
+	border-radius: 12px;
+	font-size: 14px;
+	color: #fff;
+	background: rgba(0, 0, 0, 0.55);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	pointer-events: none;
+}
+
+.shot-thumb {
+	position: fixed;
+	right: 20px;
+	bottom: calc(var(--dock-reserve, 82px) + 14px);
+	z-index: 9900;
+	width: 190px;
+	padding: 0;
+	border: none;
+	border-radius: 10px;
+	overflow: hidden;
+	cursor: pointer;
+	box-shadow:
+		0 0 0 1px rgba(255, 255, 255, 0.35),
+		0 14px 40px rgba(0, 0, 0, 0.55);
+	transform: translateX(calc(100% + 40px));
+	transition: transform 0.45s
+		var(--ease-spring-soft, cubic-bezier(0.34, 1.3, 0.64, 1));
+}
+
+.shot-thumb.is-shown {
+	transform: none;
+}
+
+.shot-thumb img {
+	display: block;
+	width: 100%;
+}
+
+.rec-indicator {
+	gap: 6px;
+	color: #ff6b61 !important;
+	font-variant-numeric: tabular-nums;
+	font-size: 12.5px;
+}
+
+.rec-dot {
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	background: #ff453a;
+	box-shadow: 0 0 8px #ff453a;
+	animation: rec-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes rec-pulse {
+	50% {
+		opacity: 0.35;
+	}
+}

@@ -55,7 +55,8 @@ type AetherSoundName =
 	| "error"
 	| "launchpadOpen"
 	| "launchpadClose"
-	| "boot";
+	| "boot"
+	| "shutter";
 
 interface AetherToneOptions {
 	/** Start time, in seconds, relative to the sound's own t0. */
@@ -491,6 +492,35 @@ class AetherSound {
 	 * OfflineAudioContext for testing.
 	 */
 	private static readonly RECIPES: Record<AetherSoundName, AetherRecipe> = {
+		// Camera shutter: a bright mechanical click, the mirror slap ~70ms
+		// later, and a soft body thump under both.
+		shutter(ctx, bus, t, s) {
+			s.noise(ctx, bus, t, { dur: 0.03, gain: 0.09, cutoff: 6500 });
+			s.tone(ctx, bus, t, {
+				freq: 180,
+				to: 90,
+				type: "sine",
+				gain: 0.08,
+				attack: 0.002,
+				decay: 0.07,
+			});
+			s.noise(ctx, bus, t, {
+				at: 0.072,
+				dur: 0.045,
+				gain: 0.07,
+				cutoff: 4200,
+			});
+			s.tone(ctx, bus, t, {
+				at: 0.072,
+				freq: 140,
+				to: 70,
+				type: "sine",
+				gain: 0.06,
+				attack: 0.002,
+				decay: 0.09,
+			});
+		},
+
 		// Barely-there tick. Two very short partials plus a filtered transient
 		// so it has a "surface" without being a beep.
 		click(ctx, bus, t, s) {
