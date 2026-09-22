@@ -114,14 +114,14 @@ class QuickSettings {
 
 			.quickSettingsPinned {
 				display: grid;
-				grid-template-columns: 1fr 1fr 1fr;
-				grid-template-rows: 1fr 1fr;
+				grid-template-columns: repeat(4, 1fr);
+				grid-auto-rows: auto;
 
 				.pinnedSetting {
 					display: flex;
 					flex-direction: column;
 					align-items: center;
-					gap: 1em;
+					gap: 0.5em;
 					padding: 0.5em;
 
 					.settingsIcon {
@@ -176,9 +176,8 @@ class QuickSettings {
 				display: flex;
 				flex-direction: row;
 				gap: 1em;
-				align-items: center;
+				align-items: flex-start;
 				flex-grow: 1;
-				/* Currently empty */
 			}
 			.dateContainer {
 				height: 1em;
@@ -422,7 +421,15 @@ class QuickSettings {
 							return settingsElements;
 						})}
 					</div>
-					<div class={["sliderContainer"]}></div>
+					<div class={["sliderContainer"]}>
+						{(() => {
+							try {
+								return aetherControlSliders();
+							} catch {
+								return "";
+							}
+						})()}
+					</div>
 					<div class={["dateContainer"]}>
 						<span>{use(this.state.date)}</span>
 					</div>

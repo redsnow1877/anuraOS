@@ -116,6 +116,116 @@ class AetherNightShift {
 	}
 }
 
+/**
+ * Brightness: a black layer over everything, like Night Shift a single
+ * composited layer with pointer-events: none. Floored at 30% so it's
+ * impossible to dim the screen into total darkness and lose the slider.
+ */
+class AetherBrightness {
+	static readonly KEY = "aether.brightness";
+	static readonly MIN = 0.3;
+	static #el: HTMLElement | null = null;
+
+	static get value(): number {
+		try {
+			const v = Number(anura.settings.get(this.KEY));
+			return Number.isFinite(v) && v > 0
+				? Math.max(this.MIN, Math.min(1, v))
+				: 1;
+		} catch {
+			return 1;
+		}
+	}
+
+	static set(v: number) {
+		anura.settings.set(this.KEY, Math.max(this.MIN, Math.min(1, v)));
+		this.sync();
+	}
+
+	static sync() {
+		if (!this.#el) {
+			this.#el = document.createElement("div");
+			this.#el.id = "brightness-dim";
+			this.#el.setAttribute("aria-hidden", "true");
+			document.body.appendChild(this.#el);
+		}
+		this.#el.style.opacity = String(1 - this.value);
+	}
+}
+
+/** Control Center's slider rows: brightness and master volume. */
+function aetherControlSliders(): HTMLElement {
+	const wrap = document.createElement("div");
+	wrap.className = "cc-sliders";
+	const row = (
+		icons: [string, string],
+		label: string,
+		value: number,
+		onInput: (v: number) => void,
+	) => {
+		const r = document.createElement("label");
+		r.className = "cc-slider-row";
+		const title = document.createElement("span");
+		title.className = "cc-slider-label";
+		title.textContent = label;
+		const line = document.createElement("div");
+		line.className = "aether-slider-row";
+		const lo = document.createElement("span");
+		lo.className = "material-symbols-outlined";
+		lo.textContent = icons[0];
+		const input = document.createElement("input");
+		input.type = "range";
+		input.className = "aether-slider";
+		input.min = "0";
+		input.max = "100";
+		input.value = String(Math.round(value * 100));
+		input.setAttribute("aria-label", label);
+		const paint = () => input.style.setProperty("--v", input.value + "%");
+		paint();
+		input.addEventListener("input", () => {
+			paint();
+			onInput(Number(input.value) / 100);
+		});
+		const hi = document.createElement("span");
+		hi.className = "material-symbols-outlined";
+		hi.textContent = icons[1];
+		line.append(lo, input, hi);
+		r.append(title, line);
+		return r;
+	};
+	const min = AetherBrightness.MIN;
+	wrap.append(
+		row(
+			["brightness_low", "brightness_high"],
+			"Display",
+			(AetherBrightness.value - min) / (1 - min),
+			(v) => AetherBrightness.set(min + v * (1 - min)),
+		),
+		row(
+			["volume_mute", "volume_up"],
+			"Sound",
+			(() => {
+				const v = Number(anura.settings.get("sound-volume"));
+				return Number.isFinite(v) ? v : 0.4;
+			})(),
+			(v) => {
+				anura.settings.set("sound-volume", v);
+				(globalThis as any).AetherVolume?.dispatchEvent?.(new Event("change"));
+			},
+		),
+	);
+	// A tick on release, at the new volume, so the level is audible.
+	wrap
+		.querySelectorAll("input")[1]
+		?.addEventListener("change", () =>
+			(globalThis as any).aetherSound?.play?.("click"),
+		);
+	return wrap;
+}
+
+/** Broadcasts master-volume changes to anything playing audio (Music). */
+const AetherVolume = new EventTarget();
+
 class AetherShortcutSheet {
 	static #el: HTMLElement | null = null;
 
@@ -225,3 +335,6 @@ class AetherShortcutSheet {
 (globalThis as any).AetherDND = AetherDND;
 (globalThis as any).AetherNightShift = AetherNightShift;
 (globalThis as any).AetherShortcutSheet = AetherShortcutSheet;
+(globalThis as any).AetherBrightness = AetherBrightness;
+(globalThis as any).AetherVolume = AetherVolume;
+(globalThis as any).aetherControlSliders = aetherControlSliders;
