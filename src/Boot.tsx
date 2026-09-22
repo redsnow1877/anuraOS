@@ -680,6 +680,8 @@ document.addEventListener("anura-login-completed", async () => {
 		});
 		AetherHotCorners.init();
 		AetherLockScreen.init();
+		AetherSnapLayouts.init();
+		AetherSnapLayouts.registerShortcuts();
 		AetherShortcuts.register({
 			combo: "Ctrl+Alt+L",
 			group: "System",
