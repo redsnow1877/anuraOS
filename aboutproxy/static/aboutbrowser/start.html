@@ -14,6 +14,14 @@
 
 <body>
     <div class="container">
+        <div id="proxyBanner" class="proxyBanner" hidden>
+            <span class="material-symbols-outlined bannerIcon">cloud_off</span>
+            <div class="bannerText">
+                <strong>Can't reach the proxy server</strong>
+                <span>Websites won't load until the browser can reach one. It's set to <code class="bannerUrl"></code></span>
+            </div>
+            <button id="proxyBannerBtn" class="bannerBtn">Choose a server</button>
+        </div>
         <div id="content">
             <h1>${name}</h1>
             <input type="text" class="omnibox" autocomplete="off" placeholder="Search or type a URL" id="omnibox">

@@ -17,26 +17,44 @@ function openVerHistory() {
     });
 }
 
-function historyDomainViewCountsCallback(msg) {
-    var domainViewCounts = msg.data;
-    var topSix = domainViewCounts.slice(0, 6);
-    for(const site in topSix) {
-        var siteData = JSON.parse(topSix[site][0]);
-        var el = document.createElement('div');
+function topSitesCallback(msg) {
+    const recents = document.querySelector('#recents');
+    recents.replaceChildren();
+    msg.data.slice(0, 6).forEach((site, i) => {
+        const el = document.createElement('div');
         el.className = "recent";
-        el.setAttribute("data-url", siteData.url); // for some reason just directly using siteData.url doesn't work properly
-        el.addEventListener('click', (event) => {sendMessage({type: "setUrl", value: event.currentTarget.getAttribute("data-url")})});
-        var imgWrapperEl = document.createElement('div');
+        el.style.setProperty("--i", i);
+        el.title = site.url;
+        el.addEventListener('click', () => sendMessage({type: "setUrl", value: site.url}));
+        const imgWrapperEl = document.createElement('div');
         imgWrapperEl.className = "recentIconWrapper";
-        var imgEl = document.createElement('img');
-        imgEl.src = siteData['icon'];
+        const imgEl = document.createElement('img');
+        imgEl.src = site.icon;
+        imgEl.alt = "";
         imgWrapperEl.appendChild(imgEl);
         el.appendChild(imgWrapperEl);
-        var titleEl = document.createElement('span');
-        titleEl.innerHTML = siteData['title']; // i was gonna use innerText but let's allow an html injection for "funsies"
+        const titleEl = document.createElement('span');
+        // Page titles come from the web: text, never markup.
+        titleEl.textContent = site.title || site.url;
         el.appendChild(titleEl);
-        document.querySelector('#recents').appendChild(el);
+        recents.appendChild(el);
+    });
+}
+
+function connectionStateCallback(msg) {
+    const banner = document.querySelector('#proxyBanner');
+    if (!banner) return;
+    if (msg.state === "down") {
+        banner.querySelector('.bannerUrl').textContent = msg.url;
+        banner.hidden = false;
+        requestAnimationFrame(() => banner.classList.add('is-shown'));
+    } else if (msg.state === "ok") {
+        banner.classList.remove('is-shown');
+        setTimeout(() => { banner.hidden = true; }, 250);
     }
 }
 
-sendMessage({ type: "getHistoryDomainViewCounts" });
+document.querySelector('#proxyBannerBtn')?.addEventListener('click', () => sendMessage({ type: "openConnectionPanel" }));
+
+sendMessage({ type: "getTopSites", limit: 6 });
+sendMessage({ type: "getConnection" });

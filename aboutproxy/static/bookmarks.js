@@ -17,6 +17,12 @@ class Bookmarks {
         }
     }
 
+    /** Position of the bookmark for `url`, or -1. */
+    indexOf(url) {
+        if (!url) return -1;
+        return Array.from(this.bookmarkContainer.childNodes).findIndex((b) => b.dataset && b.dataset.url === url);
+    }
+
     delete(number = 0) {
         var bookmarks = this.bookmarkContainer.childNodes;
         bookmarks[number].remove();

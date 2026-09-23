@@ -3,10 +3,9 @@ function sendMessage(msg) {
 }
 
 window.addEventListener("message", (event) => {
-    if (event.origin != window.origin) {
-        console.error("get rekt malware");
-    }
+    if (event.origin != window.origin) return;
     let msg = event.data;
+    if (!msg || typeof msg !== "object") return;
     if (msg.type === "settingSet") {
         console.debug("recieved settingSet for " + msg.setting)
         settingSetCallback(msg);
@@ -28,6 +27,10 @@ window.addEventListener("message", (event) => {
     } else if (msg.type === "branding") {
         console.debug("recieved branding");
         brandingCallback(msg);
+    } else if (msg.type === "topSites") {
+        topSitesCallback(msg);
+    } else if (msg.type === "connectionState") {
+        connectionStateCallback(msg);
     } else if (msg.type === "settingsMetadata") {
         console.debug("recieved settingsMetadata");
         settingsMetadataCallback(msg);
@@ -42,3 +45,5 @@ function reloadExtensionsCallback() {}
 function extensionListCallback() {}
 function brandingCallback() {}
 function settingsMetadataCallback() {}
+function topSitesCallback() {}
+function connectionStateCallback() {}

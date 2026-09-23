@@ -1,0 +1,873 @@
+/* AboutBrowser: omnibox, loading, find, site info, menus.
+   Motion: everything animates transform and opacity only, on shared curves:
+   --ease-out for things arriving, --ease-in for things leaving. */
+
+:root {
+  --ab-accent: var(--aboutbrowser-ui-accent, #8ab4f8);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --panel-bg: color-mix(in srgb, var(--aboutbrowser-frame-bg) 92%, var(--aboutbrowser-ui-fg, #fff) 8%);
+  --panel-line: color-mix(in srgb, var(--aboutbrowser-frame-bg), var(--aboutbrowser-ui-fg, #fff) 14%);
+  --panel-fg: var(--aboutbrowser-active-tab-fg, #e8eaed);
+  --panel-dim: color-mix(in srgb, var(--panel-fg) 62%, transparent);
+  --panel-shadow: 0 12px 32px -6px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.browserControlsContainer {
+  position: relative;
+  z-index: 50;
+}
+
+/* ---- omnibox ----------------------------------------------------------- */
+
+.omnibox {
+  position: relative;
+  flex: auto;
+  display: flex;
+  align-items: center;
+  height: 2.5em;
+  margin: 0 8px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background-color: var(--aboutbrowser-omnibox-bg);
+  color: var(--aboutbrowser-omnibox-fg);
+  box-shadow: 0 0 0 0 transparent;
+  transition: box-shadow 0.18s var(--ease-out), background-color 0.18s ease;
+}
+
+.omnibox.is-focused {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ab-accent) 85%, transparent);
+}
+
+.omnibox .navbarUrl {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0 0.5em;
+  border: none;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font-size: 13.5px;
+}
+
+.siteChip {
+  position: relative;
+  flex-shrink: 0;
+  width: 1.95em;
+  height: 1.95em;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: color-mix(in srgb, var(--aboutbrowser-omnibox-fg) 75%, transparent);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.siteChip:hover,
+.siteChip.active {
+  background-color: color-mix(in srgb, var(--aboutbrowser-omnibox-bg), var(--aboutbrowser-omnibox-fg) 14%);
+}
+
+.siteChip .material-symbols-outlined {
+  font-size: 17px;
+}
+
+.siteChip[data-kind="insecure"] .siteChipIcon {
+  color: #fbbc04;
+}
+
+.connDot {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--aboutbrowser-omnibox-bg);
+  background: transparent;
+  scale: 0;
+  transition: scale 0.25s var(--ease-spring), background-color 0.2s ease;
+}
+
+.connDot[data-state="ok"] { background: #34c759; scale: 1; }
+.connDot[data-state="down"] { background: #ff453a; scale: 1; }
+.connDot[data-state="checking"] {
+  background: #ffb020;
+  scale: 1;
+  animation: ab-pulse 1s ease-in-out infinite;
+}
+
+@keyframes ab-pulse {
+  50% { opacity: 0.35; }
+}
+
+.zoomBadge {
+  flex-shrink: 0;
+  height: 1.7em;
+  padding: 0 0.6em;
+  margin-right: 2px;
+  border: none;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--aboutbrowser-omnibox-fg);
+  background: color-mix(in srgb, var(--aboutbrowser-omnibox-bg), var(--aboutbrowser-omnibox-fg) 12%);
+  cursor: pointer;
+  animation: ab-badge-in 0.28s var(--ease-spring);
+}
+
+.zoomBadge[hidden] { display: none; }
+
+@keyframes ab-badge-in {
+  from { opacity: 0; scale: 0.6; }
+}
+
+/* The star now sits in the omnibox's flow instead of floating over it. */
+.omnibox .bookmarksBtn {
+  position: relative;
+  flex-shrink: 0;
+  transform: none;
+  width: 1.95em;
+  height: 1.95em;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: color-mix(in srgb, var(--aboutbrowser-omnibox-fg) 75%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.omnibox .bookmarksBtn .material-symbols-outlined {
+  font-size: 18px;
+  transition: color 0.15s ease;
+}
+
+.omnibox .bookmarksBtn.is-on .material-symbols-outlined {
+  color: var(--ab-accent);
+  font-variation-settings: "FILL" 1;
+}
+
+.omnibox .bookmarksBtn.pop .material-symbols-outlined {
+  animation: ab-star-pop 0.42s var(--ease-out);
+}
+
+@keyframes ab-star-pop {
+  0% { scale: 1; rotate: 0deg; }
+  35% { scale: 1.38; rotate: -12deg; }
+  65% { scale: 0.92; rotate: 4deg; }
+  100% { scale: 1; rotate: 0deg; }
+}
+
+/* ---- suggestions ------------------------------------------------------- */
+
+.omniDrop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 120;
+  padding: 6px 0;
+  border-radius: 14px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-line);
+  box-shadow: var(--panel-shadow);
+  color: var(--panel-fg);
+  transform-origin: 50% 0;
+  opacity: 0;
+  scale: 0.985;
+  translate: 0 -4px;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.12s var(--ease-in),
+    scale 0.12s var(--ease-in),
+    translate 0.12s var(--ease-in),
+    visibility 0s linear 0.12s;
+}
+
+.omniDrop.is-open {
+  opacity: 1;
+  scale: 1;
+  translate: 0 0;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity 0.16s var(--ease-out),
+    scale 0.2s var(--ease-out),
+    translate 0.2s var(--ease-out),
+    visibility 0s;
+}
+
+.omniItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  padding: 0 14px;
+  cursor: pointer;
+  font-size: 13.5px;
+}
+
+.omniItem.is-selected {
+  background: color-mix(in srgb, var(--panel-bg), var(--panel-fg) 11%);
+}
+
+.omniIcon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--panel-dim);
+}
+
+.omniIcon img {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+}
+
+.omniText {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.omniSub {
+  margin-left: 6px;
+  color: var(--panel-dim);
+}
+
+.omniBadge {
+  font-size: 16px;
+  color: var(--ab-accent);
+  font-variation-settings: "FILL" 1;
+}
+
+/* ---- reload / stop ------------------------------------------------------ */
+
+#browserReload {
+  position: relative;
+}
+
+#browserReload .reloadIcon,
+#browserReload .stopIcon {
+  position: absolute;
+  transition:
+    opacity 0.16s ease,
+    rotate 0.28s var(--ease-out),
+    scale 0.28s var(--ease-out);
+}
+
+#browserReload .stopIcon {
+  opacity: 0;
+  rotate: 90deg;
+  scale: 0.5;
+}
+
+#browserReload.is-loading .reloadIcon {
+  opacity: 0;
+  rotate: -90deg;
+  scale: 0.5;
+}
+
+#browserReload.is-loading .stopIcon {
+  opacity: 1;
+  rotate: 0deg;
+  scale: 1;
+}
+
+/* ---- progress ------------------------------------------------------------ */
+
+.loadBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1.5px;
+  height: 2px;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ab-accent) 60%, transparent), var(--ab-accent));
+  will-change: transform, opacity;
+}
+
+/* A spinner in place of the favicon while a tab loads. */
+.chrome-tabs .chrome-tab[loading] .chrome-tab-favicon {
+  display: block;
+  background-image: none !important;
+}
+
+.chrome-tabs .chrome-tab[loading] .chrome-tab-favicon::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--aboutbrowser-active-tab-fg, #fff) 22%, transparent);
+  border-top-color: var(--ab-accent);
+  animation: ab-spin 0.75s linear infinite;
+}
+
+@keyframes ab-spin {
+  to { rotate: 360deg; }
+}
+
+/* Tabs grow in and shrink out rather than popping. */
+.chrome-tabs .chrome-tab.chrome-tab-was-just-added {
+  animation: ab-tab-in 0.22s var(--ease-out) both;
+}
+
+@keyframes ab-tab-in {
+  from { width: 0; opacity: 0; }
+  40% { opacity: 1; }
+}
+
+.chrome-tabs .chrome-tab.is-closing {
+  pointer-events: none;
+  animation: ab-tab-out 0.16s var(--ease-in) forwards;
+}
+
+@keyframes ab-tab-out {
+  to { width: 0; opacity: 0; }
+}
+
+/* ---- find ---------------------------------------------------------------- */
+
+.findBar {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 16px;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 40px;
+  padding: 0 6px 0 14px;
+  border-radius: 12px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-line);
+  box-shadow: var(--panel-shadow);
+  color: var(--panel-fg);
+  transform-origin: 100% 0;
+  opacity: 0;
+  translate: 0 -8px;
+  scale: 0.98;
+  transition:
+    opacity 0.12s var(--ease-in),
+    translate 0.14s var(--ease-in),
+    scale 0.14s var(--ease-in);
+}
+
+.findBar.is-open {
+  opacity: 1;
+  translate: 0 0;
+  scale: 1;
+  transition:
+    opacity 0.16s var(--ease-out),
+    translate 0.22s var(--ease-out),
+    scale 0.22s var(--ease-out);
+}
+
+.findBar[hidden] { display: none; }
+
+.findInput {
+  width: 200px;
+  height: 28px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font-size: 13.5px;
+}
+
+.findCount {
+  min-width: 64px;
+  font-size: 12px;
+  text-align: right;
+  color: var(--panel-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.findBar.no-match .findCount { color: #ff6b61; }
+
+.findBar.no-match .findInput {
+  animation: ab-shake 0.3s var(--ease-out);
+}
+
+@keyframes ab-shake {
+  25% { translate: -3px 0; }
+  60% { translate: 2px 0; }
+}
+
+.findSep {
+  width: 1px;
+  height: 20px;
+  margin: 0 6px;
+  background: var(--panel-line);
+}
+
+.findBtn,
+.siIconBtn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.findBtn:hover,
+.siIconBtn:hover {
+  background: color-mix(in srgb, var(--panel-bg), var(--panel-fg) 12%);
+}
+
+.findBtn .material-symbols-outlined { font-size: 20px; }
+
+/* ---- site info ----------------------------------------------------------- */
+
+.siteInfo {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 64px;
+  z-index: 115;
+  width: 336px;
+  padding: 14px 14px 12px;
+  border-radius: 16px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-line);
+  box-shadow: var(--panel-shadow);
+  color: var(--panel-fg);
+  font-size: 13px;
+  transform-origin: 24px 0;
+  opacity: 0;
+  scale: 0.96;
+  translate: 0 -6px;
+  transition:
+    opacity 0.12s var(--ease-in),
+    scale 0.14s var(--ease-in),
+    translate 0.14s var(--ease-in);
+}
+
+.siteInfo.is-open {
+  opacity: 1;
+  scale: 1;
+  translate: 0 0;
+  transition:
+    opacity 0.16s var(--ease-out),
+    scale 0.24s var(--ease-out),
+    translate 0.24s var(--ease-out);
+}
+
+.siteInfo[hidden] { display: none; }
+
+.siHead,
+.siConn,
+.siRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.siRow { align-items: center; margin-top: 10px; }
+.siRowText { flex: 1; }
+
+.siHeadIcon {
+  font-size: 20px;
+  margin-top: 1px;
+}
+
+.siHeadIcon.is-secure { color: #34c759; }
+.siHeadIcon.is-insecure { color: #fbbc04; }
+
+.siHeadText,
+.siConnText { flex: 1; min-width: 0; }
+
+.siTitle { font-weight: 600; font-size: 13.5px; }
+
+.siSub,
+.siStatus,
+.siUrl,
+.siFine,
+.siHint {
+  margin-top: 3px;
+  color: var(--panel-dim);
+  line-height: 1.4;
+}
+
+.siUrl {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11.5px;
+  word-break: break-all;
+}
+
+.siHint {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  color: var(--panel-fg);
+  background: color-mix(in srgb, #ff453a 16%, transparent);
+}
+
+.siSep {
+  height: 1px;
+  margin: 12px -14px;
+  background: var(--panel-line);
+}
+
+.siDot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  margin: 5px 1px 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--panel-fg) 30%, transparent);
+  transition: background-color 0.2s ease;
+}
+
+.siDot[data-state="ok"] { background: #34c759; box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.18); }
+.siDot[data-state="down"] { background: #ff453a; box-shadow: 0 0 0 3px rgba(255, 69, 58, 0.18); }
+.siDot[data-state="checking"] { background: #ffb020; animation: ab-pulse 1s ease-in-out infinite; }
+
+.siIconBtn.is-spinning .material-symbols-outlined {
+  animation: ab-spin 0.8s linear infinite;
+}
+
+.siLink,
+.siWide,
+.siBtn {
+  border: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.siLink {
+  background: transparent;
+  color: var(--ab-accent);
+  font-weight: 600;
+}
+
+.siWide {
+  width: 100%;
+  margin-top: 12px;
+  height: 34px;
+  border-radius: 10px;
+  color: var(--panel-fg);
+  background: color-mix(in srgb, var(--panel-bg), var(--panel-fg) 9%);
+  transition: background-color 0.12s ease;
+}
+
+.siWide:hover { background: color-mix(in srgb, var(--panel-bg), var(--panel-fg) 15%); }
+
+.siPicker {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: ab-reveal 0.24s var(--ease-out);
+}
+
+@keyframes ab-reveal {
+  from { opacity: 0; translate: 0 -4px; }
+}
+
+.siServer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.siServer:hover { background: color-mix(in srgb, var(--panel-bg), var(--panel-fg) 8%); }
+
+.siServer.is-current {
+  border-color: color-mix(in srgb, var(--ab-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--ab-accent) 10%, transparent);
+}
+
+.siServer .siDot { margin-top: 0; }
+
+.siServerText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.siServerName { font-weight: 600; }
+
+.siServerUrl {
+  font-size: 11.5px;
+  color: var(--panel-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.siServerMeta {
+  font-size: 11.5px;
+  color: var(--panel-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.siServer .material-symbols-outlined {
+  font-size: 18px;
+  color: var(--ab-accent);
+}
+
+.siCustom {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.siInput {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--panel-line);
+  outline: none;
+  background: color-mix(in srgb, var(--panel-bg), #000 18%);
+  color: var(--panel-fg);
+  font: inherit;
+  font-size: 12.5px;
+  transition: border-color 0.15s ease;
+}
+
+.siInput:focus { border-color: var(--ab-accent); }
+
+.siBtn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 9px;
+  font-weight: 600;
+  color: #111;
+  background: var(--ab-accent);
+}
+
+.siFine { margin-top: 8px; font-size: 11.5px; }
+
+/* ---- menus ----------------------------------------------------------------- */
+
+.moreMenu,
+.tabMenu {
+  transform-origin: 100% 0;
+  transition:
+    opacity 0.16s var(--ease-out),
+    scale 0.2s var(--ease-out),
+    translate 0.2s var(--ease-out),
+    z-index 0s;
+}
+
+.moreMenu {
+  box-shadow: var(--panel-shadow);
+}
+
+.moreMenu.hidden {
+  scale: 0.96;
+  translate: 0 -4px;
+  pointer-events: none;
+  transition:
+    opacity 0.1s var(--ease-in),
+    scale 0.12s var(--ease-in),
+    translate 0.12s var(--ease-in),
+    z-index 0s linear 0.12s;
+}
+
+.moreMenu > button kbd {
+  margin-right: 12px;
+  font: 11px/1 inherit;
+  color: var(--panel-dim);
+}
+
+.moreMenu > button:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.menuZoom {
+  display: flex;
+  align-items: center;
+  height: 2em;
+  margin: 0 2px;
+  color: var(--aboutbrowser-active-tab-fg);
+}
+
+.menuZoom .title { flex: 1; }
+
+.menuZoom .zoomStep {
+  width: 28px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--aboutbrowser-frame-bg), var(--aboutbrowser-ui-fg) 10%);
+  color: inherit;
+  cursor: pointer;
+}
+
+.menuZoom .zoomStep:last-child { margin-right: 12px; }
+.menuZoom .zoomStep .material-symbols-outlined { font-size: 16px; }
+
+.menuZoom .zoomValue {
+  width: 48px;
+  text-align: center;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabMenu {
+  position: fixed;
+  z-index: 130;
+  min-width: 232px;
+  padding: 6px 0;
+  border-radius: 10px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-line);
+  box-shadow: var(--panel-shadow);
+  opacity: 0;
+  scale: 0.95;
+}
+
+.tabMenu.is-open {
+  opacity: 1;
+  scale: 1;
+}
+
+.tabMenu.hidden { display: none; }
+
+.tabMenu > button {
+  width: calc(100% - 8px);
+  margin: 0 4px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--panel-fg);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tabMenu > button:hover { background: color-mix(in srgb, var(--panel-bg), var(--panel-fg) 12%); }
+.tabMenu > button:disabled { opacity: 0.4; pointer-events: none; }
+
+.tabMenu .menuIcon {
+  width: 36px;
+  font-size: 18px;
+  text-align: center;
+  color: var(--panel-dim);
+}
+
+.tabMenu > .sep {
+  height: 1px;
+  margin: 5px 10px;
+  background: var(--panel-line);
+}
+
+/* ---- shortcut sheet ------------------------------------------------------- */
+
+.shortcutSheet {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0);
+  transition: background-color 0.2s ease;
+}
+
+.shortcutSheet.is-open { background: rgba(0, 0, 0, 0.38); }
+.shortcutSheet[hidden] { display: none; }
+
+.sheetCard {
+  max-width: calc(100% - 48px);
+  max-height: calc(100% - 48px);
+  overflow: auto;
+  padding: 22px 26px;
+  border-radius: 18px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-line);
+  box-shadow: var(--panel-shadow);
+  color: var(--panel-fg);
+  opacity: 0;
+  scale: 0.96;
+  transition: opacity 0.18s var(--ease-out), scale 0.26s var(--ease-out);
+}
+
+.shortcutSheet.is-open .sheetCard { opacity: 1; scale: 1; }
+
+.sheetCard h2 { margin: 0 0 14px; font-size: 18px; }
+
+.sheetCols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px 28px;
+}
+
+.sheetCols h3 {
+  margin: 8px 0 6px;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--panel-dim);
+}
+
+.sheetRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 5px 0;
+  font-size: 13px;
+}
+
+.sheetRow kbd {
+  padding: 2px 7px;
+  border-radius: 6px;
+  font: 11.5px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+  background: color-mix(in srgb, var(--panel-bg), var(--panel-fg) 12%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .omniDrop, .findBar, .siteInfo, .moreMenu, .tabMenu, .sheetCard, .connDot {
+    transition-duration: 0.01ms !important;
+  }
+}

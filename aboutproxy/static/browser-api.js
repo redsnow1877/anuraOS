@@ -3,10 +3,10 @@ function sendMessage(msg, to) {
 }
 
 window.addEventListener("message", (event) => {
-    if (event.origin != window.origin) {
-        console.error("get rekt malware");
-    }
+    // Only Aether's own pages may drive the browser.
+    if (event.origin != window.origin) return;
     let msg = event.data;
+    if (!msg || typeof msg !== "object") return;
     let sender = event.source;
     if (msg.type === "setSetting") {
         console.debug("recieved setSetting for setting " + msg.setting + " and value " + msg.value);
@@ -31,6 +31,13 @@ window.addEventListener("message", (event) => {
     } else if (msg.type === "reloadHistory") {
         console.debug("recieved reloadHistory");
         window.aboutbrowser.history.reload();
+    } else if (msg.type === "getTopSites") {
+        sendMessage({ type: "topSites", data: window.aboutbrowser.history.getTopSites(msg.limit || 8) }, sender);
+    } else if (msg.type === "getConnection") {
+        const c = window.aboutbrowser.connection;
+        sendMessage({ type: "connectionState", state: c.state, url: c.url, latency: c.latency }, sender);
+    } else if (msg.type === "openConnectionPanel") {
+        window.aboutbrowser.siteInfo.open(true);
     } else if (msg.type === "getHistoryDomainViewCounts") {
         console.debug("recieved getHistoryDomainViewCounts");
         sendMessage({ type: "historyDomainViewCounts", data: window.aboutbrowser.history.getSortedDomainViewCounts() }, sender);

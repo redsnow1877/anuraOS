@@ -109,7 +109,8 @@ function h(type, inner) { // used by apparently chrome-tabs?
     }
 
     get tabEls() {
-      return Array.prototype.slice.call(this.el.querySelectorAll('.chrome-tab'))
+      // Scoped to the strip itself: a closing tab's ghost lives outside it.
+      return Array.prototype.slice.call(this.tabContentEl.querySelectorAll('.chrome-tab'))
     }
 
     get tabContentEl() {
@@ -225,7 +226,7 @@ function h(type, inner) { // used by apparently chrome-tabs?
     }
 
     get activeTabEl() {
-      return this.el.querySelector('.chrome-tab[active]')
+      return this.tabContentEl.querySelector('.chrome-tab[active]')
     }
 
     hasActiveTab() {
@@ -248,7 +249,24 @@ function h(type, inner) { // used by apparently chrome-tabs?
           this.setCurrentTab(tabEl.previousElementSibling)
         }
       }
+      // Lift the tab out into a ghost at the same spot, so it can shrink away
+      // while the rest of the strip closes the gap at the same time.
+      const rootRect = this.el.getBoundingClientRect()
+      const rect = tabEl.getBoundingClientRect()
       tabEl.parentNode.removeChild(tabEl)
+      if (rect.width) {
+        const ghost = tabEl
+        ghost.classList.add('is-closing')
+        ghost.style.position = 'absolute'
+        ghost.style.left = (rect.left - rootRect.left) + 'px'
+        ghost.style.top = (rect.top - rootRect.top) + 'px'
+        ghost.style.width = rect.width + 'px'
+        ghost.style.transform = 'none'
+        this.el.appendChild(ghost)
+        const done = () => ghost.remove()
+        ghost.addEventListener('animationend', done, { once: true })
+        setTimeout(done, 400)
+      }
       this.emit('tabRemove', { tabEl })
       this.cleanUpPreviouslyDraggedTabs()
       this.layoutTabs()

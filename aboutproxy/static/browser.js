@@ -52,22 +52,43 @@ class AboutBrowser {
         tabsEl.addEventListener("tabRemove", (event) => {
             console.debug("Tab closed: ", event.detail.tabEl);
             self.closeTab(event.detail);
-            console.debug("Number of tabs left: ", self.chromeTabs.tabEls.length);
             if(self.chromeTabs.tabEls.length === 0) {
+                // Closing the last tab closes the window, like every browser.
+                const win = self.hostWindow();
+                if (win) {
+                    win.close();
+                    return;
+                }
                 document.querySelector(".container.browserContainer").style.setProperty("display", "none");
                 document.querySelector(".goodbyeContainer").style.removeProperty("display");
             }
+            self.saveSession();
         });
+
+        tabsEl.addEventListener("tabReorder", () => self.saveSession());
 
         document.querySelector("button[data-add-tab]").addEventListener("click", () => {
             self.openTab();
         })
 
-        this.addressBar.addEventListener("keydown", (e) => {
-            if (e.code === "Enter") {
-                self.navigateTo(self.addressBar.value);
-            }
-        });
+        this.closedTabs = [];
+        this.loadBar = document.querySelector("#loadBar");
+        this.reloadBtn = document.querySelector("#browserReload");
+        this.starBtn = document.querySelector("#browserBookmarks");
+        this.zoomBadge = document.querySelector("#zoomBadge");
+        this.zoomBadge.addEventListener("click", () => this.activeTab?.stepZoom(0));
+        this.connection = new ProxyConnection(this);
+        this.omnibox = new Omnibox(this);
+        this.findBar = new FindBar(this);
+        this.siteInfo = new SiteInfo(this);
+        this.tabMenu = new TabMenu(this);
+        this.shortcuts = new BrowserShortcuts(this);
+        document.querySelectorAll(".moreMenu .zoomStep").forEach((b) =>
+            b.addEventListener("click", (e) => {
+                e.stopPropagation();
+                this.activeTab?.stepZoom(Number(b.dataset.zoom));
+            }),
+        );
 
         this.settingsCtxMenu = document.querySelector(".moreMenu");
         this.settingsCtxBtn = document.querySelector(".navbarBtn#browserSettings");
@@ -103,10 +124,10 @@ class AboutBrowser {
 
         this.reapplyTheme();
 
-
-        this.openTab();
+        if (!this.restoreSession()) this.openTab();
 
         document.querySelector(".container.browserContainer").style.removeProperty("visibility");
+        this.connection.check();
     }
 
     eventsInit() {
@@ -114,6 +135,7 @@ class AboutBrowser {
         this.eventsEl = document.querySelector(".aboutbrowser-event-el#aboutbrowser-event-el");
         this.eventsEl.addEventListener("aboutbrowser-contextmenu", (event)=>{
             if(event.detail.type === "more") {
+                self.settingsCtxMenu.querySelector(".reopenItem").disabled = !self.closedTabs.length;
                 self.settingsCtxMenu.classList.remove("hidden");
                 self.settingsCtxMenu.classList.add("transition");
                 setTimeout(() => {
@@ -138,20 +160,172 @@ class AboutBrowser {
 
     propagateMessage(msg) {
         for (const tab of this.tabs.internalList) {
-            tab.value.iframe.contentWindow.postMessage(msg);
+            try {
+                tab.value.iframe.contentWindow?.postMessage(msg, window.origin);
+            } catch { /* tab is between pages */ }
         }
     }
 
-    openTab(url) {
+    /** `opts.background` opens it without switching to it. */
+    openTab(url, opts = {}) {
         if(!url) url = this.settings.getSetting("startUrl");
-        var tab = new Tab(this);
+        var tab = new Tab(this, !!opts.background);
         tab.navigateTo(url);
+        this.saveSession();
+        return tab;
     }
 
     closeTab(detail) {
         var tabEl = detail.tabEl;
-        this.tabs.get(tabEl).handleClose();
+        const tab = this.tabs.get(tabEl);
+        if (tab.currentUrl) {
+            this.closedTabs.push(tab.currentUrl);
+            if (this.closedTabs.length > 25) this.closedTabs.shift();
+        }
+        tab.handleClose();
         this.tabs.delete(tabEl);
+    }
+
+    reopenClosedTab() {
+        const url = this.closedTabs.pop();
+        if (url) this.openTab(url);
+    }
+
+    closeActiveTab() {
+        if (this.activeTab) this.chromeTabs.removeTab(this.activeTab.tabEl);
+    }
+
+    /** Tabs in strip order. */
+    get orderedTabs() {
+        return this.chromeTabs.tabEls.map((el) => this.tabs.get(el)).filter(Boolean);
+    }
+
+    selectTab(index) {
+        const tabs = this.orderedTabs;
+        if (!tabs.length) return;
+        const i = index < 0 ? tabs.length - 1 : Math.min(index, tabs.length - 1);
+        this.chromeTabs.setCurrentTab(tabs[i].tabEl);
+    }
+
+    cycleTab(dir) {
+        const tabs = this.orderedTabs;
+        const i = tabs.indexOf(this.activeTab);
+        if (i < 0) return;
+        this.chromeTabs.setCurrentTab(tabs[(i + dir + tabs.length) % tabs.length].tabEl);
+    }
+
+    /** The Aether window this browser lives in, if any. */
+    hostWindow() {
+        try {
+            const app = top.anura?.apps["anura.browser"];
+            return app?.windows.find((w) => w.content.contains(window.frameElement)) || null;
+        } catch {
+            return null;
+        }
+    }
+
+    /* ---- sessions ------------------------------------------------------ */
+
+    saveSession() {
+        clearTimeout(this.sessionTimer);
+        this.sessionTimer = setTimeout(() => {
+            const tabs = this.orderedTabs;
+            if (!tabs.length) return;
+            localStorage.setItem("session", JSON.stringify({
+                tabs: tabs.map((t) => t.currentUrl || this.settings.getSetting("startUrl")),
+                active: Math.max(0, tabs.indexOf(this.activeTab)),
+            }));
+        }, 250);
+    }
+
+    /** Reopen last time's tabs, unless another browser window already has them. */
+    restoreSession() {
+        if (this.settings.getSetting("restoreSession") !== "on") return false;
+        try {
+            if ((top.anura?.apps["anura.browser"]?.windows.length || 0) > 1) return false;
+        } catch { /* not in Aether */ }
+        let saved = null;
+        try { saved = JSON.parse(localStorage.getItem("session")); } catch { /* corrupt */ }
+        if (!saved || !Array.isArray(saved.tabs) || !saved.tabs.length) return false;
+        const start = this.settings.getSetting("startUrl");
+        if (saved.tabs.length === 1 && saved.tabs[0] === start) return false;
+        saved.tabs.forEach((url, i) => this.openTab(url, { background: i !== saved.active }));
+        return true;
+    }
+
+    /* ---- chrome that follows the active tab --------------------------- */
+
+    onTabLoadState(tab, switched = false) {
+        if (tab !== this.activeTab) return;
+        this.reloadBtn.classList.toggle("is-loading", tab.loading);
+        this.reloadBtn.title = tab.loading ? "Stop loading (Esc)" : "Reload (Ctrl+R)";
+        const bar = this.loadBar;
+        // Two independent Web Animations: scale (the progress) and opacity
+        // (showing and hiding). Both run on the compositor, and each can be
+        // retargeted mid-flight from wherever it currently is.
+        const scaleNow = () => {
+            const m = getComputedStyle(bar).transform;
+            const v = m && m !== "none" ? parseFloat(m.split("(")[1]) : 0;
+            return Number.isFinite(v) ? v : 0;
+        };
+        const scaleTo = (to, duration, easing) => {
+            const from = scaleNow();
+            this.barScale?.cancel();
+            this.barScale = bar.animate(
+                [{ transform: `scaleX(${from})` }, { transform: `scaleX(${to})` }],
+                { duration, easing, fill: "forwards" },
+            );
+            return this.barScale;
+        };
+        const fadeTo = (to, duration, delay = 0) => {
+            const from = parseFloat(getComputedStyle(bar).opacity) || 0;
+            this.barFade?.cancel();
+            this.barFade = bar.animate([{ opacity: from }, { opacity: to }], {
+                duration, delay, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)", fill: "forwards",
+            });
+            return this.barFade;
+        };
+        const jump = (scale, opacity) => {
+            this.barScale?.cancel();
+            this.barFade?.cancel();
+            bar.style.transform = `scaleX(${scale})`;
+            bar.style.opacity = String(opacity);
+        };
+
+        if (tab.loadState === "loading") {
+            const visible = parseFloat(getComputedStyle(bar).opacity) > 0.05;
+            if (switched) jump(0.12, 1);
+            else if (!visible || scaleNow() >= 0.99) jump(0, 0);
+            fadeTo(1, 120);
+            // Races ahead, then crawls: it never claims to be done.
+            scaleTo(0.82, 9000, "cubic-bezier(0.1, 0.75, 0.2, 1)");
+        } else if (tab.loadState === "interactive") {
+            fadeTo(1, 120);
+            scaleTo(Math.max(scaleNow(), 0.93), 450, "cubic-bezier(0.2, 0.8, 0.2, 1)");
+        } else if (switched) {
+            jump(0, 0);
+        } else {
+            scaleTo(1, 220, "cubic-bezier(0.3, 0.7, 0.4, 1)").finished.then(() => {
+                if (!this.activeTab?.loading) fadeTo(0, 280);
+            }).catch(() => {});
+        }
+    }
+
+    onTabUrlChange(tab) {
+        if (tab !== this.activeTab) return;
+        const on = this.bookmarks.indexOf(tab.currentUrl) >= 0;
+        this.starBtn.classList.toggle("is-on", on);
+        this.starBtn.title = on ? "Remove bookmark (Ctrl+D)" : "Bookmark this page (Ctrl+D)";
+        this.siteInfo.update();
+        this.findBar.reset();
+    }
+
+    onZoomChange(tab) {
+        if (tab !== this.activeTab) return;
+        const z = tab.zoom;
+        this.zoomBadge.hidden = z === 100;
+        this.zoomBadge.textContent = z + "%";
+        document.querySelectorAll(".moreMenu .zoomValue").forEach((el) => el.textContent = z + "%");
     }
 
     switchTabs(detail) {
@@ -166,7 +340,8 @@ class AboutBrowser {
     }
 
     handleReload() {
-        this.activeTab.handleReload();
+        if (this.activeTab.loading) this.activeTab.handleStop();
+        else this.activeTab.handleReload();
     }
 
     handleSettings() {
@@ -180,6 +355,18 @@ class AboutBrowser {
         switch(menuItem) {
             case "newTab":
                 this.openTab();
+                break;
+            case "reopenTab":
+                this.reopenClosedTab();
+                break;
+            case "find":
+                this.findBar.open();
+                break;
+            case "connection":
+                this.siteInfo.open(true);
+                break;
+            case "shortcuts":
+                this.shortcuts.showSheet();
                 break;
             case "history":
                 this.openTab(this.resourcesProtocol + "history");
@@ -214,9 +401,18 @@ class AboutBrowser {
     }
 
     handleBookmarks() {
-        this.bookmarks.add(this.activeTab.currentTitle, this.activeTab.currentUrl, this.activeTab.currentFavi);
+        const tab = this.activeTab;
+        const i = this.bookmarks.indexOf(tab.currentUrl);
+        if (i >= 0) this.bookmarks.delete(i);
+        else {
+            this.bookmarks.add(tab.currentTitle, tab.currentUrl, tab.currentFavi);
+            this.starBtn.classList.remove("pop");
+            void this.starBtn.offsetWidth; // restart the pop
+            this.starBtn.classList.add("pop");
+        }
         this.bookmarks.save();
         this.propagateMessage({ type: "reloadBookmarks" });
+        this.onTabUrlChange(tab);
     }
 
     handleExtensions() {

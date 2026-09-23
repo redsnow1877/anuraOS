@@ -7,7 +7,8 @@ class Settings {
             startUrl: this.browser.resourcesProtocol + "start",
             installedExtensions: "[]",
             disabledExtensions: "[]",
-            themeId: "bdddhkcpnpcaggeblinmcffckoihfdia"
+            themeId: "bdddhkcpnpcaggeblinmcffckoihfdia",
+            restoreSession: "on"
         };
         this.settings = JSON.parse(localStorage.getItem("settings"));
         if(this.settings == null) this.settings = {};
@@ -31,6 +32,15 @@ class Settings {
                 id: "startUrl",
                 name: "New Tab URL",
                 type: "text"
+            },
+            {
+                id: "restoreSession",
+                name: "Reopen tabs from last time",
+                type: "dropdown",
+                values: [
+                    ["on", "On"],
+                    ["off", "Off"]
+                ]
             }
         ];
     }

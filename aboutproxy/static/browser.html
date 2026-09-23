@@ -13,6 +13,7 @@
   <link href="chrome-tabs/css/chrome-tabs.css" rel="stylesheet" />
   <link href="chrome-tabs/css/chrome-tabs-dark-theme.css" rel="stylesheet" />
   <link href="material-symbols-outlined.css" rel="stylesheet" />
+  <link href="qol.css" rel="stylesheet" />
   <!-- ******** JS ******** -->
   <script src="/libs/draggabilly.min.js"></script>
   <script src="/libs/filer.min.js"></script>
@@ -39,6 +40,12 @@
   <script src="extensions/resources.js"></script>
   <script src="extensions/extension.js"></script>
   <script src="extensions/controller.js"></script>
+  <script src="connection.js"></script>
+  <script src="omnibox.js"></script>
+  <script src="findbar.js"></script>
+  <script src="siteinfo.js"></script>
+  <script src="tabmenu.js"></script>
+  <script src="shortcuts.js"></script>
   <script src="browser.js"></script>
   <script src="browser-api.js"></script>
 </head>
@@ -80,14 +87,21 @@
         <button class="navbarBtn" id="browserForward" onclick="window.aboutbrowser.handleForward()">
           <span class="material-symbols-outlined">arrow_forward</span>
         </button>
-        <button class="navbarBtn" id="browserReload" onclick="window.aboutbrowser.handleReload();">
-          <span class="material-symbols-outlined">refresh</span>
+        <button class="navbarBtn" id="browserReload" title="Reload (Ctrl+R)" onclick="window.aboutbrowser.handleReload();">
+          <span class="material-symbols-outlined reloadIcon">refresh</span>
+          <span class="material-symbols-outlined stopIcon">close</span>
         </button>
-        <input class="navbarUrl" id="browserUrl" autocomplete="off" aria-label="Browser URL"></input>
-        <div class="bookmarksBtnWrapper">
-          <button class="navbarBtn bookmarksBtn" id="browserBookmarks" onclick="window.aboutbrowser.handleBookmarks();">
+        <div class="omnibox" id="omnibox">
+          <button class="siteChip" id="siteChip" title="View site information">
+            <span class="material-symbols-outlined siteChipIcon">search</span>
+            <span class="connDot" data-state="unknown"></span>
+          </button>
+          <input class="navbarUrl" id="browserUrl" autocomplete="off" spellcheck="false" aria-label="Browser URL" placeholder="Search or type a URL"></input>
+          <button class="zoomBadge" id="zoomBadge" title="Reset zoom" hidden></button>
+          <button class="bookmarksBtn" id="browserBookmarks" title="Bookmark this page (Ctrl+D)" onclick="window.aboutbrowser.handleBookmarks();">
             <span class="material-symbols-outlined">star</span>
           </button>
+          <div class="omniDrop" id="omniDrop" role="listbox"></div>
         </div>
         <button class="navbarBtn" id="browserExtensions" onclick="window.aboutbrowser.handleExtensions();">
           <span class="material-symbols-outlined">extension</span>
@@ -99,8 +113,21 @@
       <div>
         <div class="moreMenu hidden">
           <button onclick="window.aboutbrowser.handleSettingsCtxMenu('newTab');">
-              <span class="material-symbols-outlined menuIcon">tab</span><span class="title">New tab</span>
+              <span class="material-symbols-outlined menuIcon">tab</span><span class="title">New tab</span><kbd>Alt+T</kbd>
           </button>
+          <button onclick="window.aboutbrowser.handleSettingsCtxMenu('reopenTab');" class="reopenItem">
+              <span class="material-symbols-outlined menuIcon">tab_recent</span><span class="title">Reopen closed tab</span><kbd>Alt+Shift+T</kbd>
+          </button>
+          <div class="sep"></div>
+          <button onclick="window.aboutbrowser.handleSettingsCtxMenu('find');">
+              <span class="material-symbols-outlined menuIcon">search</span><span class="title">Find in page</span><kbd>Ctrl+F</kbd>
+          </button>
+          <div class="menuZoom">
+              <span class="material-symbols-outlined menuIcon">zoom_in</span><span class="title">Zoom</span>
+              <button class="zoomStep" data-zoom="-1" title="Zoom out (Ctrl+−)"><span class="material-symbols-outlined">remove</span></button>
+              <span class="zoomValue">100%</span>
+              <button class="zoomStep" data-zoom="1" title="Zoom in (Ctrl+=)"><span class="material-symbols-outlined">add</span></button>
+          </div>
           <div class="sep"></div>
           <button onclick="window.aboutbrowser.handleSettingsCtxMenu('history');">
             <span class="material-symbols-outlined menuIcon">history</span><span class="title">History</span>
@@ -114,8 +141,14 @@
           <button onclick="window.aboutbrowser.handleSettingsCtxMenu('settings');">
             <span class="material-symbols-outlined menuIcon">settings</span><span class="title">Settings</span>
           </button>
+          <button onclick="window.aboutbrowser.handleSettingsCtxMenu('connection');">
+            <span class="material-symbols-outlined menuIcon">hub</span><span class="title">Proxy server</span>
+          </button>
           <button onclick="window.aboutbrowser.handleSettingsCtxMenu('devtools');">
             <span class="material-symbols-outlined menuIcon">code</span><span class="title">Developer Tools</span>
+          </button>
+          <button onclick="window.aboutbrowser.handleSettingsCtxMenu('shortcuts');">
+            <span class="material-symbols-outlined menuIcon">keyboard</span><span class="title">Keyboard shortcuts</span>
           </button>
           <div class="sep"></div>
           <button onclick="window.aboutbrowser.handleSettingsCtxMenu('about');">
@@ -124,7 +157,19 @@
         </div>
       </div>
       <div class="bookmarksContainer"></div>
+      <div class="loadBar" id="loadBar"></div>
+      <div class="siteInfo" id="siteInfo" hidden></div>
+      <div class="findBar" id="findBar" hidden>
+      <input class="findInput" id="findInput" spellcheck="false" autocomplete="off" placeholder="Find in page" aria-label="Find in page">
+      <span class="findCount" id="findCount"></span>
+      <span class="findSep"></span>
+      <button class="findBtn" id="findPrev" title="Previous (Shift+Enter)"><span class="material-symbols-outlined">keyboard_arrow_up</span></button>
+      <button class="findBtn" id="findNext" title="Next (Enter)"><span class="material-symbols-outlined">keyboard_arrow_down</span></button>
+      <button class="findBtn" id="findClose" title="Close (Esc)"><span class="material-symbols-outlined">close</span></button>
+      </div>
     </div>
+    <div class="tabMenu hidden" id="tabMenu"></div>
+    <div class="shortcutSheet" id="shortcutSheet" hidden></div>
     <div id="popupHolder">
       <!--
       <div class="popup alert">
