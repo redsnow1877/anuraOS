@@ -10,8 +10,13 @@ class Networking {
 	TLSSocket: any;
 	bus: WispBus;
 	WSProxyEmulation: any;
+	/** The Wisp server all proxied traffic currently rides on. */
+	wispServer: string;
+	#upstream: WebSocket;
 	constructor(wisp_server: string) {
-		this.bus = new WispBus(new WebSocket(wisp_server));
+		this.wispServer = wisp_server;
+		this.#upstream = new WebSocket(wisp_server);
+		this.bus = new WispBus(this.#upstream);
 		this.WSProxyEmulation = this.bus.getFakeWSProxySocket();
 
 		//@ts-ignore
@@ -21,7 +26,7 @@ class Networking {
 			this.libcurl.transport = this.bus.getFakeWSProxySocket();
 		});
 		document.addEventListener("libcurl_load", () => {
-			this.libcurl.set_websocket(wisp_server);
+			this.libcurl.set_websocket(this.wispServer);
 			this.external.fetch = this.libcurl.fetch;
 
 			Object.assign(this, {
@@ -32,6 +37,78 @@ class Networking {
 			console.debug("libcurl.js ready!");
 		});
 	}
+	/**
+	 * Move to another Wisp server without a restart. libcurl opens every new
+	 * connection through `transport`, so pointing it at a fresh bus is enough;
+	 * connections still open on the old server are closed with it.
+	 */
+	setWispServer(url: string) {
+		const old = this.#upstream;
+		this.wispServer = url;
+		this.#upstream = new WebSocket(url);
+		this.bus = new WispBus(this.#upstream);
+		this.WSProxyEmulation = this.bus.getFakeWSProxySocket();
+		if (this.libcurl) {
+			this.libcurl.transport = this.bus.getFakeWSProxySocket();
+			this.libcurl.set_websocket(url);
+		}
+		try {
+			old.close();
+		} catch {
+			/* already closed */
+		}
+	}
+
+	/**
+	 * Is there a Wisp server at `url`? A Wisp server speaks first: on connect
+	 * it sends a CONTINUE packet (type 3) for stream 0, or INFO (type 5) under
+	 * Wisp v2. The time to that first packet is the round trip a page's
+	 * requests will pay on top of the site's own.
+	 */
+	static probeWisp(
+		url: string,
+		timeout = 6000,
+	): Promise<{ ok: boolean; ms?: number; reason?: string }> {
+		return new Promise((resolve) => {
+			let ws: WebSocket | null = null;
+			let done = false;
+			const t0 = performance.now();
+			const finish = (r: { ok: boolean; ms?: number; reason?: string }) => {
+				if (done) return;
+				done = true;
+				clearTimeout(timer);
+				try {
+					ws?.close();
+				} catch {
+					/* never opened */
+				}
+				resolve(r);
+			};
+			const timer = setTimeout(
+				() => finish({ ok: false, reason: "No answer" }),
+				timeout,
+			);
+			try {
+				ws = new WebSocket(url);
+			} catch {
+				finish({ ok: false, reason: "Not a valid address" });
+				return;
+			}
+			ws.binaryType = "arraybuffer";
+			ws.onmessage = (e) => {
+				const first =
+					e.data instanceof ArrayBuffer ? new Uint8Array(e.data)[0] : -1;
+				finish(
+					first === 3 || first === 5
+						? { ok: true, ms: Math.round(performance.now() - t0) }
+						: { ok: false, reason: "Not a Wisp server" },
+				);
+			};
+			ws.onerror = () => finish({ ok: false, reason: "Couldn't connect" });
+			ws.onclose = () => finish({ ok: false, reason: "Connection refused" });
+		});
+	}
+
 	loopback = {
 		addressMap: new Map(),
 		call: async (port: number, request: Request) => {
@@ -153,3 +230,6 @@ class Networking {
 		}
 	};
 }
+
+/* Class declarations are lexical, not properties of globalThis. See Widgets.tsx. */
+(globalThis as any).Networking = Networking;
