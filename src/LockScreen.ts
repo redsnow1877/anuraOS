@@ -69,7 +69,9 @@ class AetherLockScreen {
 		this.#build();
 		this.#render();
 		this.#tick = window.setInterval(() => this.#render(), 1000);
-		document.body.classList.add("aether-locked");
+		// The desktop recedes under the blur, then the shell chrome is hidden
+		// outright (see LockScreen.css for why it can't just stay blurred).
+		AetherMotion.lock(() => document.body.classList.add("aether-locked"));
 		requestAnimationFrame(() => {
 			this.#el?.classList.add("is-shown");
 			// Pull focus out of whatever app had it, so typing can't reach it.
@@ -107,13 +109,28 @@ class AetherLockScreen {
 		const el = this.#el;
 		el?.classList.remove("is-shown");
 		el?.classList.add("is-leaving");
-		document.body.classList.remove("aether-locked");
+		// The desktop drops back in underneath while the glass lifts off.
+		AetherMotion.unlock(() => document.body.classList.remove("aether-locked"));
 		(globalThis as any).aetherSound?.play?.("open");
 		this.#lastActivity = Date.now();
-		setTimeout(() => {
-			el?.remove();
+		// Let the desktop take the pointer once the unlocking press is over,
+		// so a quick click right after unlocking isn't swallowed by glass
+		// that's already mostly gone. Not immediately: the release of the
+		// press that unlocked would land on whatever is underneath.
+		setTimeout(() => el && (el.style.pointerEvents = "none"), 160);
+		if (!el) return;
+		// Gone once its own exit transitions are, rather than on a timer that
+		// could cut them short.
+		const gone = () => {
+			el.remove();
 			if (this.#el === el) this.#el = null;
-		}, 520);
+		};
+		void getComputedStyle(el).opacity; // start the transitions now
+		Promise.all(
+			el.getAnimations({ subtree: true }).map((a) => a.finished),
+		).then(gone, gone);
+		// Invisible and click-through by then regardless; just don't leak it.
+		setTimeout(gone, 10_000);
 	}
 
 	/* ---- view ---------------------------------------------------------- */

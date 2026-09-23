@@ -454,7 +454,14 @@ const LauncherShortcut: Component<
 			// Picked up by AetherMagnetic.scan() when the Launchpad opens; the
 			// value is the pull strength. Harmless if Magnetic.js is absent.
 			data-magnetic="0.3"
-			on:click={this.onclick}
+			on:click={(e: MouseEvent) => {
+				// The window grows out of this tile (Motion.ts). Measured
+				// before the Launchpad starts collapsing.
+				AetherMotion.noteLaunch(
+					(e.currentTarget as HTMLElement).querySelector(".app-shortcut-image"),
+				);
+				this.onclick();
+			}}
 			on:contextmenu={(e: PointerEvent) => {
 				e.preventDefault();
 

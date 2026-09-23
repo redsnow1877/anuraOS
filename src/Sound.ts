@@ -889,45 +889,6 @@ class AetherSound {
 }
 
 /**
- * Motion.css needs `body.reduce-motion` kept in sync with the existing
- * `disable-animation` setting. It lives here rather than in a third file
- * because it is three lines and shares this file's "guard every anura access"
- * posture. Call `AetherMotion.sync()` once anura is up; it is idempotent and
- * re-syncs on `anura-settings-change`.
- */
-const AetherMotion = {
-	bound: false,
-
-	/** Push the current `disable-animation` value onto <body>. */
-	sync(): void {
-		try {
-			if (typeof document === "undefined" || !document.body) return;
-			const a = typeof anura === "undefined" ? null : (anura as any);
-			if (!a || !a.settings || typeof a.settings.get !== "function") return;
-			document.body.classList.toggle(
-				"reduce-motion",
-				!!a.settings.get("disable-animation"),
-			);
-		} catch {
-			/* ignore */
-		}
-	},
-
-	/** Sync now and on every settings change event the shell emits. */
-	watch(): void {
-		if (this.bound) return;
-		this.bound = true;
-		this.sync();
-		try {
-			document.addEventListener("anura-settings-change", () => this.sync());
-			document.addEventListener("anura-theme-change", () => this.sync());
-		} catch {
-			/* ignore */
-		}
-	},
-};
-
-/**
  * The singleton. Declared as a top-level `const` (visible to every other
  * script in the shared global scope) and mirrored onto globalThis so app
  * iframes and dynamically-evaluated code can reach it too.
@@ -936,7 +897,6 @@ const aetherSound = new AetherSound();
 try {
 	(globalThis as any).aetherSound = aetherSound;
 	(globalThis as any).AetherSound = AetherSound;
-	(globalThis as any).AetherMotion = AetherMotion;
 } catch {
 	/* ignore */
 }

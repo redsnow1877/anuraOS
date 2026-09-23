@@ -258,6 +258,11 @@ class Taskbar {
 			c.style.top = "";
 			c.style.bottom = "calc(var(--dock-reserve) + 6px)";
 		} else {
+			AetherMotion.noteLaunch(
+				(e.target as HTMLElement | null)
+					?.closest?.(".dock-item")
+					?.querySelector(".dock-icon"),
+			);
 			bounceDockItem(e.target as HTMLElement | null);
 			try {
 				aetherSound.play("open");

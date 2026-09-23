@@ -33,6 +33,11 @@ function dismissSplash(minVisibleMs = 350) {
 	const wait = Math.max(0, splashShownAt + minVisibleMs - performance.now());
 	setTimeout(() => {
 		splashToRemove?.classList.add("hide");
+		// The splash lifts away and the desktop drops in from behind it, the
+		// same bloom as an unlock. Only when there is a desktop: on first run
+		// the splash gives way to setup instead.
+		if (document.getElementById("dock"))
+			(globalThis as any).AetherMotion?.revealDesktop();
 		bootMark("splash-hidden");
 		setTimeout(() => {
 			bootsplash.remove();

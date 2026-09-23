@@ -666,6 +666,11 @@ class AetherSpotlight {
 
 	private activate(result: SpotlightResult) {
 		(globalThis as any).aetherSound?.play?.("click");
+		// If this opens a window, it grows out of the result's icon.
+		const row = this.items.find((it) => it.result === result)?.el;
+		(globalThis as any).AetherMotion?.noteLaunch(
+			row?.querySelector(".spotlight-icon"),
+		);
 		if (!result.id.startsWith("copy:")) this.close();
 		try {
 			result.run();

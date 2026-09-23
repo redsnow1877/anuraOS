@@ -74,51 +74,6 @@ function focusTopmostWindow() {
 	markWindowFocused(win || null);
 }
 
-/**
- * Motion.css animates minimise/restore toward `--min-x`/`--min-y` (an offset
- * from the window's own centre). Point them at this app's dock icon so the
- * window collapses into the thing you clicked, falling back to the dock's
- * centre when the app isn't pinned.
- */
-function aimAtDock(win: WMWindow) {
-	try {
-		const dockIcon =
-			(win.app &&
-				document.querySelector<HTMLElement>(
-					`.dock-item[data-title="${CSS.escape(win.app.name)}"]`,
-				)) ||
-			document.querySelector<HTMLElement>("#dock");
-		if (!dockIcon) return;
-		const w = win.element.getBoundingClientRect();
-		const d = dockIcon.getBoundingClientRect();
-		win.element.style.setProperty(
-			"--min-x",
-			d.left + d.width / 2 - (w.left + w.width / 2) + "px",
-		);
-		win.element.style.setProperty(
-			"--min-y",
-			d.top + d.height / 2 - (w.top + w.height / 2) + "px",
-		);
-	} catch {
-		/* geometry is a nicety; never block the animation on it */
-	}
-}
-
-/** Adds a Motion.css class and strips it once the animation ends. */
-function playOnce(el: HTMLElement, cls: string, then?: () => void) {
-	if (anura.settings.get("disable-animation")) {
-		then?.();
-		return;
-	}
-	const done = () => {
-		el.classList.remove(cls);
-		el.removeEventListener("animationend", done);
-		then?.();
-	};
-	el.addEventListener("animationend", done);
-	el.classList.add(cls);
-}
-
 /** Lets us go from a DOM node back to the window that owns it. */
 const wmWindowByElement = new WeakMap<HTMLElement, WMWindow>();
 
@@ -630,16 +585,15 @@ class WMWindow extends EventTarget implements Process {
 			};
 		}
 
-		if (!anura.settings.get("disable-animation"))
-			this.element.classList.add("scaletransition");
-
 		if (anura.platform.type === "mobile" || anura.platform.type === "tablet") {
 			this.maximize();
 		}
 
+		// A tick for the caller to finish sizing and placing the window, so
+		// the animation measures where it will actually end up. Then it grows
+		// out of whatever launched it (Motion.ts).
 		setTimeout(() => {
-			this.element.classList.remove("opacity0");
-			playOnce(this.element, "wm-open");
+			AetherMotion.openWindow(this.element);
 			(globalThis as any).aetherSound?.play?.("open");
 		}, 10);
 
@@ -737,23 +691,23 @@ class WMWindow extends EventTarget implements Process {
 	}
 	close() {
 		anura.processes.remove(this.pid);
-		if (!anura.settings.get("disable-animation"))
-			this.element.classList.add("scaletransition");
 
 		this.dispatchEvent(new Event("close"));
 		this.onclose();
+		// Marks it as going (focusTopmostWindow and Mission Control skip it);
+		// what's on screen is the animation.
 		this.element.classList.add("opacity0");
 		(globalThis as any).aetherSound?.play?.("close");
-		playOnce(this.element, "wm-close");
 		this.dragging = false;
-		setTimeout(() => {
+		const gone = () => {
 			this.element.remove();
 			this.#globalListeners.abort();
 			// Hand focus (and the menu bar title) to whatever is on top now.
 			focusTopmostWindow();
 			// TODO, Remove this and make it an event
 			anura.removeStaleApps();
-		}, 220);
+		};
+		AetherMotion.closeWindow(this.element).then(gone, gone);
 	}
 	togglemaximize() {
 		if (!this.maximized) {
@@ -911,15 +865,18 @@ class WMWindow extends EventTarget implements Process {
 			WMSplitBar.prototype.cleanup();
 		}
 
-		aimAtDock(this);
 		this.element.classList.add("opacity0");
 		(globalThis as any).aetherSound?.play?.("minimize");
-		playOnce(this.element, "wm-minimize");
-		// This is to make sure that you cannot interact with the window while it is minimized
-		setTimeout(() => {
-			this.element.style.display = "none";
+		const el = this.element;
+		// Once it's in the dock, take it out of the page entirely so it can't
+		// be interacted with while minimised.
+		const hide = () => {
+			if (!el.classList.contains("opacity0")) return;
+			el.style.display = "none";
+			AetherMotion.cancel(el);
 			focusTopmostWindow();
-		}, 400);
+		};
+		AetherMotion.minimizeWindow(el, this.app).then(hide, hide);
 	}
 	unminimize() {
 		if (
@@ -1013,17 +970,8 @@ class WMWindow extends EventTarget implements Process {
 				}
 			}
 		}
-		// Aim before making it visible — aimAtDock measures the element, and a
-		// display:none element has no box to measure.
 		this.element.style.display = "";
-		aimAtDock(this);
-		if (!anura.settings.get("disable-animation"))
-			this.element.classList.add("scaletransition");
-
-		setTimeout(() => {
-			this.element.classList.remove("opacity0");
-			playOnce(this.element, "wm-unminimize");
-		}, 10);
+		AetherMotion.restoreWindow(this.element, this.app);
 	}
 
 	snap(snapDirection: "left" | "right" | "top" | "ne" | "nw" | "se" | "sw") {

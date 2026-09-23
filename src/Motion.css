@@ -23,43 +23,17 @@
        const m = () => document.body.classList.toggle(
            "reduce-motion", !!anura.settings.get("disable-animation"));
 
-   `Sound.ts` ships a tiny helper that does exactly this and re-runs it on
-   `anura-settings-change` — call `AetherMotion.sync()` if you want it, or
-   wire it yourself. `@media (prefers-reduced-motion: reduce)` is honoured
+   `Motion.ts` does exactly this and re-runs it on `anura-settings-change`:
+   call `AetherMotion.sync()`. `@media (prefers-reduced-motion: reduce)` is honoured
    automatically, no JS required.
 
    ---- 1. WINDOWS (AliceWM) ----------------------------------------------
-   Add the class to the `.aliceWMwin` element, remove it on `animationend`
-   (each class is `both`-filled, so it holds the final frame until removed).
-
-     .wm-open          on create. 380ms. Remove on animationend.
-     .wm-close         before removing the node. 220ms. Remove the node on
-                       animationend (the class fills to opacity 0).
-     .wm-minimize      when minimizing. 400ms. On animationend set
-                       `visibility: hidden` / your existing hidden state and
-                       remove the class.
-     .wm-unminimize    when restoring. 380ms. Make the window visible first,
-                       then add. Remove on animationend.
-     .wm-maximize      340ms zoom accent — add *together with* your existing
-                       `.maxtransition` width/height/top/left transition.
-     .wm-restore       300ms, same idea in reverse.
-     .wm-focus-pop     120ms nudge when a window is raised. Optional.
-     .wm-attention     560ms horizontal shake for "can't do that". Optional.
-
-     Minimize/unminimize aim at the dock. Set two inline custom properties on
-     the window *before* adding the class, otherwise it defaults to the dock's
-     centre (bottom-centre of the screen):
-
-         const w = win.getBoundingClientRect();
-         const d = dockIconEl.getBoundingClientRect();
-         win.style.setProperty("--min-x",
-             (d.left + d.width / 2 - (w.left + w.width / 2)) + "px");
-         win.style.setProperty("--min-y",
-             (d.top  + d.height / 2 - (w.top  + w.height / 2)) + "px");
-
-     Guard all of the above with `if (!anura.settings.get("disable-animation"))`
-     exactly like the existing AliceWM code does; the CSS also degrades on its
-     own, so a missed guard is harmless.
+   Window open, close, minimise and restore are driven from Motion.ts
+   (AetherMotion.openWindow and friends) with Web Animations on real spring
+   curves: a window grows out of the icon that launched it and minimises into
+   its dock icon, which needs per-window geometry that keyframes can't hold.
+   The `.wm-*` classes below remain for anything else that wants a one-off
+   accent (`.wm-attention` for "can't do that", `.wm-focus-pop`).
 
    ---- 2. LAUNCHPAD "BUTTERFLY" ------------------------------------------
    The entrance needs NO JavaScript: it keys off the existing
@@ -137,9 +111,14 @@
      .dock-pop-in   add to a `.dock-item` that was just appended.
 
    ---- 5. WHAT NOT TO DO --------------------------------------------------
-   Do not leave any of these classes on an element at rest. Every one of them
-   ramps `filter: blur()` through the middle of its timeline and returns to
-   blur(0) — a stuck class means permanently soft text.
+   Do not leave any of these classes on an element at rest; they fill
+   `both`, so a stuck class holds its last frame.
+
+   And no `filter: blur()` in keyframes. It used to be the motion smear here,
+   and it cost a full blur pass per element per frame (thirty-odd of them
+   across a Launchpad grid), and a filter on anything that contains glass
+   cuts that glass off from what's behind it for the length of the
+   animation, so its frost popped back on at the end.
    ========================================================================== */
 
 :root {
@@ -205,16 +184,13 @@
 	0% {
 		opacity: 0;
 		transform: scale(0.92) translateY(10px);
-		filter: blur(var(--motion-blur-soft));
 	}
 	55% {
 		opacity: 1;
-		filter: blur(1px);
 	}
 	100% {
 		opacity: 1;
 		transform: scale(1) translateY(0);
-		filter: blur(0);
 	}
 }
 
@@ -222,15 +198,10 @@
 	0% {
 		opacity: 1;
 		transform: scale(1);
-		filter: blur(0);
-	}
-	60% {
-		filter: blur(var(--motion-blur-soft));
 	}
 	100% {
 		opacity: 0;
 		transform: scale(0.94) translateY(6px);
-		filter: blur(var(--motion-blur));
 	}
 }
 
@@ -241,7 +212,6 @@
 	0% {
 		opacity: 1;
 		transform: translate3d(0, 0, 0) scale(1, 1);
-		filter: blur(0);
 	}
 	35% {
 		opacity: 0.95;
@@ -251,16 +221,13 @@
 				0
 			)
 			scale(0.72, 0.62);
-		filter: blur(var(--motion-blur));
 	}
 	75% {
 		opacity: 0.55;
-		filter: blur(var(--motion-blur-heavy));
 	}
 	100% {
 		opacity: 0;
 		transform: translate3d(var(--min-x), var(--min-y), 0) scale(0.16, 0.05);
-		filter: blur(var(--motion-blur-heavy));
 	}
 }
 
@@ -268,46 +235,37 @@
 	0% {
 		opacity: 0;
 		transform: translate3d(var(--min-x), var(--min-y), 0) scale(0.16, 0.05);
-		filter: blur(var(--motion-blur-heavy));
 	}
 	40% {
 		opacity: 0.8;
-		filter: blur(var(--motion-blur));
 	}
 	100% {
 		opacity: 1;
 		transform: translate3d(0, 0, 0) scale(1, 1);
-		filter: blur(0);
 	}
 }
 
 @keyframes wm-maximize {
 	0% {
 		transform: scale(1);
-		filter: blur(0);
 	}
 	45% {
 		transform: scale(1.012);
-		filter: blur(var(--motion-blur-soft));
 	}
 	100% {
 		transform: scale(1);
-		filter: blur(0);
 	}
 }
 
 @keyframes wm-restore {
 	0% {
 		transform: scale(1);
-		filter: blur(0);
 	}
 	45% {
 		transform: scale(0.988);
-		filter: blur(var(--motion-blur-soft));
 	}
 	100% {
 		transform: scale(1);
-		filter: blur(0);
 	}
 }
 
@@ -348,27 +306,27 @@
 .wm-open {
 	animation: wm-open var(--wm-dur-open) var(--ease-spring-soft) both;
 	transform-origin: center center;
-	will-change: transform, opacity, filter;
+	will-change: transform, opacity;
 }
 
 .wm-close {
 	animation: wm-close var(--wm-dur-close) var(--ease-accelerate) both;
 	transform-origin: center center;
 	pointer-events: none;
-	will-change: transform, opacity, filter;
+	will-change: transform, opacity;
 }
 
 .wm-minimize {
 	animation: wm-minimize var(--wm-dur-min) var(--ease-accelerate) both;
 	transform-origin: center bottom;
 	pointer-events: none;
-	will-change: transform, opacity, filter;
+	will-change: transform, opacity;
 }
 
 .wm-unminimize {
 	animation: wm-unminimize var(--wm-dur-open) var(--ease-glide) both;
 	transform-origin: center bottom;
-	will-change: transform, opacity, filter;
+	will-change: transform, opacity;
 }
 
 .wm-maximize {
@@ -439,7 +397,6 @@
 			rotateX(var(--lp-pitch))
 			rotateY(calc(clamp(-1, var(--dx, 0), 1) * var(--lp-fold)))
 			rotateZ(calc(clamp(-1, var(--dx, 0), 1) * -7deg)) scale(0.58);
-		filter: blur(var(--motion-blur-heavy));
 	}
 	/* Wings snap open and the tile clears the pile — fastest moment, so this
 	   is where the smear lives. */
@@ -453,18 +410,15 @@
 			rotateX(calc(var(--lp-pitch) * 0.3))
 			rotateY(calc(clamp(-1, var(--dx, 0), 1) * var(--lp-fold) * 0.34))
 			rotateZ(calc(clamp(-1, var(--dx, 0), 1) * -2.5deg)) scale(0.9);
-		filter: blur(var(--motion-blur));
 	}
 	/* Slight past-target settle: the tile drops a hair below and rocks back. */
 	68% {
 		transform: translate3d(0, 5px, 12px) rotateX(7deg)
 			rotateY(calc(clamp(-1, var(--dx, 0), 1) * -5deg)) scale(1.035);
-		filter: blur(1.2px);
 	}
 	100% {
 		opacity: 1;
 		transform: translate3d(0, 0, 0) rotateX(0) rotateY(0) rotateZ(0) scale(1);
-		filter: blur(0);
 	}
 }
 
@@ -472,7 +426,6 @@
 	0% {
 		opacity: 1;
 		transform: translate3d(0, 0, 0) rotateX(0) rotateY(0) scale(1);
-		filter: blur(0);
 	}
 	100% {
 		opacity: 0;
@@ -484,7 +437,6 @@
 			rotateX(calc(var(--lp-pitch) * 0.55))
 			rotateY(calc(clamp(-1, var(--dx, 0), 1) * var(--lp-fold) * 0.7))
 			scale(0.74);
-		filter: blur(var(--motion-blur));
 	}
 }
 
@@ -493,12 +445,10 @@
 	0% {
 		opacity: 0;
 		transform: translateY(12px) scale(0.94);
-		filter: blur(var(--motion-blur-soft));
 	}
 	100% {
 		opacity: 1;
 		transform: none;
-		filter: blur(0);
 	}
 }
 
@@ -512,7 +462,7 @@
 	animation-delay: calc(
 		var(--ring, 0) * var(--stagger-ring) + var(--i, 0) * var(--stagger-i)
 	);
-	will-change: transform, opacity, filter;
+	will-change: transform, opacity;
 }
 
 /* Outer rings leave first, so the grid collapses back toward the centre. The
@@ -535,12 +485,10 @@
 	0% {
 		opacity: 0;
 		transform: translateY(-22px) scale(0.94);
-		filter: blur(var(--motion-blur-soft));
 	}
 	100% {
 		opacity: 1;
 		transform: none;
-		filter: blur(0);
 	}
 }
 
@@ -589,16 +537,13 @@ body.blur-disable #launcher.launcher-active {
 	0% {
 		opacity: 0;
 		transform: translateY(-14px) scale(0.96) rotateX(-9deg);
-		filter: blur(var(--motion-blur-soft));
 	}
 	60% {
 		opacity: 1;
-		filter: blur(0.6px);
 	}
 	100% {
 		opacity: 1;
 		transform: translateY(0) scale(1) rotateX(0);
-		filter: blur(0);
 	}
 }
 
@@ -606,12 +551,10 @@ body.blur-disable #launcher.launcher-active {
 	0% {
 		opacity: 1;
 		transform: translateY(0) scale(1);
-		filter: blur(0);
 	}
 	100% {
 		opacity: 0;
 		transform: translateY(-10px) scale(0.97);
-		filter: blur(var(--motion-blur-soft));
 	}
 }
 
@@ -619,7 +562,7 @@ body.blur-disable #launcher.launcher-active {
 	transform-origin: top center;
 	perspective: 900px;
 	animation: panel-drop-in 300ms var(--ease-spring-soft) both;
-	will-change: transform, opacity, filter;
+	will-change: transform, opacity;
 }
 
 .panel-drop-out {
@@ -632,12 +575,10 @@ body.blur-disable #launcher.launcher-active {
 	0% {
 		opacity: 0;
 		transform: scale(0.9) translateY(-5px);
-		filter: blur(var(--motion-blur-soft));
 	}
 	100% {
 		opacity: 1;
 		transform: scale(1) translateY(0);
-		filter: blur(0);
 	}
 }
 
@@ -658,16 +599,13 @@ body.blur-disable #launcher.launcher-active {
 	0% {
 		opacity: 0;
 		transform: translateX(46px) scale(0.94);
-		filter: blur(var(--motion-blur-soft));
 	}
 	65% {
 		opacity: 1;
-		filter: blur(0.5px);
 	}
 	100% {
 		opacity: 1;
 		transform: translateX(0) scale(1);
-		filter: blur(0);
 	}
 }
 
@@ -675,18 +613,16 @@ body.blur-disable #launcher.launcher-active {
 	0% {
 		opacity: 1;
 		transform: translateX(0) scale(1);
-		filter: blur(0);
 	}
 	100% {
 		opacity: 0;
 		transform: translateX(56px) scale(0.96);
-		filter: blur(var(--motion-blur));
 	}
 }
 
 .notif-in {
 	animation: notif-in 380ms var(--ease-spring-soft) both;
-	will-change: transform, opacity, filter;
+	will-change: transform, opacity;
 }
 
 .notif-out {
@@ -698,12 +634,10 @@ body.blur-disable #launcher.launcher-active {
 	0% {
 		opacity: 0;
 		transform: scale(0.94) translateY(14px);
-		filter: blur(var(--motion-blur-soft));
 	}
 	100% {
 		opacity: 1;
 		transform: none;
-		filter: blur(0);
 	}
 }
 
@@ -763,12 +697,10 @@ body.blur-disable #launcher.launcher-active {
 	0% {
 		opacity: 0;
 		transform: translateY(18px) scale(0.6);
-		filter: blur(var(--motion-blur-soft));
 	}
 	100% {
 		opacity: 1;
 		transform: none;
-		filter: blur(0);
 	}
 }
 
@@ -807,12 +739,10 @@ body.blur-disable #launcher.launcher-active {
 	0% {
 		opacity: 0;
 		transform: translateX(-50%) translateY(28px);
-		filter: blur(var(--motion-blur-soft));
 	}
 	100% {
 		opacity: 1;
 		transform: translateX(-50%) translateY(0);
-		filter: blur(0);
 	}
 }
 
@@ -823,6 +753,17 @@ body.blur-disable #launcher.launcher-active {
 /* ==========================================================================
    5. SMALL SHARED UTILITIES
    ========================================================================== */
+
+/* Motion.ts: while it animates an element, the element's own transitions are
+   off (they'd outrank the animation in the cascade and take it over), and
+   its pivot can be moved to where it visually is. */
+.mo-hold {
+	transition: none !important;
+}
+
+.mo-origin {
+	transform-origin: var(--mo-ox, 50%) var(--mo-oy, 50%) !important;
+}
 
 @keyframes fade-in {
 	from {
