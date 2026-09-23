@@ -617,6 +617,19 @@ class SettingsApp extends App {
 					<div
 						class="sidebar-settings-item"
 						on:click={() => {
+							document
+								.getElementById("profile")
+								?.scrollIntoView({ behavior: "smooth", block: "start" });
+						}}
+					>
+						<span class="sidebar-settings-item-name">
+							<span class="material-symbols-outlined">account_circle</span>
+							<a>Profile</a>
+						</span>
+					</div>
+					<div
+						class="sidebar-settings-item"
+						on:click={() => {
 							this.state.settingsBody.scrollTo({
 								top: 0,
 								behavior: "smooth",
@@ -684,6 +697,10 @@ class SettingsApp extends App {
 					</div>
 				</div>
 				<div bind:this={use(this.state.settingsBody)} class="settings-body">
+					<div id="profile" class="settings-category">
+						<h3 class="settings-category-name">Profile</h3>
+						<div class="settings-group">{aetherProfileEditor()}</div>
+					</div>
 					<div id="general" class="general settings-category">
 						<h3 class="settings-category-name">General</h3>
 						<div class="settings-group">

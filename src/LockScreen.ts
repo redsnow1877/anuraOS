@@ -154,7 +154,11 @@ class AetherLockScreen {
 		bottom.className = "lock-bottom";
 		const avatar = document.createElement("div");
 		avatar.className = "lock-avatar";
-		avatar.innerHTML = '<span class="material-symbols-outlined">person</span>';
+		AetherProfile.paint(avatar);
+		const profile = AetherProfile.get();
+		const name = document.createElement("div");
+		name.className = "lock-name";
+		name.textContent = profile.name.trim();
 		this.#pinWrap = document.createElement("div");
 		this.#pinWrap.className = "lock-pin";
 		this.#pinInput = document.createElement("input");
@@ -178,7 +182,9 @@ class AetherLockScreen {
 		this.#hint.textContent = this.hasPin
 			? "Click or press any key, then enter your passcode"
 			: "Click or press any key to unlock";
-		bottom.append(avatar, this.#pinWrap, this.#hint);
+		bottom.append(avatar);
+		if (name.textContent) bottom.append(name);
+		bottom.append(this.#pinWrap, this.#hint);
 
 		el.append(center, bottom);
 		el.addEventListener("pointerdown", (e) => {

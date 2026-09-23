@@ -161,6 +161,36 @@ class ExploreApp extends App {
 				shortcut.
 			</p>
 
+			<h2>Motion that feels physical</h2>
+			<p>
+				Windows grow out of the icon you launched them from (the dock, the
+				Launchpad or Spotlight) and minimise back into their dock icon, on real
+				spring physics. Unlocking drops the whole desktop in from the middle of
+				the screen: windows and widgets bloom outward, the dock fans open and
+				the menu bar lands last. It all runs on the GPU's compositor, so it
+				stays smooth while apps are busy.
+			</p>
+
+			<h2>A proper Setup Assistant</h2>
+			<p>
+				New installs start with a hello in fourteen languages, then walk through
+				region, your name and avatar (shown on the lock screen), accent colour
+				and wallpaper with a live preview, desktop widgets, sounds and glass,
+				passcode and auto-lock, and a browsing relay that's tested live. Already
+				set up? Run it again from Settings → Profile, or search "Setup" in
+				Spotlight. Nothing you've set is lost.
+			</p>
+
+			<h2>A browser that behaves like one</h2>
+			<p>
+				The browser shows real loading progress, completes addresses you've
+				visited, finds in page (<kbd>Ctrl</kbd> <kbd>F</kbd>), zooms per site,
+				reopens closed tabs (<kbd>Alt</kbd> <kbd>⇧</kbd> <kbd>T</kbd>), restores
+				your session, and opens links that want a new tab in a new tab. The chip
+				at the left of the address bar shows the page's security and lets you
+				switch proxy relay, testing each one first.
+			</p>
+
 			<h2>Spotlight</h2>
 			<p>
 				<kbd>Ctrl</kbd> <kbd>Space</kbd> (or the search icon in the menu bar)

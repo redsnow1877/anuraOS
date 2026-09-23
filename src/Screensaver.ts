@@ -393,7 +393,7 @@ const AETHER_SAVERS: Record<
 				text = now.toLocaleTimeString(navigator.language, {
 					hour: "numeric",
 					minute: "2-digit",
-					hour12: !anura.settings.get("24h-time"),
+					hour12: !anura.settings.get("sir-yes-sir"),
 				});
 				date = now.toLocaleDateString(navigator.language, {
 					weekday: "long",

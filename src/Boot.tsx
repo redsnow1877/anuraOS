@@ -722,6 +722,21 @@ document.addEventListener("anura-login-completed", async () => {
 			keywords: ["widget", "desktop", "clock", "weather"],
 			run: () => AetherDesktopWidgets.openPicker(),
 		});
+		AetherCommands.register({
+			id: "setup",
+			title: "Run Setup Assistant",
+			subtitle: "Name, look, privacy, browsing. Files and apps stay put",
+			icon: "restart_alt",
+			keywords: ["oobe", "welcome", "first run", "onboarding", "setup"],
+			run: async () => {
+				const ok = await anura.dialog.confirm(
+					`${BRANDING.name} will restart into the Setup Assistant. Your files and apps stay as they are.`,
+				);
+				if (!ok) return;
+				await anura.settings.set("oobe-complete", false);
+				location.reload();
+			},
+		});
 
 		const shot = (combo: string, description: string, fn: () => void) =>
 			AetherShortcuts.register({
@@ -862,6 +877,9 @@ document.addEventListener("anura-login-completed", async () => {
 	}
 
 	(window as any).taskbar = taskbar;
+	// The desktop is on screen and populated (setup waits for this to hand
+	// over to it).
+	document.dispatchEvent(new Event("aether-desktop-ready"));
 
 	// Initializes apps and libs from userApps/ and userLibs/ and runs any user specified init scripts
 	await bootUserCustomizations();
