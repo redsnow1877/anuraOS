@@ -23,7 +23,7 @@ server/passkey
 result
 anuraos-types/
 public/config.json
-static/
+/static/
 x86_image_wizard/alpine/anura-run
 x86_image_wizard/alpine/xfrog.sh
 x86_image_wizard/alpine/xsetrandr.sh
