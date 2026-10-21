@@ -2,11 +2,16 @@
 # GitHub release, which is where Aether's "Download Linux image" button points.
 #
 # It's a separate download because the disk is 1 GB and GitHub Pages can't host
-# it. Run it by hand from the Actions tab; nothing triggers it automatically,
-# and it only needs re-running when x86_image_wizard/ changes.
+# it. Publishing only ever happens when someone runs it by hand from the
+# Actions tab. A push that touches the image sources (or this file) just builds
+# it as a check, and keeps the result as a run artifact for a week.
 name: Build Linux image
 
 on:
+  push:
+    paths:
+      - ".github/workflows/linux-image.yml"
+      - "x86_image_wizard/**"
   workflow_dispatch:
     inputs:
       publish:
@@ -68,7 +73,7 @@ jobs:
           compression-level: 0
 
       - name: Publish release
-        if: ${{ inputs.publish }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
