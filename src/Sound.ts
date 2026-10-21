@@ -17,6 +17,11 @@
  *
  *     sound-enabled   boolean, default true
  *     sound-volume    number 0..1, default 0.4
+ *     sound-level     "Essential" (default) or "All". Essential plays only
+ *                     the sounds that tell you something you might not see:
+ *                     notifications, errors, the shutter and the boot chime.
+ *                     A caller can pass { essential: true } for a one-off
+ *                     that should always sound (the volume slider's tick).
  *
  * Design constraints this file holds itself to:
  *   - It may load before `anura` exists. Every settings access is lazy and
@@ -211,6 +216,13 @@ class AetherSynth {
 class AetherSound {
 	static readonly KEY_ENABLED = "sound-enabled";
 	static readonly KEY_VOLUME = "sound-volume";
+	static readonly KEY_LEVEL = "sound-level";
+	static readonly ESSENTIAL = new Set<string>([
+		"notify",
+		"error",
+		"shutter",
+		"boot",
+	]);
 	static readonly DEFAULT_VOLUME = 0.4;
 
 	/** Longest sound in the palette, used to size offline renders. */
@@ -794,13 +806,29 @@ class AetherSound {
 	 * a missing AudioContext, a suspended context, sound disabled, or zero
 	 * volume all resolve to a silent no-op rather than an exception.
 	 */
-	play(name: AetherSoundName | string, opts?: { volume?: number }): void {
+	/** Everything, or only the essentials (the default). */
+	get all(): boolean {
+		try {
+			return (
+				(globalThis as any).anura?.settings.get(AetherSound.KEY_LEVEL) === "All"
+			);
+		} catch {
+			return false;
+		}
+	}
+
+	play(
+		name: AetherSoundName | string,
+		opts?: { volume?: number; essential?: boolean },
+	): void {
 		try {
 			const recipe = (
 				AetherSound.RECIPES as Record<string, AetherRecipe | undefined>
 			)[name];
 			if (!recipe) return;
 			if (!this.enabled || this.volume <= 0) return;
+			if (!opts?.essential && !AetherSound.ESSENTIAL.has(name) && !this.all)
+				return;
 
 			const now = Date.now();
 			const last = this.lastPlayed[name];

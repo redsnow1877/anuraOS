@@ -788,11 +788,17 @@ class SettingsApp extends App {
 									try {
 										aetherSound.refresh();
 										if (anura.settings.get("sound-enabled"))
-											aetherSound.play("toggleOn");
+											aetherSound.play("toggleOn", { essential: true });
 									} catch {
 										/* Sound.js may be absent in a trimmed build */
 									}
 								}}
+							/>
+							<SettingChoice
+								title="Which sounds"
+								setting="sound-level"
+								options={["Essential", "All"]}
+								fallback="Essential"
 							/>
 							<SettingSlider
 								title="Sound volume"
@@ -802,7 +808,7 @@ class SettingsApp extends App {
 									try {
 										// Re-reads the level and tells Music & co. it moved.
 										aetherSound.volume = anura.settings.get("sound-volume");
-										aetherSound.play("click");
+										aetherSound.play("click", { essential: true });
 									} catch {
 										/* as above */
 									}

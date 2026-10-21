@@ -233,7 +233,7 @@ function aetherControlSliders(): HTMLElement {
 	wrap
 		.querySelectorAll("input")[1]
 		?.addEventListener("change", () =>
-			(globalThis as any).aetherSound?.play?.("click"),
+			(globalThis as any).aetherSound?.play?.("click", { essential: true }),
 		);
 	return wrap;
 }
