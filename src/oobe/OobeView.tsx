@@ -155,6 +155,7 @@ class OobeView {
 	#probes = new Map<string, OobeProbe>();
 	/** Running setup again with a passcode set: an empty field keeps it. */
 	#hadPin = false;
+	#paintFeatures: () => void = () => {};
 
 	/** Everything the questions decide, committed step by step. */
 	c = {
@@ -756,6 +757,7 @@ class OobeView {
 			sw,
 		);
 		const flip = () => {
+			if (row.classList.contains("is-unavailable")) return;
 			set(!get());
 			(globalThis as any).aetherSound?.play?.(get() ? "toggleOn" : "toggleOff");
 			sync();
@@ -1430,14 +1432,14 @@ class OobeView {
 				"Extras that need a download. All of them can be turned on later in Settings.",
 			body: () => {
 				const size = oobeEl("span", {});
-				const paint = () => {
+				const paint = (this.#paintFeatures = () => {
 					size.textContent = this.c.linux
 						? "About 1 GB to download"
 						: this.c.offline
 							? "About 25 MB to download"
 							: "Nothing to download";
 					this.refresh();
-				};
+				});
 				paint();
 				const row = (
 					icon: string,
@@ -1481,21 +1483,92 @@ class OobeView {
 			},
 			enter: () => {
 				// This build may not carry the Linux image at all (GitHub Pages
-				// doesn't). Find out before offering it.
-				void x86Available().then((ok) => {
-					if (ok) return;
-					this.c.linux = false;
-					const row = document.querySelector<HTMLElement>(
-						"[data-step=features] .oobe-row:nth-child(2)",
-					);
-					if (!row) return;
-					row.classList.add("is-unavailable");
-					row.querySelector<HTMLButtonElement>(".oobe-switch")!.disabled = true;
-					row.querySelector(".row-desc")!.textContent =
-						"Not in this build of " + BRANDING.name + ".";
-					row.querySelector(".row-icon")!.classList.remove("is-on");
-					this.refresh();
-				});
+				// can't host a 1 GB disk). Then Linux is a download: a link, and
+				// a button to choose the file once it's saved.
+				void Promise.all([AetherLinux.bundled(), AetherLinux.installed()]).then(
+					([bundled, installed]) => {
+						if (bundled) return;
+						const row = document.querySelector<HTMLElement>(
+							"[data-step=features] .oobe-row:nth-child(2)",
+						);
+						if (!row) return;
+						const sw = row.querySelector<HTMLButtonElement>(".oobe-switch")!;
+						const desc = row.querySelector<HTMLElement>(".row-desc")!;
+						if (installed) {
+							this.c.linux = true;
+							row.classList.add("is-on");
+							sw.setAttribute("aria-checked", "true");
+							desc.textContent = "Already installed on this device.";
+							this.#paintFeatures();
+							return;
+						}
+						this.c.linux = false;
+						row.classList.add("is-unavailable");
+						sw.disabled = true;
+						desc.textContent = `Not included in this build because it's too big to host. Download it (${AetherLinux.SIZE_LABEL}), then choose the file.`;
+						const status = oobeEl("div", { class: "linux-status" });
+						const choose = oobeEl(
+							"button",
+							{
+								class: "oobe-btn small",
+								attrs: { type: "button" },
+								on: {
+									click: async (e: Event) => {
+										e.stopPropagation();
+										const file = await AetherLinux.pickFile();
+										if (!file) return;
+										choose.disabled = true;
+										status.classList.remove("is-bad");
+										try {
+											await AetherLinux.importArchive(file, (t) => {
+												status.textContent = t;
+											});
+											this.c.linux = true;
+											row.classList.remove("is-unavailable");
+											row.classList.add("is-on");
+											sw.disabled = false;
+											sw.setAttribute("aria-checked", "true");
+											desc.textContent = "Installed. Linux starts after setup.";
+											status.textContent = "";
+											actions.remove();
+											this.#paintFeatures();
+										} catch (err) {
+											status.classList.add("is-bad");
+											status.textContent =
+												err instanceof Error ? err.message : String(err);
+											choose.disabled = false;
+										}
+									},
+								},
+							},
+							oobeIcon("folder_open"),
+							"Choose file…",
+						);
+						const download = oobeEl(
+							"a",
+							{
+								class: "oobe-btn small",
+								attrs: {
+									href: AetherLinux.RELEASE_URL,
+									target: "_blank",
+									rel: "noopener",
+									download: "",
+								},
+								on: { click: (e: Event) => e.stopPropagation() },
+							},
+							oobeIcon("download"),
+							`Download (${AetherLinux.SIZE_LABEL})`,
+						);
+						const actions = oobeEl(
+							"div",
+							{ class: "linux-actions" },
+							download,
+							choose,
+						);
+						row.querySelector(".row-text")!.append(actions, status);
+						this.refresh();
+					},
+				);
 			},
 			next: () => (this.c.offline || this.c.linux ? "Set Up" : "Continue"),
 			commit: async () => {
@@ -1841,19 +1914,6 @@ class OobeView {
 	}
 }
 
-/** Whether this build ships the Linux image at all. Pages builds don't. */
-async function x86Available(): Promise<boolean> {
-	try {
-		const image =
-			anura.config.x86?.[anura.settings.get("x86-image") || "alpine"];
-		if (!image) return false;
-		const r = await fetch(image.bzimage, { method: "HEAD" });
-		return r.ok;
-	} catch {
-		return false;
-	}
-}
-
 /** fetch, but a non-2xx answer is an error, not a file. */
 async function fetchOk(url: string, tries = 3): Promise<Response> {
 	let last: unknown = null;
@@ -1872,7 +1932,7 @@ async function fetchOk(url: string, tries = 3): Promise<Response> {
 
 async function installx86(tracker = document.getElementById("tracker")) {
 	console.debug("installing x86");
-	await anura.fs.mkdir("/boot");
+	await anura.fs.promises.mkdir("/boot").catch(() => {});
 	const x86image = anura.settings.get("x86-image");
 	const image = anura.config.x86[x86image];
 	const say = (text: string) => {

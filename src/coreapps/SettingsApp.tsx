@@ -913,6 +913,57 @@ class SettingsApp extends App {
 										Install x86 Subsystem
 									</button>
 									<div id="tracker"></div>
+									<div class="settings-item" style="margin-top:14px">
+										<div>
+											<span class="settings-item-name">
+												Import a downloaded image
+											</span>
+											<div style="opacity:0.7;font-size:12.5px;margin:4px 0 10px">
+												Builds that can't host the Linux disk offer it as a
+												download ({AetherLinux.SIZE_LABEL}). Save it, then
+												import it here.
+											</div>
+											<a
+												class="matter-button-outlined"
+												href={AetherLinux.RELEASE_URL}
+												target="_blank"
+												rel="noopener"
+												download
+											>
+												Download Linux image
+											</a>{" "}
+											<button
+												class="matter-button-contained"
+												on:click={async () => {
+													const file = await AetherLinux.pickFile();
+													if (!file) return;
+													const status =
+														document.getElementById("x86-import-status")!;
+													try {
+														await AetherLinux.importArchive(file, (t) => {
+															status.textContent = t;
+														});
+														await anura.settings.set("x86-disabled", false);
+														anura.notifications.add({
+															title: "x86 Subsystem Installed",
+															description:
+																"Linux is installed. Reload the page to use it!",
+															timeout: 5000,
+														});
+													} catch (err) {
+														status.textContent =
+															err instanceof Error ? err.message : String(err);
+													}
+												}}
+											>
+												Import image…
+											</button>
+											<div
+												id="x86-import-status"
+												style="margin-top:8px;font-size:12.5px"
+											></div>
+										</div>
+									</div>
 								</div>
 							) : (
 								<div className="x86-container">

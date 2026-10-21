@@ -37,12 +37,17 @@ jobs:
       - name: Install build dependencies
         run: sudo apt update && sudo apt install -y git build-essential clang default-jre
 
-      # `static-nov86` skips compiling the v86 emulator to wasm. Pages can't
-      # host the Alpine rootfs the x86 subsystem needs (that's `make full`), so
-      # the emulator could never boot here regardless — and its build currently
-      # fails against floating Rust nightlies.
+      # `make static` builds the v86 emulator (a few MB) but not the Alpine
+      # disk, which is 1 GB and can't live on Pages: Linux is a download
+      # people import (see src/LinuxImage.ts). If the emulator's Rust build
+      # breaks on a floating nightly, deploy without it rather than not at
+      # all (`static-nov86`), and say so in the log.
       - name: Pack the static site
-        run: make static-nov86
+        run: |
+          make static || {
+            echo "::warning::v86 build failed; deploying without the Linux emulator"
+            make static-nov86
+          }
 
       # Reports where the site is actually served, which beats guessing from
       # the repository name — a custom domain or a user/org site lives at the
