@@ -184,6 +184,13 @@ class AetherIsland {
 		this.#nextAlert();
 	}
 
+	/** Take back one alert, whether it's showing or still queued. */
+	static withdraw(a: IslandAlert) {
+		if (this.#alert === a) return this.dismissAlert();
+		const i = this.#alerts.indexOf(a);
+		if (i >= 0) this.#alerts.splice(i, 1);
+	}
+
 	/**
 	 * Flash a level: `icon` is a Material Symbols name, `level` 0..1. A
 	 * `label` shows beside the bar; `tone` ("green", "red") tints it.

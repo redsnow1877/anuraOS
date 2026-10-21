@@ -32,7 +32,7 @@ submodules: .gitmodules
 #   build/libs/<libname>/<bundle>.min.js.map
 #   build/libs/<libname>/version (contains version number as JSON string, e.g. "1.2.3")
 
-external-libs: build/libs/filer/filer.min.js build/libs/mime/mime.iife.js build/libs/nfsadapter/nfsadapter.js build/libs/comlink/comlink.min.mjs build/libs/workbox/version build/libs/idb-keyval/idb-keyval.js build/libs/fflate/browser.js bin/chimerix.ajs build/libs/libcurl/version build/libs/bare-mux/bare.cjs build/uv/uv.bundle.js build/libs/dreamland/all.js
+external-libs: build/libs/filer/filer.min.js build/libs/mime/mime.iife.js build/libs/nfsadapter/nfsadapter.js build/libs/comlink/comlink.min.mjs build/libs/workbox/version build/libs/idb-keyval/idb-keyval.js build/libs/fflate/browser.js bin/chimerix.ajs build/libs/libcurl/version build/libs/bare-mux/bare.cjs build/uv/uv.bundle.js build/libs/dreamland/all.js build/libs/anthropic/anthropic.js
 	mkdir -p build/libs/
 	
 build/libs/libcurl/version: build/bootstrap
@@ -60,6 +60,13 @@ build/libs/workbox/version: build/bootstrap
 	mkdir -p build/libs/workbox
 	npx workbox-cli@7.3.0 copyLibraries build/libs/workbox/
 	jq '.version' node_modules/workbox-build/package.json > build/libs/workbox/version
+
+# The official Anthropic SDK as a browser script, for the assistant
+# (Assistant.ts). Loaded on demand, the first time it's opened.
+build/libs/anthropic/anthropic.js: build/bootstrap tools/anthropic-sdk-entry.mjs
+	mkdir -p build/libs/anthropic
+	npx esbuild tools/anthropic-sdk-entry.mjs --bundle --format=iife --platform=browser --target=es2022 --minify --legal-comments=eof --outfile=build/libs/anthropic/anthropic.js
+	jq '.version' node_modules/@anthropic-ai/sdk/package.json > build/libs/anthropic/version
 
 build/libs/mime/mime.iife.js: build/bootstrap
 	mkdir -p build/libs/mime
