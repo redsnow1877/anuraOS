@@ -194,15 +194,17 @@ class IframeProcess extends Process {
 			},
 			read: () => {
 				return new Promise((resolve) => {
-					this.window.addEventListener(
-						"message",
-						(e) => {
-							if (e.data.type === "stdin") {
-								resolve(e.data.message);
-							}
-						},
-						{ once: true },
-					);
+					// Not `once`: stdout and stderr travel as messages on this
+					// same window, so a once-listener was spent on the first
+					// print and a program that printed before reading never
+					// got its input.
+					const listener = (e: MessageEvent<any>) => {
+						if (e.data.type === "stdin") {
+							this.window.removeEventListener("message", listener);
+							resolve(e.data.message);
+						}
+					};
+					this.window.addEventListener("message", listener);
 				});
 			},
 			readln: () => {
