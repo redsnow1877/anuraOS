@@ -24,8 +24,7 @@
 	pointer-events: none;
 	transition:
 		opacity 0.22s var(--ease-out),
-		visibility 0s linear 0.22s,
-		backdrop-filter 0.22s var(--ease-out);
+		visibility 0s linear 0.22s;
 }
 
 #launcher.launcher-active {
@@ -33,9 +32,8 @@
 	visibility: visible;
 	pointer-events: auto;
 	transition:
-		opacity 0.22s var(--ease-out),
-		visibility 0s,
-		backdrop-filter 0.22s var(--ease-out);
+		opacity 0.24s var(--ease-out),
+		visibility 0s;
 }
 
 body.blur-disable #launcher {
@@ -110,17 +108,6 @@ body.blur-disable #launcher {
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	flex: 1;
-
-	transform: scale(1.06);
-	opacity: 0;
-	transition:
-		transform 0.26s var(--ease-out),
-		opacity 0.2s var(--ease-out);
-}
-
-#launcher.launcher-active .appsView {
-	transform: scale(1);
-	opacity: 1;
 }
 
 #launcher .appsView .app {
@@ -134,16 +121,14 @@ body.blur-disable #launcher {
 	cursor: default;
 	/*
 	 * The independent `translate` property, not `transform` — deliberately.
-	 * Motion.css reveals these tiles with `animation: lp-butterfly-in … both`,
-	 * and a filling animation pins `transform` for as long as it applies, so a
-	 * transform-based pull here would compute to nothing. `translate` is a
-	 * separate property that composes with the animated transform instead of
-	 * losing to it, and it leaves the `:active` scale below free to use
-	 * `transform` on its own.
+	 * Launcher.tsx drops these tiles in by animating `transform`, which would
+	 * override a transform-based pull for as long as it runs. `translate` is
+	 * a separate property that composes with it instead.
 	 */
 	translate: var(--mag-x, 0px) var(--mag-y, 0px);
 	transition:
 		background-color 0.12s ease,
+		scale 0.2s var(--ease-spring-soft, cubic-bezier(0.34, 1.3, 0.64, 1)),
 		translate 0.34s var(--ease-spring-soft, cubic-bezier(0.34, 1.3, 0.64, 1));
 }
 
@@ -152,6 +137,7 @@ body.blur-disable #launcher {
 #launcher .appsView .app.is-magnetized {
 	transition:
 		background-color 0.12s ease,
+		scale 0.2s var(--ease-spring-soft, cubic-bezier(0.34, 1.3, 0.64, 1)),
 		translate 0.09s var(--ease-out, ease-out);
 }
 
@@ -224,16 +210,6 @@ body.blur-disable #launcher {
 	flex: 1;
 	min-height: 0;
 	margin-top: 34px;
-	transform: scale(1.06);
-	opacity: 0;
-	transition:
-		transform 0.26s var(--ease-out),
-		opacity 0.2s var(--ease-out);
-}
-
-#launcher.launcher-active .launcher-body {
-	transform: scale(1);
-	opacity: 1;
 }
 
 #launcher .launcher-apps {

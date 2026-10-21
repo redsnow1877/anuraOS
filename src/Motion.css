@@ -35,57 +35,12 @@
    The `.wm-*` classes below remain for anything else that wants a one-off
    accent (`.wm-attention` for "can't do that", `.wm-focus-pop`).
 
-   ---- 2. LAUNCHPAD "BUTTERFLY" ------------------------------------------
-   The entrance needs NO JavaScript: it keys off the existing
-   `#launcher.launcher-active` class, and CSS restarts the animation every
-   time that class is re-added.
-
-   What it *does* need is per-tile geometry. Set these inline on each
-   `#launcher .appsView .app` (recompute on resize / when the app list or the
-   search filter changes the column count):
-
-     --i     flat tile index, 0-based        → micro-jitter so the wave isn't
-                                               mechanically uniform
-     --ring  integer ring distance from the  → the main outward stagger
-             grid centre (0 = centre tile)     (0,1,2,3…)
-     --dx    signed horizontal direction     → wing hinge + fold direction,
-             from centre, ~-1…1                clamped internally
-     --dy    signed vertical direction       → fall direction
-             from centre, ~-1…1
-
-   `--i` alone already produces a usable stagger (the rest default to 0), but
-   `--ring`/`--dx`/`--dy` are what make it read as wings. Reference snippet:
-
-       function layoutLaunchpad(grid) {
-         const tiles = [...grid.querySelectorAll(".app")]
-                         .filter(t => t.style.display !== "none");
-         if (!tiles.length) return;
-         // column count straight from the resolved grid
-         const cols = getComputedStyle(grid)
-                        .gridTemplateColumns.split(" ").length;
-         const rows = Math.ceil(tiles.length / cols);
-         const cx = (cols - 1) / 2, cy = (rows - 1) / 2;
-         tiles.forEach((t, i) => {
-           const col = i % cols, row = (i / cols) | 0;
-           const dx = col - cx, dy = row - cy;
-           t.style.setProperty("--i", i);
-           t.style.setProperty("--ring",
-             Math.round(Math.hypot(dx / Math.max(cx, 1),
-                                   dy / Math.max(cy, 1)) * 3));
-           t.style.setProperty("--dx", (dx / Math.max(cx, 1)).toFixed(3));
-           t.style.setProperty("--dy", (dy / Math.max(cy, 1)).toFixed(3));
-         });
-       }
-
-   Exit: add `lp-closing` to `#launcher` *before* removing `launcher-active`,
-   and drop it after 340ms. Outer rings leave first, so it collapses inward.
-
-       launcherEl.classList.add("lp-closing");
-       launcherEl.classList.remove("launcher-active");
-       setTimeout(() => launcherEl.classList.remove("lp-closing"), 340);
-
-   Search-filter re-runs: add `lp-refilter` to `.appsView` for one frame to
-   replay a short, cheap version of the reveal on the surviving tiles.
+   ---- 2. LAUNCHPAD -------------------------------------------------------
+   The entrance and exit are Web Animations in Launcher.tsx (#reveal and
+   #dismiss): every tile drops from just above the glass into place on one
+   spring, read from AetherMotion.spring(). Only the search re-deal is here:
+   add `lp-refilter` to `.appsView` for one frame to replay a short settle on
+   the tiles still showing, staggered on each tile's `--i`.
 
    ---- 3. PANELS, MENUS, NOTIFICATIONS -----------------------------------
      .panel-drop-in / .panel-drop-out    Control Center + Calendar, hinged on
@@ -152,19 +107,6 @@
 	--motion-blur-heavy: 11px;
 
 	/* --- stagger --------------------------------------------------------- */
-	--stagger-i: 9ms; /* per flat index — jitter only */
-	--stagger-ring: 52ms; /* per ring — the actual outward wave */
-	--stagger-ring-out: 30ms; /* faster on the way out */
-
-	/* --- launchpad ------------------------------------------------------- */
-	--lp-perspective: 1500px;
-	--lp-dur-in: 720ms;
-	--lp-dur-out: 300ms;
-	/* How far a tile is pulled toward the grid centre before it flies out.
-	   Multiplied by --ring, so outer tiles travel further. */
-	--lp-gather: 30px;
-	--lp-fold: 62deg; /* wing fold around the inner hinge */
-	--lp-pitch: -54deg; /* how far the tile is pitched back before it falls */
 
 	/* --- window lifecycle ------------------------------------------------ */
 	--wm-dur-open: 380ms;
@@ -355,90 +297,11 @@
 }
 
 /* ==========================================================================
-   2. LAUNCHPAD — the butterfly reveal
+   2. LAUNCHPAD
    --------------------------------------------------------------------------
-   Tiles start gathered near the centre of the grid, pitched back and folded
-   about their inner edge (the edge nearest the centre), then fall forward and
-   outward as the fold opens — wings unfurling. Ring distance drives the
-   stagger, so the wave visibly propagates from the middle out.
+   The drop-in itself is in Launcher.tsx. The grid stays put; only its tiles
+   move.
    ========================================================================== */
-
-/* Grid becomes the 3D stage. Perspective origin sits slightly above centre so
-   the top rows read as falling toward the viewer rather than away. */
-#launcher .appsView {
-	perspective: var(--lp-perspective);
-	perspective-origin: 50% 38%;
-	transform-style: preserve-3d;
-}
-
-/* The base sheet scales the whole grid from 1.06 → 1 and cross-fades it. That
-   fights the per-tile choreography (everything appears at once behind a
-   uniform fade), so the container is pinned and the tiles carry the entrance
-   on their own. */
-#launcher .appsView {
-	transform: none;
-	opacity: 1;
-	transition: none;
-}
-
-#launcher.launcher-active .appsView {
-	transform: none;
-	opacity: 1;
-}
-
-@keyframes lp-butterfly-in {
-	0% {
-		opacity: 0;
-		transform: translate3d(
-				calc(var(--dx, 0) * var(--ring, 0) * var(--lp-gather) * -1),
-				calc(var(--dy, 0) * var(--ring, 0) * var(--lp-gather) * -1 - 46px),
-				-190px
-			)
-			rotateX(var(--lp-pitch))
-			rotateY(calc(clamp(-1, var(--dx, 0), 1) * var(--lp-fold)))
-			rotateZ(calc(clamp(-1, var(--dx, 0), 1) * -7deg)) scale(0.58);
-	}
-	/* Wings snap open and the tile clears the pile — fastest moment, so this
-	   is where the smear lives. */
-	38% {
-		opacity: 1;
-		transform: translate3d(
-				calc(var(--dx, 0) * var(--ring, 0) * var(--lp-gather) * -0.28),
-				calc(var(--dy, 0) * var(--ring, 0) * var(--lp-gather) * -0.28 - 12px),
-				-52px
-			)
-			rotateX(calc(var(--lp-pitch) * 0.3))
-			rotateY(calc(clamp(-1, var(--dx, 0), 1) * var(--lp-fold) * 0.34))
-			rotateZ(calc(clamp(-1, var(--dx, 0), 1) * -2.5deg)) scale(0.9);
-	}
-	/* Slight past-target settle: the tile drops a hair below and rocks back. */
-	68% {
-		transform: translate3d(0, 5px, 12px) rotateX(7deg)
-			rotateY(calc(clamp(-1, var(--dx, 0), 1) * -5deg)) scale(1.035);
-	}
-	100% {
-		opacity: 1;
-		transform: translate3d(0, 0, 0) rotateX(0) rotateY(0) rotateZ(0) scale(1);
-	}
-}
-
-@keyframes lp-butterfly-out {
-	0% {
-		opacity: 1;
-		transform: translate3d(0, 0, 0) rotateX(0) rotateY(0) scale(1);
-	}
-	100% {
-		opacity: 0;
-		transform: translate3d(
-				calc(var(--dx, 0) * var(--ring, 0) * var(--lp-gather) * -0.6),
-				calc(var(--dy, 0) * var(--ring, 0) * var(--lp-gather) * -0.6 - 18px),
-				-120px
-			)
-			rotateX(calc(var(--lp-pitch) * 0.55))
-			rotateY(calc(clamp(-1, var(--dx, 0), 1) * var(--lp-fold) * 0.7))
-			scale(0.74);
-	}
-}
 
 /* Short, flat replay used after a search filter — no 3D, just a lift. */
 @keyframes lp-settle {
@@ -450,29 +313,6 @@
 		opacity: 1;
 		transform: none;
 	}
-}
-
-#launcher.launcher-active .appsView .app {
-	/* Hinge on the edge facing the grid centre: --dx = +1 (right of centre)
-	   hinges at 0% (its left edge), --dx = -1 hinges at 100%. */
-	transform-origin: calc(50% - clamp(-1, var(--dx, 0), 1) * 50%) 34%;
-	transform-style: preserve-3d;
-	backface-visibility: hidden;
-	animation: lp-butterfly-in var(--lp-dur-in) var(--ease-glide) both;
-	animation-delay: calc(
-		var(--ring, 0) * var(--stagger-ring) + var(--i, 0) * var(--stagger-i)
-	);
-	will-change: transform, opacity;
-}
-
-/* Outer rings leave first, so the grid collapses back toward the centre. The
-   `max()` keeps the delay non-negative for grids deeper than 4 rings. */
-#launcher.lp-closing .appsView .app {
-	animation: lp-butterfly-out var(--lp-dur-out) var(--ease-accelerate) both;
-	animation-delay: max(
-		0ms,
-		calc((4 - var(--ring, 0)) * var(--stagger-ring-out))
-	);
 }
 
 #launcher .appsView.lp-refilter .app {
@@ -498,33 +338,6 @@
 
 #launcher .launcher-empty {
 	animation: lp-settle 240ms var(--ease-out) both;
-}
-
-/* The frosted backdrop ramps its blur in rather than snapping to 72px. */
-@keyframes lp-scrim-in {
-	0% {
-		backdrop-filter: blur(0) saturate(100%) brightness(1);
-		-webkit-backdrop-filter: blur(0) saturate(100%) brightness(1);
-	}
-	100% {
-		backdrop-filter: blur(72px) saturate(160%) brightness(0.92);
-		-webkit-backdrop-filter: blur(72px) saturate(160%) brightness(0.92);
-	}
-}
-
-#launcher.launcher-active {
-	animation: lp-scrim-in 300ms var(--ease-out) both;
-}
-
-body.blur-disable #launcher.launcher-active {
-	animation: none;
-}
-
-/* Tiles keep their own hover/press feel; make the press springier. */
-#launcher .appsView .app {
-	transition:
-		background-color var(--dur-instant) ease,
-		transform var(--dur-fast) var(--ease-spring-soft);
 }
 
 /* ==========================================================================
@@ -839,7 +652,6 @@ body.reduce-motion .sheet-in {
 	opacity: 1 !important;
 }
 
-body.reduce-motion #launcher .appsView,
 body.reduce-motion .panel-drop-in {
 	perspective: none !important;
 }
@@ -850,11 +662,6 @@ body.reduce-motion .wm-close,
 body.reduce-motion .notif-out,
 body.reduce-motion .panel-drop-out,
 body.reduce-motion .fade-out {
-	opacity: 0 !important;
-	animation: fade-out 1ms linear both !important;
-}
-
-body.reduce-motion #launcher.lp-closing .appsView .app {
 	opacity: 0 !important;
 	animation: fade-out 1ms linear both !important;
 }
@@ -887,15 +694,10 @@ body.reduce-motion #launcher.lp-closing .appsView .app {
 		opacity: 1 !important;
 	}
 
-	#launcher .appsView {
-		perspective: none !important;
-	}
-
 	.wm-close,
 	.notif-out,
 	.panel-drop-out,
-	.fade-out,
-	#launcher.lp-closing .appsView .app {
+	.fade-out {
 		opacity: 0 !important;
 		animation: fade-out 1ms linear both !important;
 	}

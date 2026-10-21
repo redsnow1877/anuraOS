@@ -27,43 +27,140 @@ class Launcher {
 	clickoffChecker: HTMLDivElement;
 	updateClickoffChecker: (show: boolean) => void;
 
-	/**
-	 * Feeds Motion.css the per-tile geometry its "butterfly" reveal keys off.
-	 *
-	 * `--ring` (distance from the grid centre) drives the outward stagger and
-	 * `--dx`/`--dy` give each tile its hinge direction, so the grid unfolds from
-	 * the middle rather than sweeping in reading order. Hidden tiles are skipped
-	 * so a filtered grid re-centres on what's actually left.
-	 */
-	layoutGrid() {
-		const grid = this.state.appsView;
-		if (!grid) return;
+	/** Running entrance/exit animations, so a quick reopen can cut them. */
+	#motion: Animation[] = [];
 
-		const tiles = Array.from(grid.querySelectorAll<HTMLElement>(".app")).filter(
+	/** Visible tiles, in order. */
+	#tiles(): HTMLElement[] {
+		const grid = this.state.appsView;
+		if (!grid) return [];
+		return Array.from(grid.querySelectorAll<HTMLElement>(".app")).filter(
 			(t) => t.style.display !== "none",
 		);
-		if (!tiles.length) return;
+	}
 
-		const cols = getComputedStyle(grid).gridTemplateColumns.split(" ").length;
-		const rows = Math.ceil(tiles.length / cols);
-		const cx = (cols - 1) / 2;
-		const cy = (rows - 1) / 2;
+	/** The search re-deal staggers on `--i`, the tile's place in the grid. */
+	layoutGrid() {
+		this.#tiles().forEach((tile, i) =>
+			tile.style.setProperty("--i", String(i)),
+		);
+	}
 
-		tiles.forEach((tile, i) => {
-			const dx = (i % cols) - cx;
-			const dy = Math.floor(i / cols) - cy;
-			// Normalise against the grid's own extent so a wide grid and a tall
-			// one both peak at ring 3 rather than scaling with column count.
-			const nx = dx / Math.max(cx, 1);
-			const ny = dy / Math.max(cy, 1);
-			tile.style.setProperty("--i", String(i));
-			tile.style.setProperty(
-				"--ring",
-				String(Math.round(Math.hypot(nx, ny) * 3)),
+	/**
+	 * The entrance, after the iOS home screen: every tile starts a little
+	 * above the glass (bigger, and pushed out from the middle by how far from
+	 * the middle it is) and drops down into place on one spring. Each tile's
+	 * whole flight is a single keyframe pair, so its speed only ever falls
+	 * off smoothly: no 3D, no mid-flight keyframes that would make it check
+	 * and restart. The middle lands a beat before the edges, so it reads as a
+	 * ripple rather than a block.
+	 */
+	#reveal() {
+		this.#cutMotion();
+		const motion = (globalThis as any).AetherMotion;
+		const grid = this.state.appsView;
+		if (!grid || motion?.reduced) return;
+		const tiles = this.#tiles();
+		const g = grid.getBoundingClientRect();
+		const cx = g.left + g.width / 2;
+		// The middle of what's visible, not of a grid taller than the screen.
+		const cy = g.top + Math.min(g.height, innerHeight - g.top) / 2;
+		const spring = motion.spring(0.56, 0.84);
+		const anims: Animation[] = [];
+		for (const tile of tiles) {
+			const r = tile.getBoundingClientRect();
+			if (r.bottom < 0 || r.top > innerHeight) continue;
+			const dx = r.left + r.width / 2 - cx;
+			const dy = r.top + r.height / 2 - cy;
+			const n = Math.min(
+				1.4,
+				Math.hypot(dx / (g.width / 2 || 1), dy / (innerHeight / 2)),
 			);
-			tile.style.setProperty("--dx", nx.toFixed(3));
-			tile.style.setProperty("--dy", ny.toFixed(3));
-		});
+			const delay = n * 70;
+			anims.push(
+				tile.animate(
+					[
+						{
+							transform: `translate(${dx * 0.2}px, ${dy * 0.2 - 22}px) scale(1.26)`,
+						},
+						{ transform: "none" },
+					],
+					{
+						duration: spring.duration,
+						easing: spring.easing,
+						delay,
+						fill: "backwards",
+					},
+				),
+				tile.animate([{ opacity: 0 }, { opacity: 1 }], {
+					duration: 220,
+					easing: "cubic-bezier(0.2, 0, 0.2, 1)",
+					delay,
+					fill: "backwards",
+				}),
+			);
+		}
+		const rail = this.widgetHost?.element as HTMLElement | undefined;
+		if (rail?.isConnected) {
+			anims.push(
+				rail.animate(
+					[
+						{ transform: "translate(18px, -18px) scale(1.06)", opacity: 0 },
+						{ transform: "none", opacity: 1 },
+					],
+					{
+						duration: spring.duration,
+						easing: spring.easing,
+						delay: 60,
+						fill: "backwards",
+					},
+				),
+			);
+		}
+		this.#motion = anims;
+	}
+
+	/**
+	 * The way out: the reverse gesture, quicker. Tiles lift back off the
+	 * glass together while the frost fades.
+	 */
+	#dismiss() {
+		this.#cutMotion();
+		const motion = (globalThis as any).AetherMotion;
+		const grid = this.state.appsView;
+		if (!grid || motion?.reduced) return;
+		const g = grid.getBoundingClientRect();
+		const cx = g.left + g.width / 2;
+		const cy = g.top + Math.min(g.height, innerHeight - g.top) / 2;
+		const anims: Animation[] = [];
+		for (const tile of this.#tiles()) {
+			const r = tile.getBoundingClientRect();
+			if (r.bottom < 0 || r.top > innerHeight) continue;
+			const dx = r.left + r.width / 2 - cx;
+			const dy = r.top + r.height / 2 - cy;
+			anims.push(
+				tile.animate(
+					[
+						{ transform: "none", opacity: 1 },
+						{
+							transform: `translate(${dx * 0.08}px, ${dy * 0.08 - 10}px) scale(1.1)`,
+							opacity: 0,
+						},
+					],
+					{
+						duration: 200,
+						easing: "cubic-bezier(0.4, 0, 1, 1)",
+						fill: "forwards",
+					},
+				),
+			);
+		}
+		this.#motion = anims;
+	}
+
+	#cutMotion() {
+		for (const a of this.#motion) a.cancel();
+		this.#motion = [];
 	}
 
 	/** Accepts either a DOM event (plain input) or a value (GooeySearch). */
@@ -113,12 +210,12 @@ class Launcher {
 
 	show() {
 		this.clearSearch();
-		// Geometry has to be on the tiles before the reveal starts, and the grid
-		// only has a resolved column count once it's laid out.
 		this.layoutGrid();
 		this.state.active = true;
+		// Positions are read straight after the class goes on: the grid is
+		// laid out even while the Launchpad is hidden, so this is one layout.
+		this.#reveal();
 		requestAnimationFrame(() => {
-			this.layoutGrid();
 			// Tiles are rebuilt whenever the app list changes, so re-scan on
 			// every open; attach() skips anything already bound.
 			try {
@@ -140,16 +237,15 @@ class Launcher {
 
 	hide() {
 		if (!this.state.active) return;
-		const el = this.element as HTMLElement;
-
-		// Motion.css collapses the grid inward off `lp-closing`; it has to go on
-		// before `launcher-active` comes off, and come back off once it's done.
-		if (el && !anura.settings.get("disable-animation")) {
-			el.classList.add("lp-closing");
-			setTimeout(() => el.classList.remove("lp-closing"), 340);
-		}
-
+		this.#dismiss();
 		this.state.active = false;
+		// The tiles hold their last frame until the fade has hidden them, and
+		// a filtered grid is only reset once it's out of sight.
+		setTimeout(() => {
+			if (this.state.active) return;
+			this.#cutMotion();
+			this.clearSearch();
+		}, 260);
 		// Collapsed on the way out so the bubble has somewhere to come from the
 		// next time the Launchpad opens.
 		this.gooey?.collapse();
@@ -158,7 +254,6 @@ class Launcher {
 		} catch {
 			/* Magnetic.js is optional */
 		}
-		this.clearSearch();
 		try {
 			this.widgetHost?.setActive(false);
 		} catch {
