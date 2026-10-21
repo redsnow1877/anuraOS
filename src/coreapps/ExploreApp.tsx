@@ -161,13 +161,86 @@ class ExploreApp extends App {
 				shortcut.
 			</p>
 
+			<h2>Dimension AI</h2>
+			<p>
+				Click the orb in the dock (or press <kbd>Alt</kbd> <kbd>A</kbd>) and
+				Claude opens out of it in a ripple of colour. It can see what's on your
+				screen, drive the browser (open pages, read them, click and type), work
+				with your files, run commands, change settings and start timers. Reads
+				happen on their own; anything that changes something asks you first, in
+				the chat and in the island. It runs on your own Anthropic API key, kept
+				in this browser. Pick Opus, Sonnet or Haiku from the model pill. In the
+				terminal, <code>ai</code> followed by a question streams the answer
+				right there.
+			</p>
+
+			<h2>The island</h2>
+			<p>
+				A black pill floats at the top of the screen and grows into whatever is
+				happening: the song that's playing, a timer, a screen recording, the
+				assistant at work. A second activity splits off into its own bubble.
+				Hover it for a peek, click it to open it, or click it when nothing's
+				going on for the time, date and quick actions. Notifications and volume,
+				brightness and battery levels come out of it too; flick a notification
+				up to dismiss it.
+			</p>
+
+			<h2>The dock</h2>
+			<p>
+				One floating capsule holds everything: the cube (Launchpad, or
+				right-click for the system menu), your apps with a glowing bar under the
+				ones that are running, the AI orb, and the tray with network, Control
+				Center, notifications and the clock.
+			</p>
+
+			<h2>A pointer that knows what it's pointing at</h2>
+			<p>
+				It's an arrow until you get near a button, then it leaps onto it and
+				wraps around it, sliding from one to the next as you move along a row.
+				Turn it off under Sound &amp; Feel in Settings if you prefer the
+				system's. That's also where the sounds live: just the essential ones
+				(notifications, errors, the shutter) by default, or all of them.
+			</p>
+
+			<h2>A real terminal</h2>
+			<p>
+				The shell now runs programs by name, and there are new ones:{" "}
+				<code>neofetch</code>, <code>top</code>, <code>ping</code>,{" "}
+				<code>curl</code>, <code>matrix</code>, <code>hack</code>,{" "}
+				<code>notify</code>, <code>accent</code> and <code>ai</code>. Programs
+				are .ajs files in /usr/bin, so you can write your own.
+			</p>
+
+			<h2>Network</h2>
+			<p>
+				<a
+					class="app-link"
+					href="javascript:anura.apps['anura.network'].open();"
+				>
+					<img src="/assets/icons/network.svg" alt="" />
+					Network
+				</a>{" "}
+				shows every connection {BRANDING.name} makes, live: a throughput graph,
+				each connection with the site it's for (read from the TLS handshake),
+				and the first bytes of it as a hex dump.
+			</p>
+
+			<h2>Browsing that finds its own way out</h2>
+			<p>
+				Pages load through a relay. {BRANDING.name} now tests them at start-up
+				and moves to one that answers, and keeps checking. For the fastest, most
+				private browsing, run the relay on your own laptop: Settings → Browsing
+				has a one-file launcher, and {BRANDING.name} switches to it as soon as
+				it's up.
+			</p>
+
 			<h2>Motion that feels physical</h2>
 			<p>
 				Windows grow out of the icon you launched them from (the dock, the
 				Launchpad or Spotlight) and minimise back into their dock icon, on real
-				spring physics. Unlocking drops the whole desktop in from the middle of
-				the screen: windows and widgets bloom outward, the dock fans open and
-				the menu bar lands last. It all runs on the GPU's compositor, so it
+				spring physics. The Launchpad's apps drop down onto the glass in one
+				smooth motion. Unlocking blooms the desktop outward, the dock fans open
+				and the island lands last. It all runs on the GPU's compositor, so it
 				stays smooth while apps are busy.
 			</p>
 
@@ -193,11 +266,11 @@ class ExploreApp extends App {
 
 			<h2>Spotlight</h2>
 			<p>
-				<kbd>Ctrl</kbd> <kbd>Space</kbd> (or the search icon in the menu bar)
-				searches everything at once: apps, open windows, files, notes and
-				settings. It also does maths (<code>12*(3+4)^2</code>), converts units (
-				<code>5 km to mi</code>, <code>72 f in c</code>), runs commands like
-				"Lock Screen" or "Turn On Night Shift", and opens web addresses.
+				<kbd>Ctrl</kbd> <kbd>Space</kbd> searches everything at once: apps, open
+				windows, files, notes and settings. It also does maths (
+				<code>12*(3+4)^2</code>), converts units (<code>5 km to mi</code>,{" "}
+				<code>72 f in c</code>), runs commands like "Lock Screen" or "Turn On
+				Night Shift", and opens web addresses.
 			</p>
 
 			<h2>Mission Control and hot corners</h2>
@@ -229,7 +302,7 @@ class ExploreApp extends App {
 				optional passcode and auto-lock live under Desktop in Settings. Control
 				Center now has Focus (Do Not Disturb), Night Shift, Performance mode and
 				RGB toggles, display brightness and system volume sliders, and Now
-				Playing. On a laptop, the menu bar shows your battery.
+				Playing. On a laptop, the dock's tray shows your battery.
 			</p>
 
 			<h2>Music</h2>
@@ -244,14 +317,6 @@ class ExploreApp extends App {
 				("Next Song") and your keyboard's media keys control them. No music yet?
 				Music can compose a small demo album for you, synthesized right in the
 				browser.
-			</p>
-
-			<h2>The island</h2>
-			<p>
-				A black pill in the middle of the menu bar shows what's happening right
-				now: the song that's playing (hover it for the full player), a running
-				Clock timer, a screen recording, and volume, brightness and battery
-				levels as they change.
 			</p>
 
 			<h2>RGB mode</h2>
@@ -454,11 +519,11 @@ class ExploreApp extends App {
 			</p>
 			<h2>Getting Started</h2>
 			<p>
-				It works the way a desktop should: open apps from Launchpad (the grid
-				icon at the left of the dock, or press the Meta key), drag windows
-				around by their title bars, and keep the apps you use in the dock. The
-				menu bar along the top carries the clock, Control Center and
-				notifications.
+				It works the way a desktop should: open apps from Launchpad (the cube at
+				the left of the dock, or press the Meta key), drag windows around by
+				their title bars, and keep the apps you use in the dock. The tray at the
+				right of the dock carries the clock, Control Center and notifications,
+				and the orb beside your apps opens Dimension AI.
 			</p>
 
 			<h2>Get new apps</h2>
