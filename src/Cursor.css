@@ -1,18 +1,13 @@
 /* ==========================================================================
-   Dimension — custom cursor
+   Dimension — the pointer (Cursor.ts)
    --------------------------------------------------------------------------
-   Two independent layers, both driven from Cursor.ts:
+     .dc-arrow    the arrow, its tip on the pointer
+     .dc-hl       the highlight it turns into over a button
+     .dc-beam     I-beam over text
+     .dc-resize   double arrow over window edges, turned to the axis
 
-     .aether-cursor-dot   a 5px hard dot, locked to the pointer
-     .aether-cursor-ring  a soft ring that trails a few frames behind
-
-   Both spans are zero-sized and only ever receive a `translate3d()` from JS.
-   All shape, colour and scale changes live on their ::before, so the state
-   transitions here can never fight the per-frame transform.
-
-   States arrive as `[data-state]` on #aether-cursor:
-     default · interactive · text · resize · grabbing · disabled
-   plus `.is-pressed` while the primary button is held.
+   Cursor.ts only ever sets transforms (and the highlight's size); which
+   piece shows, and how it fades between them, is all here.
    ========================================================================== */
 
 #aether-cursor {
@@ -21,7 +16,6 @@
 	z-index: 2147483647;
 	pointer-events: none;
 	contain: strict;
-	/* Never let the overlay itself become a hit target or a scroll source. */
 	touch-action: none;
 	-webkit-user-select: none;
 	user-select: none;
@@ -29,218 +23,182 @@
 
 #aether-cursor.aether-cursor-hidden,
 #aether-cursor.aether-cursor-off {
-	opacity: 0;
 	visibility: hidden;
-	transition: opacity 0.08s linear;
 }
 
-/* Hide the native pointer only while our cursor is genuinely on screen.
-   Cursor.ts drops this class whenever it suppresses itself (iframes, touch,
-   pointer off-window), so there is never a state with no cursor at all.
-   iframes keep their own native cursor — their document draws it. */
+/* The native pointer goes only while ours is on screen. Frames draw their
+   own, so they keep it. */
 body.aether-cursor-active,
 body.aether-cursor-active *:not(iframe):not(frame):not(embed):not(object) {
 	cursor: none !important;
 }
 
-/* -------------------------------------------------------------------------
-   Layers
-   ------------------------------------------------------------------------- */
-
-.aether-cursor-dot,
-.aether-cursor-ring {
+.dc-arrow,
+.dc-beam,
+.dc-resize,
+.dc-hl {
 	position: fixed;
 	left: 0;
 	top: 0;
-	width: 0;
-	height: 0;
 	will-change: transform;
 }
 
-.aether-cursor-dot::before,
-.aether-cursor-ring::before {
+/* ---- the arrow ------------------------------------------------------------ */
+
+.dc-arrow {
+	width: 0;
+	height: 0;
+}
+
+.dc-arrow svg {
+	position: absolute;
+	/* The path's tip sits at (3.2, 2.4) in its box. */
+	left: -3.2px;
+	top: -2.4px;
+	display: block;
+	filter: drop-shadow(0 1.5px 2.5px rgba(0, 0, 0, 0.42));
+	transform-origin: 3.2px 2.4px;
+	transition:
+		opacity 0.14s ease,
+		scale 0.24s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+/* Becoming the highlight: it shrinks into its own tip and is gone. */
+#aether-cursor.is-snapped .dc-arrow svg,
+#aether-cursor:is([data-state="text"], [data-state="resize"]) .dc-arrow svg {
+	opacity: 0;
+	scale: 0.4;
+	transition:
+		opacity 0.1s ease,
+		scale 0.16s ease-in;
+}
+
+#aether-cursor.is-pressed .dc-arrow svg {
+	scale: 0.88;
+}
+
+/* Disabled: a small "no" badge rides beside the arrow. */
+.dc-arrow::after {
 	content: "";
 	position: absolute;
-	left: 0;
-	top: 0;
-	box-sizing: border-box;
-	transform: translate(-50%, -50%);
+	left: 12px;
+	top: 14px;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	border: 2px solid #ff453a;
+	background: linear-gradient(
+		45deg,
+		transparent 42%,
+		#ff453a 42%,
+		#ff453a 58%,
+		transparent 58%
+	);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+	opacity: 0;
+	scale: 0.5;
 	transition:
-		width 0.2s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
-		height 0.2s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
-		border-radius 0.2s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
-		border-color 0.18s ease,
-		background-color 0.18s ease,
-		box-shadow 0.18s ease,
-		opacity 0.16s ease;
+		opacity 0.12s ease,
+		scale 0.2s ease;
 }
 
-/* --- the dot ------------------------------------------------------------ */
-.aether-cursor-dot::before {
-	width: 5px;
-	height: 5px;
-	border-radius: 999px;
-	background: #fff;
-	/* A hairline of shadow keeps the dot readable on white app content. */
+#aether-cursor[data-state="disabled"] .dc-arrow::after {
+	opacity: 1;
+	scale: 1;
+}
+
+/* ---- the highlight -------------------------------------------------------- */
+
+.dc-hl {
+	box-sizing: border-box;
+	/* Grey, not white, so it reads on light app content as well as dark
+	   glass, with a touch of the accent. */
+	background: color-mix(
+		in srgb,
+		var(--theme-accent, #7a6cff) 22%,
+		rgba(150, 150, 160, 0.26)
+	);
 	box-shadow:
-		0 0 0 0.5px rgba(0, 0, 0, 0.45),
-		0 1px 3px rgba(0, 0, 0, 0.45);
+		inset 0 0 0 1px rgba(255, 255, 255, 0.26),
+		0 0 0 0.5px rgba(0, 0, 0, 0.22),
+		0 8px 22px -8px rgba(0, 0, 0, 0.45);
+	opacity: 0;
+	transition:
+		opacity 0.2s ease 0.04s,
+		scale 0.22s cubic-bezier(0.3, 1.5, 0.5, 1);
 }
 
-/* --- the trailing ring -------------------------------------------------- */
-.aether-cursor-ring::before {
-	width: 26px;
-	height: 26px;
-	border-radius: 999px;
-	border: 1.25px solid rgba(255, 255, 255, 0.5);
-	background: rgba(255, 255, 255, 0.03);
-	backdrop-filter: brightness(1.06) saturate(115%);
-	-webkit-backdrop-filter: brightness(1.06) saturate(115%);
-	box-shadow:
-		0 0 0 0.5px rgba(0, 0, 0, 0.28),
-		0 0 12px -2px rgba(0, 0, 0, 0.4);
+#aether-cursor.is-snapped .dc-hl {
+	opacity: 1;
+	transition:
+		opacity 0.08s ease,
+		scale 0.22s cubic-bezier(0.3, 1.5, 0.5, 1);
 }
 
-/* -------------------------------------------------------------------------
-   States
-   ------------------------------------------------------------------------- */
-
-/* hovering something clickable — the ring opens up and takes the accent */
-#aether-cursor[data-state="interactive"] .aether-cursor-ring::before {
-	width: 38px;
-	height: 38px;
-	border-color: color-mix(in srgb, var(--theme-accent, #7a6cff) 78%, white 22%);
-	background: color-mix(in srgb, var(--theme-accent, #7a6cff) 16%, transparent);
-	box-shadow:
-		0 0 0 0.5px rgba(0, 0, 0, 0.28),
-		0 0 18px -2px
-			color-mix(in srgb, var(--theme-accent, #7a6cff) 60%, transparent);
+/* Clicking presses the highlight in, like the button under it. */
+#aether-cursor.is-pressed .dc-hl {
+	scale: 0.94;
+	transition-duration: 0.08s, 0.08s;
 }
 
-#aether-cursor[data-state="interactive"] .aether-cursor-dot::before {
-	width: 3px;
-	height: 3px;
-	opacity: 0.85;
+/* ---- text and window edges ----------------------------------------------- */
+
+.dc-beam,
+.dc-resize {
+	width: 0;
+	height: 0;
+	opacity: 0;
+	transition: opacity 0.1s ease;
 }
 
-/* over text — the pair becomes a single I-beam */
-#aether-cursor[data-state="text"] .aether-cursor-ring::before {
+.dc-beam::before {
+	content: "";
+	position: absolute;
+	left: -1px;
+	top: -10px;
 	width: 2px;
-	height: 22px;
+	height: 20px;
 	border-radius: 1px;
-	border-color: transparent;
-	background: rgba(255, 255, 255, 0.92);
-	backdrop-filter: none;
-	-webkit-backdrop-filter: none;
+	background: #fff;
 	box-shadow:
-		0 0 0 0.5px rgba(0, 0, 0, 0.4),
-		0 0 8px rgba(0, 0, 0, 0.45);
+		0 0 0 1px rgba(0, 0, 0, 0.75),
+		0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
-#aether-cursor[data-state="text"] .aether-cursor-dot::before {
-	width: 0;
-	height: 0;
-	opacity: 0;
+.dc-resize svg {
+	position: absolute;
+	left: -13px;
+	top: -13px;
+	display: block;
+	filter: drop-shadow(0 1.5px 2.5px rgba(0, 0, 0, 0.42));
 }
 
-/* over a resize handle — a capsule rotated to the drag axis */
-#aether-cursor[data-state="resize"] .aether-cursor-ring::before {
-	width: 26px;
-	height: 3px;
-	border-radius: 999px;
-	border-color: transparent;
-	background: rgba(255, 255, 255, 0.9);
-	backdrop-filter: none;
-	-webkit-backdrop-filter: none;
-	box-shadow:
-		0 0 0 0.5px rgba(0, 0, 0, 0.45),
-		0 0 10px rgba(0, 0, 0, 0.5);
+#aether-cursor[data-dir="ns"] .dc-resize svg {
+	rotate: 90deg;
 }
 
-#aether-cursor[data-state="resize"] .aether-cursor-dot::before {
-	width: 0;
-	height: 0;
-	opacity: 0;
+#aether-cursor[data-dir="nwse"] .dc-resize svg {
+	rotate: 45deg;
 }
 
-#aether-cursor[data-state="resize"][data-dir="ns"] .aether-cursor-ring::before {
-	transform: translate(-50%, -50%) rotate(90deg);
-}
-#aether-cursor[data-state="resize"][data-dir="nwse"]
-	.aether-cursor-ring::before {
-	transform: translate(-50%, -50%) rotate(45deg);
-}
-#aether-cursor[data-state="resize"][data-dir="nesw"]
-	.aether-cursor-ring::before {
-	transform: translate(-50%, -50%) rotate(-45deg);
+#aether-cursor[data-dir="nesw"] .dc-resize svg {
+	rotate: -45deg;
 }
 
-/* dragging a window / grab handle */
-#aether-cursor[data-state="grabbing"] .aether-cursor-ring::before {
-	width: 21px;
-	height: 21px;
-	border-color: rgba(255, 255, 255, 0.85);
-	background: color-mix(in srgb, var(--theme-accent, #7a6cff) 26%, transparent);
-	box-shadow:
-		0 0 0 0.5px rgba(0, 0, 0, 0.35),
-		0 0 16px -2px
-			color-mix(in srgb, var(--theme-accent, #7a6cff) 70%, transparent);
+#aether-cursor[data-state="text"] .dc-beam,
+#aether-cursor[data-state="resize"] .dc-resize {
+	opacity: 1;
 }
 
-#aether-cursor[data-state="grabbing"] .aether-cursor-dot::before {
-	width: 7px;
-	height: 7px;
-}
+/* ---- fallbacks ------------------------------------------------------------ */
 
-/* disabled target — dim ring, dot becomes a small slash */
-#aether-cursor[data-state="disabled"] .aether-cursor-ring::before {
-	width: 22px;
-	height: 22px;
-	border-color: rgba(255, 255, 255, 0.28);
-	background: rgba(0, 0, 0, 0.18);
-}
-
-#aether-cursor[data-state="disabled"] .aether-cursor-dot::before {
-	width: 16px;
-	height: 1.5px;
-	border-radius: 999px;
-	background: rgba(255, 255, 255, 0.45);
-	transform: translate(-50%, -50%) rotate(-45deg);
-	box-shadow: none;
-}
-
-/* pressed — everything tightens a touch */
-#aether-cursor.is-pressed .aether-cursor-ring::before {
-	filter: brightness(1.15);
-	scale: 0.84;
-}
-
-#aether-cursor.is-pressed .aether-cursor-dot::before {
-	scale: 0.78;
-}
-
-/* -------------------------------------------------------------------------
-   Fallbacks
-   ------------------------------------------------------------------------- */
-
-/* Reduce transparency: drop the backdrop filter, keep the shape. */
-body.blur-disable .aether-cursor-ring::before {
-	backdrop-filter: none;
-	-webkit-backdrop-filter: none;
-	background: rgba(255, 255, 255, 0.06);
-}
-
-/* Reduced motion: Cursor.ts already stops interpolating; kill the shape
-   morphs too so nothing animates under the pointer. */
 @media (prefers-reduced-motion: reduce) {
-	.aether-cursor-dot::before,
-	.aether-cursor-ring::before {
+	.dc-arrow svg,
+	.dc-hl {
 		transition: none;
 	}
 }
 
-/* Touch devices never get the custom cursor — belt and braces alongside the
-   `(pointer: coarse)` check in Cursor.ts. */
 @media (pointer: coarse) {
 	#aether-cursor {
 		display: none;
