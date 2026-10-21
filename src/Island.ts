@@ -1,5 +1,5 @@
 /**
- * Aether — the island: a black pill in the middle of the menu bar that shows
+ * Dimension — the island: a black pill in the middle of the menu bar that shows
  * what's going on right now, and morphs as that changes.
  * ---------------------------------------------------------------------------
  *   Screen recording  red dot and running time; click to stop
@@ -221,8 +221,8 @@ class AetherIsland {
 	/* ---- boot ----------------------------------------------------------- */
 
 	static init() {
-		const bar = document.getElementById("menubar");
-		if (!bar || this.#el) return;
+		if (this.#el) return;
+		const bar = document.body;
 		const el = document.createElement("div");
 		el.id = "island";
 		el.dataset.mode = "idle";

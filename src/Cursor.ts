@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Aether — custom cursor
+   Dimension — custom cursor
    --------------------------------------------------------------------------
    A minimal two-part pointer: a hard 5px dot that tracks 1:1, and a soft ring
    that lags a few frames behind it. The ring is the only thing that

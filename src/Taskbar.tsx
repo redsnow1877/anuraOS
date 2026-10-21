@@ -1,12 +1,19 @@
 /**
- * The shell chrome: a menu bar pinned to the top of the screen and a floating,
- * magnifying dock at the bottom. Both live inside a single `display: contents`
- * root so the rest of the OS can keep treating `taskbar.element` as one node.
+ * The shell chrome: one floating capsule along the bottom of the screen.
+ *
+ *   [ cube ] | pinned apps | running apps |  AI  | tray: status, clock
+ *
+ * There's no menu bar. The cube opens the Launchpad (right-click it for the
+ * system menu), the tray at the right end holds what the menu bar used to:
+ * network and Control Center, notifications, battery, the clock. The island
+ * floats on its own at the top of the screen (Island.ts).
+ *
+ * It all lives inside a single `display: contents` root so the rest of the OS
+ * can keep treating `taskbar.element` as one node.
  */
 /**
- * The launch bounce. It goes on the `.dock-item`, never the <img> — the icon is
- * also what the magnification transform scales, and stacking a keyframed
- * transform on top of that makes the whole row jitter.
+ * The launch bounce. It goes on the `.dock-item`, never the icon itself,
+ * which carries its own hover lift.
  */
 function bounceDockItem(from: HTMLElement | null): void {
 	const item = from?.closest?.(".dock-item") as HTMLElement | null;
@@ -60,11 +67,6 @@ class Taskbar {
 	insidedrag = false;
 
 	element = (<div>Not Initialized</div>);
-
-	/** How far, in px, the cursor's influence on dock magnification reaches. */
-	static MAGNIFY_SIGMA = 78;
-	/** Peak scale of the icon directly under the cursor. */
-	static MAGNIFY_PEAK = 0.55;
 
 	shortcut(app: App) {
 		if (!app) return;
@@ -299,11 +301,6 @@ class Taskbar {
 			if (this.state.time !== time) this.state.time = time;
 		}, 1000);
 
-		// Dock icon centres are cached per hover; a resize can move them.
-		addEventListener("resize", () => {
-			this.#magnifyCenters = null;
-		});
-
 		addEventListener("online", () => {
 			this.state.net_icon = "wifi";
 		});
@@ -326,88 +323,6 @@ class Taskbar {
 		});
 
 		// Battery: AetherBattery (Battery.ts) owns its own menu bar item.
-	}
-
-	/**
-	 * Dock magnification. Each icon's scale falls off as a gaussian of its
-	 * horizontal distance from the cursor, which is what gives the dock its
-	 * signature "wave" instead of a stepped hover.
-	 *
-	 * Pointer events are coalesced to one update per frame, and each update
-	 * reads every icon's position before writing any `--mag`. The previous
-	 * version interleaved a getBoundingClientRect() with a style write per
-	 * icon, which forced a fresh style recalc for every icon on every event —
-	 * ~5 recalcs per mouse move across the dock. Writes are also skipped when
-	 * the rounded value hasn't changed, so icons far from the cursor stop
-	 * invalidating style altogether.
-	 */
-	#magnifyX: number | null = null;
-	#magnifyFrame = 0;
-	#magnifyLast = new WeakMap<HTMLElement, string>();
-	/**
-	 * Icon centres, measured once per hover. Magnification is a transform, so
-	 * the layout positions can't move while the pointer is over the dock; the
-	 * cache is dropped on leave, on resize, and whenever the icon set changes.
-	 */
-	#magnifyCenters: { items: HTMLElement[]; centers: number[] } | null = null;
-
-	#magnify(clientX: number | null) {
-		this.#magnifyX = clientX;
-		if (this.#magnifyFrame) return;
-		this.#magnifyFrame = requestAnimationFrame(() => {
-			this.#magnifyFrame = 0;
-			this.#applyMagnify(this.#magnifyX);
-		});
-	}
-
-	#applyMagnify(clientX: number | null) {
-		const dock = document.getElementById("dock");
-		if (!dock) return;
-		if (clientX !== null && anura.settings.get("disable-animation")) {
-			clientX = null;
-		}
-
-		const items = Array.from(
-			dock.querySelectorAll<HTMLElement>(".dock-item, #launcher-button"),
-		);
-		const sigma = Taskbar.MAGNIFY_SIGMA;
-
-		// Read phase — at most once per hover. Scale is applied with
-		// transform-origin at bottom centre, so an icon's horizontal centre is
-		// stable under magnification and a cached measurement stays valid.
-		let centers: number[] | null = null;
-		if (clientX === null) {
-			this.#magnifyCenters = null;
-		} else {
-			const cached = this.#magnifyCenters;
-			const stale =
-				!cached ||
-				cached.items.length !== items.length ||
-				cached.items.some((item, i) => item !== items[i]);
-			if (stale) {
-				this.#magnifyCenters = {
-					items,
-					centers: items.map((item) => {
-						const rect = item.getBoundingClientRect();
-						return rect.left + rect.width / 2;
-					}),
-				};
-			}
-			centers = this.#magnifyCenters!.centers;
-		}
-
-		// Write phase.
-		items.forEach((item, i) => {
-			let mag = "1";
-			if (centers && clientX !== null) {
-				const d = (clientX - centers[i]!) / sigma;
-				const value = 1 + Taskbar.MAGNIFY_PEAK * Math.exp(-d * d);
-				mag = value < 1.004 ? "1" : value.toFixed(3);
-			}
-			if (this.#magnifyLast.get(item) === mag) return;
-			this.#magnifyLast.set(item, mag);
-			item.style.setProperty("--mag", mag);
-		});
 	}
 
 	brandMenu = new ContextMenu(true);
@@ -442,133 +357,42 @@ class Taskbar {
 		this.brandMenu.addItem("Restart", () => location.reload(), "restart_alt");
 	}
 
+	/** The system menu, opened upward out of the cube. */
+	#showBrandMenu(e: MouseEvent) {
+		e.preventDefault();
+		launcher.hide();
+		quickSettings.close();
+		calendar.close();
+		const el =
+			(e.currentTarget as HTMLElement) ||
+			document.getElementById("launcher-button");
+		const rect = el.getBoundingClientRect();
+		const menu = this.brandMenu.show(rect.left, 0);
+		menu.style.top = "";
+		menu.style.bottom = "calc(var(--dock-reserve) + 6px)";
+		document.onclick = () => {
+			document.onclick = null;
+			this.brandMenu.hide();
+		};
+	}
+
 	async init() {
 		this.#initBrandMenu();
 
+		const mark = document.createElement("span");
+		mark.className = "launch-mark";
+		mark.innerHTML = BRANDING.mark({ mono: true, size: 22 });
+
+		const aiOrb = document.createElement("span");
+		aiOrb.className = "ai-orb";
+
 		this.element = (
 			<div id="shell-root">
-				<header
-					id="menubar"
-					// See the launcher's `class` for why this is a single pointer,
-					// not an array containing one.
+				<footer
+					id="dock"
 					class={use(this.state.solidMenubar, (solid) =>
 						solid ? "solid" : "",
 					)}
-				>
-					<div
-						class="menubar-item"
-						id="menubar-brand"
-						title={BRANDING.name}
-						on:click={(e: MouseEvent) => {
-							launcher.hide();
-							quickSettings.close();
-							calendar.close();
-							const el = e.currentTarget as HTMLElement;
-							const rect = el.getBoundingClientRect();
-							this.brandMenu.show(rect.left, rect.bottom + 4);
-							document.onclick = () => {
-								document.onclick = null;
-								this.brandMenu.hide();
-							};
-						}}
-					>
-						<svg
-							viewBox="0 0 24 24"
-							fill="none"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							<path
-								d="M12 1.5 22 20.5H2L12 1.5Z"
-								fill="currentColor"
-								fill-opacity="0.95"
-							/>
-							<path
-								d="M12 8.5 17 18H7l5-9.5Z"
-								fill="#000"
-								fill-opacity="0.45"
-							/>
-						</svg>
-					</div>
-
-					<div class="menubar-item" id="menubar-appname">
-						{use(this.state.activeApp)}
-					</div>
-
-					<div id="menubar-spacer"></div>
-
-					<div id="menubar-right">
-						<span class="systray"></span>
-
-						<div
-							class="menubar-item dnd-indicator"
-							title="Do Not Disturb is on — click to turn off"
-							on:click={() => (globalThis as any).AetherDND?.set(false)}
-						>
-							<span class="material-symbols-outlined">bedtime</span>
-						</div>
-
-						<div
-							class="menubar-item"
-							title="Spotlight (Ctrl+Space)"
-							on:click={() => AetherSpotlight.toggle()}
-						>
-							<span class="material-symbols-outlined">search</span>
-						</div>
-
-						<div
-							class="menubar-item"
-							title="Control Center"
-							on:click={() => {
-								launcher.hide();
-								calendar.close();
-								quickSettings.toggle();
-							}}
-						>
-							<span class="material-symbols-outlined">
-								{use(this.state.net_icon)}
-							</span>
-						</div>
-
-						<div
-							class="menubar-item"
-							title="Notifications"
-							on:click={() => {
-								launcher.hide();
-								calendar.close();
-								quickSettings.toggle();
-							}}
-						>
-							<span
-								class={[
-									"notification-badge",
-									use(anura.notifications.state.notifications.length, (i) =>
-										i > 0 ? "shown" : "hidden",
-									),
-								]}
-							>
-								{use(anura.notifications.state.notifications.length)}
-							</span>
-						</div>
-
-						<div
-							class="menubar-item"
-							id="menubar-clock"
-							on:click={() => {
-								launcher.hide();
-								quickSettings.close();
-								calendar.toggle();
-							}}
-						>
-							<span>{use(this.state.date)}</span>
-							<span>{use(this.state.time)}</span>
-						</div>
-					</div>
-				</header>
-
-				<footer
-					id="dock"
-					on:pointermove={(e: PointerEvent) => this.#magnify(e.clientX)}
-					on:pointerleave={() => this.#magnify(null)}
 					on:dragover={(e: DragEvent) => {
 						e.preventDefault();
 					}}
@@ -578,25 +402,18 @@ class Taskbar {
 					}}
 				>
 					<div id="launcher-button-container">
-						<div
+						<button
 							id="launcher-button"
-							title="Launchpad"
+							title={`Launchpad (right-click for the ${BRANDING.name} menu)`}
 							on:click={() => {
 								quickSettings.close();
 								calendar.close();
 								launcher.toggleVisible();
 							}}
+							on:contextmenu={(e: MouseEvent) => this.#showBrandMenu(e)}
 						>
-							<i></i>
-							<i></i>
-							<i></i>
-							<i></i>
-							<i></i>
-							<i></i>
-							<i></i>
-							<i></i>
-							<i></i>
-						</div>
+							{mark}
+						</button>
 					</div>
 
 					<div class="dock-separator"></div>
@@ -616,6 +433,82 @@ class Taskbar {
 							)}
 						</ul>
 					</nav>
+
+					<button
+						id="dock-ai"
+						title={`Ask ${BRANDING.name} AI`}
+						on:click={(e: MouseEvent) =>
+							(globalThis as any).DimensionAI?.summon(e.currentTarget)
+						}
+					>
+						{aiOrb}
+					</button>
+
+					<div class="dock-separator"></div>
+
+					<div id="dock-tray">
+						<span class="systray"></span>
+
+						<button
+							class="tray-item dnd-indicator"
+							title="Do Not Disturb is on. Click to turn it off"
+							on:click={() => (globalThis as any).AetherDND?.set(false)}
+						>
+							<span class="material-symbols-outlined">bedtime</span>
+						</button>
+
+						<button
+							class="tray-item"
+							id="tray-cc"
+							title="Control Center"
+							on:click={() => {
+								launcher.hide();
+								calendar.close();
+								quickSettings.toggle();
+							}}
+						>
+							<span class="material-symbols-outlined">
+								{use(this.state.net_icon)}
+							</span>
+						</button>
+
+						<button
+							class="tray-item"
+							id="tray-notifications"
+							title="Notifications"
+							on:click={() => {
+								launcher.hide();
+								calendar.close();
+								quickSettings.toggle();
+							}}
+						>
+							<span class="material-symbols-outlined">notifications</span>
+							<span
+								class={[
+									"notification-badge",
+									use(anura.notifications.state.notifications.length, (i) =>
+										i > 0 ? "shown" : "hidden",
+									),
+								]}
+							>
+								{use(anura.notifications.state.notifications.length)}
+							</span>
+						</button>
+
+						<button
+							class="tray-item"
+							id="tray-clock"
+							title="Calendar"
+							on:click={() => {
+								launcher.hide();
+								quickSettings.close();
+								calendar.toggle();
+							}}
+						>
+							<span class="tray-time">{use(this.state.time)}</span>
+							<span class="tray-date">{use(this.state.date)}</span>
+						</button>
+					</div>
 				</footer>
 			</div>
 		);
@@ -640,8 +533,8 @@ class Taskbar {
 
 	/**
 	 * Kept under its old name so existing callers keep working: it now decides
-	 * whether the menu bar is translucent or opaque rather than rounding the
-	 * old bottom taskbar.
+	 * whether the dock is translucent or opaque (it goes solid over a maximized
+	 * or snapped window, so it reads against busy content).
 	 */
 	updateRadius() {
 		this.state.solidMenubar =

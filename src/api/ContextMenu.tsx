@@ -109,7 +109,9 @@ class ContextMenu {
 	}
 	hide() {
 		if (this.#isShown) {
-			document.body.removeChild(this.#element);
+			// remove(), not removeChild: show() force-removes other menus, so
+			// this one may already be gone by the time its own hide runs.
+			this.#element.remove();
 			this.#isShown = false;
 		}
 	}

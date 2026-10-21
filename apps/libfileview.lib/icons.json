@@ -112,7 +112,7 @@
 			"ext": "ajs",
 			"icon": "icons/js.svg",
 			"source": "papirus/Papirus/16x16/mimetypes/application-javascript.svg",
-			"type": "Aether JavaScript Binary"
+			"type": "Dimension JavaScript Binary"
 		},
 		{
 			"ext": "json",
@@ -134,7 +134,7 @@
 		},
 		{
 			"ext": "app",
-			"type": "Aether Shortcut"
+			"type": "Dimension Shortcut"
 		}
 	],
 	"default": "icons/txt.svg",

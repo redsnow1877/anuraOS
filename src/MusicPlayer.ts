@@ -1,5 +1,5 @@
 /**
- * Aether — the music engine behind the Music app and Control Center's
+ * Dimension — the music engine behind the Music app and Control Center's
  * Now Playing card.
  * ---------------------------------------------------------------------------
  * Playback lives here rather than in the app window, so closing Music doesn't

@@ -121,6 +121,84 @@ body {
 	animation: boot-breathe 3.2s var(--ease-out) infinite;
 }
 
+/* The cube (Bootsplash.tsx). --c is the edge length; the faces sit half of
+   it away from the centre. The resting pose is the isometric logo. */
+.bootsplash .boot-cube {
+	--c: 54px;
+	width: var(--c);
+	height: var(--c);
+	margin-bottom: 40px;
+	perspective: 600px;
+	filter: drop-shadow(0 10px 34px rgba(120, 110, 255, 0.5));
+	/* The fade lives here, not on .cube-spin: opacity below 1 on the element
+	   holding the 3D context flattens it into a single face. */
+	animation: cube-fade 0.5s ease-out both;
+}
+
+@keyframes cube-fade {
+	from {
+		opacity: 0;
+	}
+}
+
+.boot-cube .cube-spin {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	transform-style: preserve-3d;
+	transform: rotateX(-35.264deg) rotateY(45deg);
+	animation: cube-settle 1.5s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+.boot-cube i {
+	position: absolute;
+	inset: 0;
+	border-radius: 3px;
+	backface-visibility: hidden;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.boot-cube .f-top {
+	background: linear-gradient(135deg, #e1dcff, #b4aaff);
+	transform: rotateX(90deg) translateZ(calc(var(--c) / 2));
+}
+.boot-cube .f-bottom {
+	background: #2a2080;
+	transform: rotateX(-90deg) translateZ(calc(var(--c) / 2));
+}
+/* At the resting angle the left face is on the left and the front face on
+   the right; shaded light-top, mid-left, dark-right like the flat logo. */
+.boot-cube .f-front {
+	background: linear-gradient(180deg, #5446d8, #3a2db0);
+	transform: translateZ(calc(var(--c) / 2));
+}
+.boot-cube .f-back {
+	background: linear-gradient(180deg, #8f83ff, #6a5cf0);
+	transform: rotateY(180deg) translateZ(calc(var(--c) / 2));
+}
+.boot-cube .f-left {
+	background: linear-gradient(180deg, #8f83ff, #6a5cf0);
+	transform: rotateY(-90deg) translateZ(calc(var(--c) / 2));
+}
+.boot-cube .f-right {
+	background: linear-gradient(180deg, #5446d8, #3a2db0);
+	transform: rotateY(90deg) translateZ(calc(var(--c) / 2));
+}
+
+@keyframes cube-settle {
+	from {
+		transform: rotateX(-35.264deg) rotateY(-315deg) scale(0.7);
+	}
+	to {
+		transform: rotateX(-35.264deg) rotateY(45deg) scale(1);
+	}
+}
+
+body.reduce-motion .boot-cube,
+body.reduce-motion .boot-cube .cube-spin {
+	animation: none;
+}
+
 .bootsplash .boot-wordmark {
 	font-size: 15px;
 	font-weight: 600;

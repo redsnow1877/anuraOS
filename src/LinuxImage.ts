@@ -1,5 +1,5 @@
 /**
- * Aether — Linux image
+ * Dimension — Linux image
  * ---------------------------------------------------------------------------
  * The x86 subsystem needs a ~1 GB Alpine Linux disk, far too big to host on
  * GitHub Pages. So on builds that don't carry it, Linux is a download: one
@@ -89,7 +89,7 @@ class AetherLinux {
 		for (const name of this.#NEEDED)
 			if (!entries[name])
 				throw new Error(
-					"That file isn't an Aether Linux image. Download it again from the link.",
+					"That file isn't a Dimension Linux image. Download it again from the link.",
 				);
 
 		say("Installing the kernel");

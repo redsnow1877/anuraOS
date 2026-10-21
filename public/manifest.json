@@ -1,5 +1,5 @@
 {
-	"name": "Aether",
+	"name": "Dimension",
 	"icons": [
 		{
 			"src": "pwa_icon.png",
@@ -8,7 +8,7 @@
 			"purpose": "any maskable"
 		}
 	],
-	"short_name": "Aether",
+	"short_name": "Dimension",
 	"start_url": "/",
 	"display_override": [
 		"window-controls-overlay",

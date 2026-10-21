@@ -18,12 +18,13 @@ type SnappedWindow = {
 /**
  * Screen insets the window manager keeps clear.
  *
- * `WM_TOP_INSET` is the menu bar; `WM_BOTTOM_INSET` is the floating dock plus
- * its margin. They mirror `--menubar-h` / `--dock-reserve` in Glass.css — keep
- * the two in step if you retheme the shell.
+ * There's no menu bar, so nothing at the top: a maximized window runs to the
+ * top edge and the island floats over it, like on a phone. `WM_BOTTOM_INSET`
+ * is the floating dock plus its margin. They mirror `--menubar-h` /
+ * `--dock-reserve` in Glass.css; keep the two in step if you retheme.
  */
-const WM_TOP_INSET = 28;
-const WM_BOTTOM_INSET = 82;
+const WM_TOP_INSET = 0;
+const WM_BOTTOM_INSET = 78;
 /** Total vertical space unavailable to a maximized window. */
 const WM_V_INSET = WM_TOP_INSET + WM_BOTTOM_INSET;
 
@@ -753,6 +754,7 @@ class WMWindow extends EventTarget implements Process {
 
 		this.justresized = true;
 		this.maximized = true;
+		this.element.classList.add("maximized");
 		this.dispatchEvent(
 			new MessageEvent("resize", {
 				data: { width: this.width, height: this.height },
@@ -805,6 +807,7 @@ class WMWindow extends EventTarget implements Process {
 		await sleep(10); // Race condition as a feature
 		this.justresized = true;
 		this.maximized = false;
+		this.element.classList.remove("maximized");
 		this.dispatchEvent(
 			new MessageEvent("resize", {
 				data: { width: this.width, height: this.height },

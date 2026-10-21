@@ -1,10 +1,10 @@
 /* ==========================================================================
-   Aether — desktop widgets
+   Dimension — desktop widgets
    ========================================================================== */
 
 #desktop-widgets.widget-rail {
 	position: fixed;
-	top: calc(var(--menubar-h, 28px) + 12px);
+	top: calc(var(--island-zone, 46px) + 4px);
 	left: 16px;
 	right: 16px;
 	bottom: calc(var(--dock-reserve, 82px) + 8px);

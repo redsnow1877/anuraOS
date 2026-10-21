@@ -1,5 +1,5 @@
 /**
- * Aether — desktop widgets
+ * Dimension — desktop widgets
  * ---------------------------------------------------------------------------
  * Any widget from the Launchpad rail can be pinned to the desktop (the pin on
  * a rail card, or "Widgets…" in the desktop's right-click menu). Pinned

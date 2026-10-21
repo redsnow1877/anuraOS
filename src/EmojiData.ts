@@ -1,5 +1,5 @@
 /**
- * Aether — data for the Emoji & Symbols panel (Clipboard.ts).
+ * Dimension — data for the Emoji & Symbols panel (Clipboard.ts).
  *
  * Each category is one string: entries separated by "|", each entry an emoji
  * (or symbol, or kaomoji) followed by space-separated search words. Compact

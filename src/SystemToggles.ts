@@ -1,5 +1,5 @@
 /**
- * Aether — Do Not Disturb, Night Shift, and the keyboard cheat sheet
+ * Dimension — Do Not Disturb, Night Shift, and the keyboard cheat sheet
  * ---------------------------------------------------------------------------
  * Do Not Disturb     notifications still land in the notification centre
  *                    (the badge still counts them), but no toast slides in

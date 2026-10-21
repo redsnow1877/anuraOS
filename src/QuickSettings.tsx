@@ -28,8 +28,8 @@ class QuickSettings {
 	});
 
 	transition = css`
-		/* Panels hinge down from the menu bar: opacity leads, transform and a
-		   short blur trail behind it on the soft spring from Motion.css. */
+		/* Panels grow up out of the dock tray: opacity leads, the transform
+		   trails behind it on the soft spring from Motion.css. */
 		transition:
 			opacity 0.16s var(--ease-decelerate, ease-out),
 			transform 0.3s var(--ease-spring-soft, ease-out),
@@ -55,7 +55,7 @@ class QuickSettings {
 		opacity: 0;
 		z-index: -1;
 		pointer-events: none;
-		transform: scale(0.94) translateY(-6px);
+		transform: scale(0.94) translateY(10px);
 		filter: blur(var(--motion-blur-soft, 6px));
 		/* Drop out of rendering once the fade finishes: at opacity 0 a closed
 		   panel still kept its backdrop-filter layer alive and hit-testable. */
@@ -68,9 +68,9 @@ class QuickSettings {
 	`;
 
 	quickSettingsCss = css`
-		top: calc(var(--menubar-h) + 6px);
-		right: 8px;
-		transform-origin: top right;
+		bottom: calc(var(--dock-reserve) + 4px);
+		right: 12px;
+		transform-origin: bottom right;
 
 		.quickSettingsContent {
 			display: flex;
@@ -195,11 +195,11 @@ class QuickSettings {
 	quickSettingsElement: HTMLElement = (<div>Not Initialized</div>);
 
 	notificationCenterCss = css`
-		max-height: calc(40% - 20px);
+		max-height: calc(54% - var(--dock-reserve) - 30px);
 		min-height: 20px;
-		top: calc(var(--menubar-h) + 12px + 46%);
-		right: 8px;
-		transform-origin: top right;
+		bottom: calc(var(--dock-reserve) + 12px + 46%);
+		right: 12px;
+		transform-origin: bottom right;
 		overflow: hidden;
 
 		.notificationContainer {

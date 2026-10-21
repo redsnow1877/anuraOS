@@ -1,5 +1,5 @@
 /**
- * Aether — Preloader
+ * Dimension — Preloader
  * ---------------------------------------------------------------------------
  * A loading indicator with interchangeable style variants, used for the boot
  * splash and available to apps as a drop-in busy state.

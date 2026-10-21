@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Aether — gooey surfaces
+   Dimension — gooey surfaces
    --------------------------------------------------------------------------
    The `feGaussianBlur` + `feColorMatrix` alpha-ramp trick: blur everything in
    a subtree, then crush the alpha curve so soft edges snap back to hard ones.

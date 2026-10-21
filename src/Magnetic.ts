@@ -1,5 +1,5 @@
 /**
- * Aether — magnetic pointer attraction
+ * Dimension — magnetic pointer attraction
  * ---------------------------------------------------------------------------
  * Ported from the React `MagneticButton` pattern. The React version keeps the
  * offset in component state and hands it to a spring; here the element owns two

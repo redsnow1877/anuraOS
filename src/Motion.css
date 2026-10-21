@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Aether — motion system
+   Dimension — motion system
    --------------------------------------------------------------------------
    All shell animation lives here. Glass.css owns the look; this file owns the
    *timing*. It only ever adds tokens, keyframes and opt-in classes — nothing

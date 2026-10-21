@@ -1,5 +1,5 @@
 /**
- * Aether — screenshots and screen recording
+ * Dimension — screenshots and screen recording
  * ---------------------------------------------------------------------------
  *   Ctrl+Shift+3   capture the whole screen
  *   Ctrl+Shift+4   capture a region
@@ -334,7 +334,13 @@ class AetherScreenshot {
 	}
 
 	static #showIndicator() {
-		const host = document.getElementById("menubar-right");
+		// The island shows recording with a stop control; this tray item is
+		// the fallback when the island isn't running.
+		if (document.getElementById("island")) {
+			this.#indicator = null;
+			return;
+		}
+		const host = document.getElementById("dock-tray");
 		const el = document.createElement("div");
 		el.className = "menubar-item rec-indicator";
 		el.title = "Stop recording";

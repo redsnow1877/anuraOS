@@ -19,29 +19,24 @@ function BootProgress() {
 	}
 }
 
+/**
+ * The Dimension cube, in real 3D: six faces in a preserve-3d box. It spins in
+ * and comes to rest at the isometric angle (rotateX -35.26deg, rotateY 45deg),
+ * which is exactly the flat logo, so the boot animation ends on the mark.
+ * Transforms only, so it runs on the compositor while boot is busy.
+ */
 function BootMark() {
 	return (
-		<svg
-			class="boot-mark"
-			viewBox="0 0 96 96"
-			fill="none"
-			xmlns="http://www.w3.org/2000/svg"
-		>
-			<defs>
-				<linearGradient id="bootGrad" x1="10" y1="4" x2="86" y2="92">
-					<stop offset="0" stop-color="#a99cff" />
-					<stop offset="0.55" stop-color="#6a5cf0" />
-					<stop offset="1" stop-color="#3a2fb0" />
-				</linearGradient>
-				<linearGradient id="bootGlass" x1="30" y1="30" x2="70" y2="80">
-					<stop offset="0" stop-color="#ffffff" stop-opacity="0.55" />
-					<stop offset="1" stop-color="#ffffff" stop-opacity="0.05" />
-				</linearGradient>
-			</defs>
-			<path d="M48 4 92 88H4L48 4Z" fill="url(#bootGrad)" />
-			<path d="M48 30 71 74H25l23-44Z" fill="#06070a" fill-opacity="0.5" />
-			<path d="M48 4 92 88H62L48 4Z" fill="url(#bootGlass)" />
-		</svg>
+		<div class="boot-mark boot-cube" aria-hidden="true">
+			<div class="cube-spin">
+				<i class="f-top"></i>
+				<i class="f-bottom"></i>
+				<i class="f-front"></i>
+				<i class="f-back"></i>
+				<i class="f-left"></i>
+				<i class="f-right"></i>
+			</div>
+		</div>
 	);
 }
 

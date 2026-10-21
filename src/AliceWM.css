@@ -117,6 +117,16 @@
 	color: var(--ink);
 }
 
+/* A maximized window runs to the top edge, where the island floats over the
+   middle of its title bar. The title moves left, next to the traffic lights,
+   so the island never covers it. */
+.aliceWMwin.maximized .titleContent {
+	right: auto;
+	max-width: calc(50% - 160px);
+	padding: 0 0 0 88px;
+	text-align: left;
+}
+
 /* --------------------------------------------------------------------------
    Traffic lights
    -------------------------------------------------------------------------- */

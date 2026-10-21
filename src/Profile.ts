@@ -1,5 +1,5 @@
 /**
- * Aether — the user's profile
+ * Dimension — the user's profile
  * ---------------------------------------------------------------------------
  * A name and an avatar, picked during setup and shown on the lock screen.
  * The avatar is either an emoji or the name's initials, on one of a handful

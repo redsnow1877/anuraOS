@@ -1,5 +1,5 @@
 /**
- * Aether — Spotlight
+ * Dimension — Spotlight
  * ---------------------------------------------------------------------------
  * A system-wide search palette (Ctrl+Space, Ctrl+K, or the menu bar's search
  * icon). One text field, several providers, keyboard-first:

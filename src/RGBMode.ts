@@ -1,5 +1,5 @@
 /**
- * Aether — RGB mode. Because a gaming setup without RGB is just a setup.
+ * Dimension — RGB mode. Because a gaming setup without RGB is just a setup.
  * ---------------------------------------------------------------------------
  * A rainbow rim chases around the dock (with a soft glow), the menu bar
  * island and whichever window has focus.

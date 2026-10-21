@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Aether — Mission Control / Show Desktop
+   Dimension — Mission Control / Show Desktop
    --------------------------------------------------------------------------
    Windows are moved by MissionControl.ts through `translate`/`scale`. This
    file only supplies what sits around them: a blurred backdrop underneath

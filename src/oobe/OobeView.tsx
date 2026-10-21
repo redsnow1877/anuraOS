@@ -1,5 +1,5 @@
 /**
- * Aether — Setup Assistant
+ * Dimension — Setup Assistant
  * ---------------------------------------------------------------------------
  * The first thing anyone sees. A "hello" that cycles through languages, then
  * a short run of questions on a glass card over a slowly drifting aurora:
@@ -77,7 +77,7 @@ const OOBE_GREETINGS = [
 ];
 
 const OOBE_ACCENTS: Array<[string, string]> = [
-	["#7A6CFF", "Aether"],
+	["#7A6CFF", "Dimension"],
 	["#3B82F6", "Blue"],
 	["#06B6D4", "Cyan"],
 	["#22C55E", "Green"],
@@ -89,8 +89,8 @@ const OOBE_ACCENTS: Array<[string, string]> = [
 ];
 
 const OOBE_WALLPAPERS: Array<[string, string]> = [
-	["Aether", "/assets/wallpaper/bundled_wallpapers/Aether.svg"],
-	["Aether Dusk", "/assets/wallpaper/bundled_wallpapers/Aether Dusk.svg"],
+	["Dimension", "/assets/wallpaper/bundled_wallpapers/Aether.svg"],
+	["Dimension Dusk", "/assets/wallpaper/bundled_wallpapers/Aether Dusk.svg"],
 	["Nocturne", "/assets/wallpaper/bundled_wallpapers/Nocturne.jpg"],
 	["Blues", "/assets/wallpaper/bundled_wallpapers/Blues Dark.png"],
 	["Earth", "/assets/wallpaper/bundled_wallpapers/Earth Light.jpg"],
@@ -1197,7 +1197,7 @@ class OobeView {
 					),
 					this.#toggle(
 						"arrow_selector_tool",
-						"Aether cursor",
+						"Dimension cursor",
 						"A soft pointer that morphs over buttons and text.",
 						() => this.c.cursor,
 						(v) => (this.c.cursor = v),

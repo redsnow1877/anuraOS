@@ -1,5 +1,5 @@
 /**
- * Aether — lock screen
+ * Dimension — lock screen
  * ---------------------------------------------------------------------------
  * Ctrl+Alt+L, Spotlight, the brand menu, a hot corner, or inactivity.
  *

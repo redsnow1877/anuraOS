@@ -102,7 +102,7 @@ class SiteInfo {
         const headText = this.el("div", "siHeadText");
         headText.append(
             this.el("div", "siTitle", {
-                internal: "Aether page",
+                internal: "Dimension page",
                 secure: "Connection is secure",
                 insecure: "Connection is not secure",
                 search: "Search",

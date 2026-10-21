@@ -1,253 +1,219 @@
 /* ==========================================================================
-   Shell chrome — menu bar (top) and dock (bottom)
+   Dimension — the dock (Taskbar.tsx)
+   One floating capsule: the cube, apps, the AI orb, then the tray. There's
+   no menu bar; the island floats on its own at the top (Island.css).
    ========================================================================== */
 
 #shell-root {
 	display: contents;
 }
 
-/* --------------------------------------------------------------------------
-   Menu bar
-   -------------------------------------------------------------------------- */
-
-#menubar {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	height: var(--menubar-h);
-	z-index: 9500;
-	display: flex;
-	align-items: center;
-	padding: 0 10px;
-	gap: 4px;
-	font-size: 12.5px;
-	font-weight: 500;
-	color: var(--ink);
-	background: rgba(22, 22, 26, 0.42);
-	backdrop-filter: var(--glass-blur-light);
-	-webkit-backdrop-filter: var(--glass-blur-light);
-	box-shadow:
-		inset 0 -1px 0 0 rgba(255, 255, 255, 0.07),
-		0 1px 12px rgba(0, 0, 0, 0.28);
-	transition: background-color 0.2s ease;
-}
-
-/* When something is maximized the bar goes opaque, like macOS does over
-   a fullscreen window. */
-#menubar.solid {
-	background: rgba(16, 16, 19, 0.86);
-}
-
-.menubar-item {
-	display: flex;
-	align-items: center;
-	gap: 5px;
-	height: 20px;
-	padding: 0 8px;
-	border-radius: 5px;
-	cursor: default;
-	white-space: nowrap;
-	transition: background-color 0.08s linear;
-}
-
-.menubar-item:hover,
-.menubar-item.open {
-	background: rgba(255, 255, 255, 0.14);
-}
-
-.menubar-item .material-symbols-outlined {
-	font-size: 16px;
-	line-height: 1;
-}
-
-#menubar-brand {
-	padding: 0 9px;
-}
-
-#menubar-brand svg {
-	width: 14px;
-	height: 14px;
-	display: block;
-}
-
-#menubar-appname {
-	font-weight: 650;
-	max-width: 32vw;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-#menubar-spacer {
-	flex: 1;
-	height: 100%;
-}
-
-#menubar-right {
-	display: flex;
-	align-items: center;
-	gap: 2px;
-	margin-right: 2px;
-}
-
-#menubar-right .systray {
-	display: flex;
-	align-items: center;
-	gap: 4px;
-	height: 18px;
-}
-
-#menubar-right .systray:empty {
-	display: none;
-}
-
-#menubar-clock {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	font-variant-numeric: tabular-nums;
-	font-weight: 500;
-}
-
-.notification-badge {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 16px;
-	height: 16px;
-	padding: 0 4px;
-	border-radius: 999px;
-	background: #ff453a;
-	color: #fff;
-	font-size: 10.5px;
-	font-weight: 700;
-	line-height: 1;
-	box-shadow: 0 1px 4px rgba(255, 69, 58, 0.5);
-	transition:
-		transform 0.16s var(--ease-spring),
-		opacity 0.16s ease;
-}
-
-.notification-badge.hidden {
-	transform: scale(0);
-	opacity: 0;
-	width: 0;
-	min-width: 0;
-	padding: 0;
-	margin: 0;
-}
-
-/* --------------------------------------------------------------------------
-   Dock
-   -------------------------------------------------------------------------- */
-
 #dock {
 	position: fixed;
-	bottom: 8px;
+	bottom: 10px;
 	left: 50%;
 	transform: translateX(-50%);
 	z-index: 9400;
 	display: flex;
-	align-items: flex-end;
-	gap: 2px;
-	/* Extra room along the bottom so the running-indicator dots clear the
-	   dock's own border instead of crowding it. */
-	padding: var(--dock-pad) var(--dock-pad) calc(var(--dock-pad) + 8px);
+	align-items: center;
+	gap: 4px;
+	height: var(--dock-h);
+	box-sizing: border-box;
+	padding: 0 8px;
 	max-width: calc(100vw - 24px);
-	border-radius: var(--radius-dock);
-	background: var(--glass-tint);
+	border-radius: 999px;
+	background: rgba(20, 20, 26, 0.56);
 	backdrop-filter: var(--glass-blur);
 	-webkit-backdrop-filter: var(--glass-blur);
-	border: 1px solid var(--glass-stroke);
-	box-shadow: var(--glass-highlight), var(--shadow-dock);
-	/* Icons scale past the container on hover; let them spill out. */
-	overflow: visible;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.12),
+		0 18px 48px -14px rgba(0, 0, 0, 0.65),
+		0 2px 8px rgba(0, 0, 0, 0.25);
+	transition: background-color 0.25s ease;
+}
+
+/* Over a maximized window the dock goes nearly opaque so it reads against
+   whatever content is behind it. */
+#dock.solid {
+	background: rgba(16, 16, 20, 0.86);
+}
+
+#dock button {
+	font-family: inherit;
+	color: inherit;
 }
 
 #dock nav,
 #dock ul {
 	display: flex;
-	align-items: flex-end;
+	align-items: center;
 	list-style: none;
 	margin: 0;
 	padding: 0;
 	gap: 2px;
 }
 
-#dock nav {
-	gap: 2px;
+.dock-separator {
+	width: 1px;
+	height: 26px;
+	margin: 0 6px;
+	border-radius: 1px;
+	background: rgba(255, 255, 255, 0.14);
+	flex-shrink: 0;
 }
 
-.dock-item {
-	--mag: 1;
-	position: relative;
-	width: var(--dock-icon);
-	height: var(--dock-icon);
+/* --------------------------------------------------------------------------
+   The cube: Launchpad, and the system menu on right-click
+   -------------------------------------------------------------------------- */
+
+#launcher-button-container {
 	display: flex;
-	align-items: flex-end;
-	justify-content: center;
+	flex-shrink: 0;
+}
+
+#launcher-button {
+	width: 42px;
+	height: 42px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	color: #fff;
+	background: radial-gradient(
+		120% 120% at 30% 20%,
+		color-mix(in oklab, var(--theme-accent, #7a6cff) 75%, white),
+		var(--theme-accent, #7a6cff) 55%,
+		color-mix(in oklab, var(--theme-accent, #7a6cff) 60%, black)
+	);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.35),
+		0 6px 16px -6px var(--theme-accent, #7a6cff);
+	cursor: default;
+	transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+
+#launcher-button:hover {
+	transform: translateY(-2px);
+}
+
+#launcher-button:active {
+	transform: scale(0.92);
+	transition-duration: 0.08s;
+}
+
+#launcher-button .launch-mark,
+#launcher-button svg {
+	display: block;
+}
+
+#launcher-button .launch-mark svg {
+	transition: transform 0.5s cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+
+/* A quarter turn while the Launchpad is open, like the cube is showing a
+   new face. */
+body:has(#launcher.launcher-active) #launcher-button .launch-mark svg {
+	transform: rotate(60deg);
+}
+
+/* --------------------------------------------------------------------------
+   App icons
+   -------------------------------------------------------------------------- */
+
+.dock-item {
+	position: relative;
+	width: 48px;
+	height: 48px;
+	display: grid;
+	place-items: center;
+	border-radius: 14px;
 	cursor: default;
 }
 
+/* The soft tile behind an icon on hover. It's its own layer so hovering is
+   only an opacity change. */
+.dock-item::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: rgba(255, 255, 255, 0.09);
+	opacity: 0;
+	transition: opacity 0.15s ease;
+	pointer-events: none;
+}
+
+.dock-item:hover::before {
+	opacity: 1;
+}
+
 .dock-item .dock-icon {
+	position: relative;
 	width: var(--dock-icon);
 	height: var(--dock-icon);
-	padding: 3px;
+	padding: 2px;
 	box-sizing: border-box;
 	border: none;
 	background: transparent;
 	object-fit: contain;
-	transform-origin: bottom center;
-	transform: scale(var(--mag)) translateY(calc((var(--mag) - 1) * -2px));
-	transition: transform 0.13s var(--ease-out);
-	filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.45));
+	filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
+	transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.5, 1);
 	-webkit-user-drag: element;
 }
 
-.dock-item .dock-icon:active {
-	transform: scale(calc(var(--mag) * 0.9))
-		translateY(calc((var(--mag) - 1) * -2px));
-	transition: transform 0.06s ease;
+.dock-item:hover .dock-icon {
+	transform: translateY(-3px);
 }
 
-/* Running indicator */
+.dock-item .dock-icon:active {
+	transform: scale(0.9);
+	transition-duration: 0.08s;
+}
+
+/* Running: a short glowing bar under the icon, in the accent colour. */
 .dock-item .lightbar {
 	position: absolute;
-	bottom: -9px;
+	bottom: 1px;
 	left: 50%;
-	transform: translateX(-50%);
-	width: 4px;
-	height: 4px;
-	border-radius: 50%;
-	background: var(--ink);
-	opacity: 0.85;
+	width: 14px;
+	height: 3px;
+	margin-left: -7px;
+	border-radius: 2px;
+	background: color-mix(in oklab, var(--theme-accent, #7a6cff) 55%, white);
+	box-shadow: 0 0 8px var(--theme-accent, #7a6cff);
 	transition:
-		opacity 0.15s ease,
-		transform 0.15s ease;
+		opacity 0.2s ease,
+		transform 0.4s cubic-bezier(0.34, 1.4, 0.5, 1);
 	pointer-events: none;
 }
 
 .dock-item .lightbar-hidden {
 	opacity: 0;
-	transform: translateX(-50%) scale(0.2);
+	transform: scaleX(0.2);
+}
+
+/* The focused app's bar is a little wider. */
+.dock-item.is-focused .lightbar {
+	transform: scaleX(1.5);
 }
 
 /* Tooltip */
-.dock-item::after {
+.dock-item::after,
+#dock-ai::after {
 	content: attr(data-title);
 	position: absolute;
-	bottom: calc(100% + 12px);
+	bottom: calc(100% + 14px);
 	left: 50%;
 	transform: translateX(-50%) translateY(4px);
 	padding: 4px 9px;
-	border-radius: 7px;
+	border-radius: 8px;
 	font-size: 12px;
-	font-weight: 500;
+	font-weight: 550;
 	white-space: nowrap;
 	color: var(--ink);
-	background: var(--glass-tint-strong);
-	backdrop-filter: var(--glass-blur-light);
-	-webkit-backdrop-filter: var(--glass-blur-light);
+	background: rgba(22, 22, 28, 0.86);
 	border: 1px solid var(--glass-stroke);
 	box-shadow: var(--shadow-panel);
 	opacity: 0;
@@ -257,57 +223,201 @@
 		transform 0.12s var(--ease-out);
 }
 
-.dock-item:hover::after {
+.dock-item:hover::after,
+#dock-ai:hover::after {
 	opacity: 1;
 	transform: translateX(-50%) translateY(0);
 	transition-delay: 0.35s;
 }
 
-.dock-separator {
-	width: 1px;
-	align-self: stretch;
-	margin: 6px 5px;
-	background: rgba(255, 255, 255, 0.16);
-	flex-shrink: 0;
-}
+/* --------------------------------------------------------------------------
+   The AI orb
+   -------------------------------------------------------------------------- */
 
-/* Launcher (Launchpad) button lives inside the dock, pinned to the left. */
-#launcher-button-container {
-	display: flex;
-	align-items: flex-end;
+#dock-ai {
+	position: relative;
 	flex-shrink: 0;
-}
-
-#launcher-button {
-	--mag: 1;
-	width: var(--dock-icon);
-	height: var(--dock-icon);
-	padding: 4px;
-	box-sizing: border-box;
-	border-radius: 13px;
-	background: linear-gradient(155deg, #8f86ff 0%, #5a4fd6 55%, #3d2fa8 100%);
-	box-shadow:
-		inset 0 1px 0 rgba(255, 255, 255, 0.35),
-		0 4px 10px rgba(0, 0, 0, 0.45);
+	width: 42px;
+	height: 42px;
+	margin-left: 2px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
 	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	grid-template-rows: repeat(3, 1fr);
-	gap: 3px;
+	place-items: center;
 	cursor: default;
-	transform-origin: bottom center;
-	transform: scale(var(--mag)) translateY(calc((var(--mag) - 1) * -2px));
-	transition: transform 0.13s var(--ease-out);
+	transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.5, 1);
 }
 
-#launcher-button i {
-	display: block;
-	border-radius: 2px;
-	background: rgba(255, 255, 255, 0.92);
+#dock-ai::after {
+	content: "Ask Dimension AI";
 }
 
-#launcher-button:active {
-	transform: scale(calc(var(--mag) * 0.9))
-		translateY(calc((var(--mag) - 1) * -2px));
+#dock-ai:hover {
+	transform: translateY(-2px);
+}
+
+#dock-ai:active {
+	transform: scale(0.9);
+	transition-duration: 0.08s;
+}
+
+/* A slowly turning conic gradient under a frosted dome: a little marble of
+   colour. It's one composited rotation. */
+.ai-orb {
+	position: relative;
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	overflow: hidden;
+	box-shadow:
+		0 0 14px -2px rgba(140, 120, 255, 0.7),
+		inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.ai-orb::before {
+	content: "";
+	position: absolute;
+	inset: -40%;
+	background: conic-gradient(
+		from 0deg,
+		#7a6cff,
+		#38bdf8,
+		#34d399,
+		#fbbf24,
+		#f472b6,
+		#7a6cff
+	);
+	animation: ai-orb-spin 6s linear infinite;
+}
+
+.ai-orb::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: 50%;
+	background: radial-gradient(
+		70% 70% at 35% 28%,
+		rgba(255, 255, 255, 0.75),
+		rgba(255, 255, 255, 0.08) 45%,
+		rgba(10, 10, 20, 0.35) 100%
+	);
+}
+
+@keyframes ai-orb-spin {
+	to {
+		transform: rotate(1turn);
+	}
+}
+
+/* Faster and brighter while the assistant is working. */
+body.ai-busy .ai-orb::before {
+	animation-duration: 1.6s;
+}
+
+/* --------------------------------------------------------------------------
+   The tray
+   -------------------------------------------------------------------------- */
+
+#dock-tray {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	flex-shrink: 0;
+	padding-right: 4px;
+	font-size: 12.5px;
+	color: var(--ink);
+}
+
+#dock-tray .systray {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	height: 22px;
+}
+
+#dock-tray .systray:empty {
+	display: none;
+}
+
+.tray-item {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	height: 36px;
+	padding: 0 9px;
+	border: 0;
+	border-radius: 999px;
+	background: transparent;
+	color: inherit;
+	font-size: inherit;
+	cursor: default;
+	white-space: nowrap;
+	transition: background-color 0.1s linear;
+}
+
+.tray-item:hover,
+.tray-item.open {
+	background: rgba(255, 255, 255, 0.1);
+}
+
+.tray-item .material-symbols-outlined {
+	font-size: 19px;
+	line-height: 1;
+}
+
+#tray-clock {
+	flex-direction: column;
+	align-items: flex-end;
+	justify-content: center;
+	gap: 0;
+	padding: 0 12px 0 10px;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.15;
+}
+
+.tray-time {
+	font-size: 13px;
+	font-weight: 650;
+}
+
+.tray-date {
+	font-size: 10.5px;
+	font-weight: 500;
+	color: var(--ink-dim);
+}
+
+#tray-notifications .notification-badge {
+	position: absolute;
+	top: 4px;
+	right: 3px;
+}
+
+.notification-badge {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 15px;
+	height: 15px;
+	padding: 0 4px;
+	box-sizing: border-box;
+	border-radius: 999px;
+	background: #ff453a;
+	color: #fff;
+	font-size: 9.5px;
+	font-weight: 700;
+	line-height: 1;
+	box-shadow: 0 1px 4px rgba(255, 69, 58, 0.5);
+	transition:
+		transform 0.3s cubic-bezier(0.34, 1.5, 0.5, 1),
+		opacity 0.16s ease;
+}
+
+.notification-badge.hidden {
+	transform: scale(0);
+	opacity: 0;
 }
 
 /* --------------------------------------------------------------------------
@@ -316,18 +426,23 @@
 
 body.platform-mobile #dock,
 body.platform-tablet #dock {
-	--dock-icon: 44px;
 	bottom: 6px;
-	border-radius: 18px;
 }
 
 body.platform-mobile .dock-item::after,
-body.platform-tablet .dock-item::after {
+body.platform-tablet .dock-item::after,
+body.platform-mobile #dock-ai::after,
+body.platform-tablet #dock-ai::after {
 	display: none;
 }
 
-@media (max-width: 560px) {
-	#menubar-appname {
+@media (max-width: 640px) {
+	.tray-date,
+	#dock-tray .systray {
 		display: none;
 	}
+}
+
+body.reduce-motion .ai-orb::before {
+	animation: none;
 }

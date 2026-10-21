@@ -1,5 +1,5 @@
 /**
- * Aether — battery status in the menu bar.
+ * Dimension — battery status in the menu bar.
  * ---------------------------------------------------------------------------
  * A drawn battery whose fill tracks the charge (green while charging, red
  * when low), with the percentage beside it. Plugging in flashes a charging
@@ -29,7 +29,7 @@ class AetherBattery {
 
 	static #build(): HTMLElement {
 		const el = document.createElement("div");
-		el.className = "menubar-item battery-indicator";
+		el.className = "tray-item battery-indicator";
 		el.innerHTML = `
 			<span class="batt-pct"></span>
 			<svg class="batt-svg" viewBox="0 0 27 13" aria-hidden="true">
@@ -118,15 +118,15 @@ class AetherBattery {
 		} catch {
 			return;
 		}
-		const host = document.getElementById("menubar-right");
+		const host = document.getElementById("dock-tray");
 		if (!host) return;
 		// Written out so the Settings switch shows the default (on) as on.
 		if (!anura.settings.has(this.PERCENT_KEY))
 			anura.settings.set(this.PERCENT_KEY, true);
 		this.#el = this.#build();
-		// Beside the Spotlight button, before Control Center.
-		const spot = host.querySelector('[title^="Spotlight"]');
-		if (spot) spot.after(this.#el);
+		// Just before Control Center.
+		const cc = host.querySelector("#tray-cc");
+		if (cc) cc.before(this.#el);
 		else host.prepend(this.#el);
 
 		const b = this.#battery;

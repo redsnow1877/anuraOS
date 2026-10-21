@@ -1,5 +1,5 @@
 /**
- * Aether — global shortcuts and the command registry
+ * Dimension — global shortcuts and the command registry
  * ---------------------------------------------------------------------------
  * Two small registries the rest of the shell builds on:
  *

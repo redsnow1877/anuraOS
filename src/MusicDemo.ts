@@ -1,5 +1,5 @@
 /**
- * Aether — a demo album, synthesized on the spot.
+ * Dimension — a demo album, synthesized on the spot.
  * ---------------------------------------------------------------------------
  * A fresh install has no music, and a music player with nothing to play is a
  * sad thing to open. So Music offers to make some: three short lo-fi pieces
@@ -23,7 +23,7 @@ interface AetherDemoSong {
 	tone: number;
 }
 
-const AETHER_DEMO_ALBUM = "Aether Sessions";
+const AETHER_DEMO_ALBUM = "Dimension Sessions";
 
 const AETHER_DEMO_SONGS: AetherDemoSong[] = [
 	{
@@ -401,7 +401,7 @@ class AetherMusicDemo {
 			["INAM", tags.title],
 			["IART", tags.artist],
 			["IPRD", tags.album],
-			["ISFT", "Aether"],
+			["ISFT", "Dimension"],
 		] as const) {
 			const text = enc.encode(val + "\u0000");
 			const padded = new Uint8Array(8 + text.length + (text.length & 1));
@@ -476,7 +476,7 @@ class AetherMusicDemo {
 				const buf = await this.render(song);
 				const blob = this.wav(buf, {
 					title: song.title,
-					artist: "Aether",
+					artist: "Dimension",
 					album: AETHER_DEMO_ALBUM,
 				});
 				await anura.fs.promises.writeFile(

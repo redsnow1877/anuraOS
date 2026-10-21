@@ -1,5 +1,5 @@
 /**
- * Aether — Emoji & Symbols, with clipboard history.
+ * Dimension — Emoji & Symbols, with clipboard history.
  * ---------------------------------------------------------------------------
  *   Ctrl+Shift+Space   emoji, kaomoji and symbols
  *   Ctrl+Alt+V         clipboard history

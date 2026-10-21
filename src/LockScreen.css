@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Aether — lock screen
+   Dimension — lock screen
    ========================================================================== */
 
 #aether-lock {
@@ -245,7 +245,7 @@ body.reduce-motion #aether-lock * {
    the screen is locked. It has already faded out by the time this applies
    (Motion.ts recedes it first), and the unlock brings it back itself, so
    there's no transition here: one would outrank those animations. */
-body.aether-locked #menubar,
+body.aether-locked #island,
 body.aether-locked #dock,
 body.aether-locked .aliceWMwin,
 body.aether-locked .dw-item {

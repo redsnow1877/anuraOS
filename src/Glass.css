@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Aether — glass design system
+   Dimension — glass design system
    --------------------------------------------------------------------------
    Every surface in the shell is built from the same three ingredients:
    a translucent tint, a backdrop blur with a saturation boost, and a
@@ -9,13 +9,18 @@
 
 :root {
 	/* --- geometry ------------------------------------------------------- */
-	--menubar-h: 28px;
-	--dock-icon: 52px;
+	/* There's no menu bar. Anything that used to sit below it only has to
+	   clear the island, which floats over content instead of reserving a
+	   strip. */
+	--menubar-h: 0px;
+	--island-zone: 46px;
+	--dock-h: 58px;
+	--dock-icon: 42px;
 	--dock-pad: 6px;
 	--dock-gap: 10px;
 	/* space the WM keeps clear at the bottom so maximized windows
 	   never slide under the dock */
-	--dock-reserve: 82px;
+	--dock-reserve: 78px;
 
 	--radius-window: 12px;
 	--radius-panel: 16px;

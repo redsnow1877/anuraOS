@@ -20,7 +20,7 @@ class ProxyConnection {
 
     get presets() {
         return [
-            { name: "This site", url: ProxyConnection.sameOrigin(), note: "The server Aether is running on" },
+            { name: "This site", url: ProxyConnection.sameOrigin(), note: "The server Dimension is running on" },
             { name: "Mercury Workshop", url: "wss://wisp.mercurywork.shop/", note: "Public relay from the anuraOS developers" },
         ];
     }
@@ -49,7 +49,7 @@ class ProxyConnection {
         let net = null;
         try { net = top.Networking; } catch { /* not inside Aether */ }
         if (net) return net.probeWisp(url, timeout);
-        return Promise.resolve({ ok: false, reason: "Not running inside Aether" });
+        return Promise.resolve({ ok: false, reason: "Not running inside Dimension" });
     }
 
     check() {

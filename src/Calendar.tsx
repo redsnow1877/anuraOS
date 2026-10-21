@@ -9,9 +9,9 @@ class Calendar {
 
 	calCSS = css`
 		min-height: 355px;
-		top: calc(var(--menubar-h) + 6px);
-		right: 8px;
-		transform-origin: top right;
+		bottom: calc(var(--dock-reserve) + 4px);
+		right: 12px;
+		transform-origin: bottom right;
 
 		.calContent {
 			height: 100%;
@@ -169,7 +169,7 @@ class Calendar {
 		opacity: 0;
 		z-index: -1;
 		pointer-events: none;
-		transform: scale(0.94) translateY(-6px);
+		transform: scale(0.94) translateY(10px);
 		filter: blur(var(--motion-blur-soft, 6px));
 		/* Drop out of rendering once the fade finishes: at opacity 0 a closed
 		   panel still kept its backdrop-filter layer alive and hit-testable. */

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Aether — Spotlight
+   Dimension — Spotlight
    --------------------------------------------------------------------------
    Presentation for Spotlight.ts. The overlay is always in the DOM but
    `visibility: hidden` at rest, so it costs nothing until opened — no

@@ -1,5 +1,5 @@
 /**
- * Aether — snap layouts
+ * Dimension — snap layouts
  * ---------------------------------------------------------------------------
  * Rest the pointer on a window's green (zoom) button and a picker appears
  * with a handful of layouts, each drawn as a miniature screen. Click a zone

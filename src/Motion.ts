@@ -1,5 +1,5 @@
 /**
- * Aether — motion
+ * Dimension — motion
  * ---------------------------------------------------------------------------
  * Real springs, and the choreography built out of them:
  *
@@ -247,11 +247,13 @@ class AetherMotion {
 		return {
 			stage: [...q(".aliceWMwin"), ...q("#desktop-widgets .dw-item")],
 			dock: q("#dock"),
-			dockItems: q("#dock #launcher-button-container, #dock .dock-item"),
-			menubar: q("#menubar"),
-			menuItems: q(
-				"#menubar > .menubar-item, #menubar-right > *, #menubar > #island",
+			dockItems: q(
+				"#dock #launcher-button-container, #dock .dock-item, #dock #dock-ai, #dock-tray > *",
 			),
+			// No menu bar any more: the island takes its place in the
+			// choreography, dropping in from the top edge last.
+			menubar: q("#island"),
+			menuItems: [] as HTMLElement[],
 		};
 	}
 
@@ -280,7 +282,7 @@ class AetherMotion {
 		for (const p of pieces) {
 			const x = p.rect.left + p.rect.width / 2 - vw / 2;
 			const y = p.rect.top + p.rect.height / 2 - vh * 0.46;
-			const isBar = p.el.id === "menubar";
+			const isBar = p.el.id === "island";
 			const isDock = p.el.id === "dock" || !!p.el.closest("#dock");
 			const to: Keyframe = {};
 			if (p.canTranslate)
@@ -475,7 +477,7 @@ class AetherMotion {
 		// The menu bar slides down; its items settle outward from the island.
 		if (bar) {
 			const delay = head + 90;
-			move(bar, { y: -bar.rect.height - 2 }, delay, this.spring(0.42, 1));
+			move(bar, { y: -bar.rect.bottom - 4 }, delay, this.spring(0.42, 1));
 			fadeIn(bar, delay, 200);
 			for (const p of menuItems) {
 				const x = p.rect.left + p.rect.width / 2 - cx;

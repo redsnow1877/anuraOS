@@ -1,5 +1,5 @@
 /**
- * Aether — UI sound engine
+ * Dimension — UI sound engine
  * ---------------------------------------------------------------------------
  * Every sound in the shell is synthesised at play time with WebAudio. There
  * are no audio assets: nothing to ship, nothing to license, and the whole

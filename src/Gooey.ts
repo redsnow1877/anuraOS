@@ -1,5 +1,5 @@
 /**
- * Aether — gooey filter + expanding search
+ * Dimension — gooey filter + expanding search
  * ---------------------------------------------------------------------------
  * Ported from the React `GooeyInput`. Same two pieces:
  *

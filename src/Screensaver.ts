@@ -1,5 +1,5 @@
 /**
- * Aether — screen savers.
+ * Dimension — screen savers.
  * ---------------------------------------------------------------------------
  * Starts after a stretch of inactivity (Settings → Desktop), from a hot corner
  * or from Spotlight, and ends at the first key, click or nudge of the mouse.

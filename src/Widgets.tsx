@@ -1,5 +1,5 @@
 /**
- * Aether — widget system
+ * Dimension — widget system
  * ==========================================================================
  *
  * A small, dependency-free widget framework for the launcher's start-menu

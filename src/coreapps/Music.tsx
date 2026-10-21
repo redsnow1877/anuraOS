@@ -844,7 +844,7 @@ class MusicApp extends App {
 				el(
 					"span",
 					"",
-					"Drop audio files here or import them. Or let Aether compose a few songs for you, right here in the browser.",
+					"Drop audio files here or import them. Or let Dimension compose a few songs for you, right here in the browser.",
 				),
 			);
 			const actions = el("div", "mu-empty-actions");

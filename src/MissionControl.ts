@@ -1,5 +1,5 @@
 /**
- * Aether — Mission Control, Show Desktop, hot corners
+ * Dimension — Mission Control, Show Desktop, hot corners
  * ---------------------------------------------------------------------------
  * Mission Control (F3, Ctrl+↑, a hot corner, or Spotlight) lays every visible
  * window out in a grid so you can pick one. The windows themselves move —

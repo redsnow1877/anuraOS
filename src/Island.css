@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Aether — the island (Island.ts)
+   Dimension — the island (Island.ts)
    A solid black pill: no backdrop blur, so morphing it costs next to nothing.
    Its size is set per mode below; width/height changes only relayout the pill.
    ========================================================================== */
@@ -8,10 +8,14 @@
 	--isl-w: 90px;
 	--isl-h: 22px;
 	--isl-r: 11px;
-	position: absolute;
-	top: 3px;
-	left: 50%;
-	translate: -50% 0;
+	/* Floats over everything at the top of the screen, system-wide.
+	   Centred with auto margins rather than a translate, so the unlock and
+	   lock choreography (Motion.ts) can move it with `translate`. */
+	position: fixed;
+	top: 8px;
+	left: 0;
+	right: 0;
+	margin: 0 auto;
 	width: var(--isl-w);
 	height: var(--isl-h);
 	border-radius: var(--isl-r);
@@ -25,7 +29,8 @@
 		0 6px 20px -6px rgba(0, 0, 0, 0.6);
 	overflow: hidden;
 	contain: layout paint;
-	z-index: 2;
+	/* Above windows and the dock; below Spotlight, menus and the lock. */
+	z-index: 9600;
 	cursor: default;
 	transition:
 		width 0.5s cubic-bezier(0.34, 1.26, 0.5, 1),
