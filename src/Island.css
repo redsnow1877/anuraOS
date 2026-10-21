@@ -1,16 +1,33 @@
 /* ==========================================================================
    Dimension — the island (Island.ts)
-   A solid black pill: no backdrop blur, so morphing it costs next to nothing.
-   Its size is set per mode below; width/height changes only relayout the pill.
+   Solid black shapes, no backdrop blur, so morphing them costs next to
+   nothing. Island.ts sets the size (--isl-w/h/r) and which spring moves it
+   (--isl-ease/--isl-dur); everything else follows from the root's box.
+
+   #island               the box: sized and transitioned, holds no paint
+     .isl-goo            the black shapes, filtered only while they split
+       .isl-body         the pill/card
+       .isl-bubble       the detached bubble (hidden inside the body)
+     .isl-edge           hairline + shadow around the body
+     .isl-bubble-edge    the same for the bubble
+     .isl-face           content, clipped to the body's shape
+     .isl-bubble-face    the bubble's content
+     .isl-measure        off-screen measuring
    ========================================================================== */
 
 #island {
-	--isl-w: 90px;
-	--isl-h: 22px;
-	--isl-r: 11px;
-	/* Floats over everything at the top of the screen, system-wide.
-	   Centred with auto margins rather than a translate, so the unlock and
-	   lock choreography (Motion.ts) can move it with `translate`. */
+	--isl-w: 112px;
+	--isl-h: 30px;
+	--isl-r: 15px;
+	--isl-ease: ease;
+	--isl-dur: 450ms;
+	--isl-tint: rgba(255, 255, 255, 0.075);
+	--isl-split: 560ms cubic-bezier(0.3, 1.25, 0.45, 1);
+	--isl-bubble: 34px;
+
+	/* Floats over everything at the top of the screen. Centred with auto
+	   margins, not a translate: the lock and unlock choreography (Motion.ts)
+	   moves it with `translate`. */
 	position: fixed;
 	top: 8px;
 	left: 0;
@@ -18,86 +35,252 @@
 	margin: 0 auto;
 	width: var(--isl-w);
 	height: var(--isl-h);
-	border-radius: var(--isl-r);
-	background: #000;
-	color: #fff;
-	font-size: 12px;
-	font-weight: 600;
-	font-variant-numeric: tabular-nums;
-	box-shadow:
-		0 0 0 1px rgba(255, 255, 255, 0.06),
-		0 6px 20px -6px rgba(0, 0, 0, 0.6);
-	overflow: hidden;
-	contain: layout paint;
 	/* Above windows and the dock; below Spotlight, menus and the lock. */
 	z-index: 9600;
+	color: #fff;
+	font-size: 12.5px;
+	font-weight: 600;
+	line-height: 1.25;
+	font-variant-numeric: tabular-nums;
 	cursor: default;
+	user-select: none;
+	-webkit-user-select: none;
+	contain: layout style;
 	transition:
-		width 0.5s cubic-bezier(0.34, 1.26, 0.5, 1),
-		height 0.5s cubic-bezier(0.34, 1.26, 0.5, 1),
-		border-radius 0.5s cubic-bezier(0.34, 1.26, 0.5, 1),
-		opacity 0.25s ease,
-		scale 0.35s cubic-bezier(0.34, 1.26, 0.5, 1);
+		width var(--isl-dur) var(--isl-ease),
+		height var(--isl-dur) var(--isl-ease),
+		scale 0.32s cubic-bezier(0.3, 1.5, 0.5, 1);
 }
 
-#island[data-mode="idle"] {
-	opacity: 0;
-	scale: 0.6;
+/* Pressing gives a little. */
+#island.is-pressed {
+	scale: 0.965;
+	transition-duration: var(--isl-dur), var(--isl-dur), 0.1s;
+}
+
+.isl-defs {
+	position: absolute;
+	width: 0;
+	height: 0;
+}
+
+.isl-goo {
+	position: absolute;
+	inset: 0;
 	pointer-events: none;
 }
 
-#island[data-mode="rec"] {
-	--isl-w: 112px;
-}
-#island[data-mode="timer"] {
-	--isl-w: 118px;
-}
-#island[data-mode="hud"] {
-	--isl-w: 200px;
-}
-#island[data-mode="music"] {
-	--isl-w: 132px;
-}
-#island[data-mode="music"].is-expanded {
-	--isl-w: 360px;
-	--isl-h: 92px;
-	--isl-r: 26px;
+/* Only while the bubble splits off or merges back. */
+#island.is-goo .isl-goo {
+	filter: url(#isl-goo);
 }
 
-/* Phones and narrow windows: the menu bar has no room for it. */
-@media (max-width: 700px) {
-	#island {
-		display: none;
-	}
+.isl-body,
+.isl-edge,
+.isl-face {
+	position: absolute;
+	inset: 0;
+	border-radius: var(--isl-r);
+	transition: border-radius var(--isl-dur) var(--isl-ease);
 }
 
-@media (min-width: 701px) {
-	/* The island shows recording; the menu bar's own indicator is redundant. */
-	.rec-indicator {
-		display: none !important;
-	}
+.isl-body {
+	background: #000;
 }
 
-.isl-inner {
-	position: relative;
+/* A faint hairline so true black still has an edge on a dark wallpaper,
+   tinted by whatever's showing, and a soft shadow for light ones. */
+.isl-edge {
+	pointer-events: none;
+	box-shadow:
+		inset 0 0 0 1px var(--isl-tint),
+		0 10px 28px -10px rgba(0, 0, 0, 0.6),
+		0 2px 6px -2px rgba(0, 0, 0, 0.35);
+	z-index: 2;
+}
+
+.isl-face {
+	overflow: hidden;
+	z-index: 1;
+}
+
+/* --------------------------------------------------------------------------
+   The bubble: tucked inside the right end of the pill until a second
+   activity needs it, then pushed out on its own spring.
+   -------------------------------------------------------------------------- */
+
+.isl-bubble,
+.isl-bubble-edge,
+.isl-bubble-face {
+	position: absolute;
+	top: 50%;
+	left: 100%;
+	width: var(--isl-bubble);
+	height: var(--isl-bubble);
+	margin-top: calc(var(--isl-bubble) / -2);
+	border-radius: 50%;
+	translate: calc(var(--isl-bubble) * -1 - 4px) 0;
+	scale: 0.8;
+	transition:
+		translate var(--isl-split),
+		scale var(--isl-split),
+		opacity 0.18s ease;
+}
+
+.isl-bubble {
+	background: #000;
+}
+
+.isl-bubble-edge {
+	pointer-events: none;
+	box-shadow:
+		inset 0 0 0 1px var(--isl-tint),
+		0 10px 28px -10px rgba(0, 0, 0, 0.6);
+	opacity: 0;
+	z-index: 2;
+}
+
+.isl-bubble-face {
+	display: grid;
+	place-items: center;
+	overflow: hidden;
+	opacity: 0;
+	pointer-events: none;
+	z-index: 1;
+}
+
+#island.has-bubble :is(.isl-bubble, .isl-bubble-edge, .isl-bubble-face) {
+	translate: 8px 0;
+	scale: 1;
+}
+
+#island.has-bubble :is(.isl-bubble-edge, .isl-bubble-face) {
+	opacity: 1;
+	transition-delay: 0s, 0s, 0.12s;
+}
+
+#island.has-bubble .isl-bubble-face {
+	pointer-events: auto;
+}
+
+.isl-measure {
+	position: absolute;
+	left: 0;
+	top: 0;
+	display: flex;
+	visibility: hidden;
+	pointer-events: none;
+	white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Layers: one per view, cross-faded by Island.ts
+   -------------------------------------------------------------------------- */
+
+.isl-layer {
+	position: absolute;
+	box-sizing: border-box;
+	transform-origin: 50% 50%;
+}
+
+.isl-layer.is-leaving {
+	pointer-events: none;
+}
+
+/* Pills: fill the island, so content rides its edges as it grows. */
+.isl-rest,
+.isl-compact,
+.isl-hud {
+	inset: 0;
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	height: 100%;
-	padding: 0 9px;
+}
+
+/* Cards: laid out at their final width and anchored to the top, so the
+   island grows down around them and nothing inside reflows. */
+.isl-card {
+	top: 0;
+	left: 50%;
+	translate: -50% 0;
+	padding: 14px 16px 16px;
+	transform-origin: 50% 0;
+}
+
+/* The hover label: in the middle of a compact view, alone at rest. */
+.isl-label {
+	display: block;
+	min-width: 0;
+	max-width: 180px;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-size: 12px;
+	font-weight: 600;
+	color: rgba(255, 255, 255, 0.72);
+}
+
+.isl-rest {
+	justify-content: center;
+	padding: 0 14px;
+}
+
+.isl-rest .isl-label,
+.isl-compact .isl-label {
+	opacity: 0;
 	transition: opacity 0.12s ease;
 }
 
-#island.is-swapping .isl-inner {
-	opacity: 0;
+#island.is-peek .isl-rest .isl-label,
+#island.is-peek .isl-compact .isl-label {
+	opacity: 1;
+	transition: opacity 0.2s ease 0.1s;
 }
 
-.isl-grow {
+.isl-compact {
+	padding: 0 11px;
+	gap: 0;
+}
+
+.isl-compact .isl-label {
 	flex: 1;
+	text-align: center;
+	padding: 0 8px;
 }
 
-.isl-inner .material-symbols-outlined {
-	font-size: 15px;
+.isl-lead,
+.isl-trail {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Compact and minimal pieces
+   -------------------------------------------------------------------------- */
+
+.isl-art {
+	display: block;
+	width: 20px;
+	height: 20px;
+	border-radius: 6px;
+	object-fit: cover;
+}
+
+.isl-art-mini {
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+}
+
+.isl-ico {
+	font-size: 17px !important;
+	line-height: 1;
+}
+
+.isl-time {
+	font-size: 12.5px;
+	font-weight: 650;
+	letter-spacing: 0.01em;
 }
 
 .isl-red {
@@ -108,13 +291,14 @@
 	color: #ff9f0a;
 }
 
-#island.is-paused .isl-time {
+#island.timer-paused .isl-time {
 	opacity: 0.55;
 }
 
 .isl-rec-dot {
-	width: 8px;
-	height: 8px;
+	display: block;
+	width: 9px;
+	height: 9px;
 	border-radius: 50%;
 	background: #ff453a;
 	box-shadow: 0 0 8px #ff453a;
@@ -127,204 +311,20 @@
 	}
 }
 
-/* ---- HUD ---------------------------------------------------------------- */
-
-.isl-hud-icon {
-	width: 18px;
-	text-align: center;
-}
-
-.isl-level {
-	flex: 1;
-	height: 4px;
-	margin-right: 4px;
-	border-radius: 4px;
-	background: rgba(255, 255, 255, 0.22);
-	overflow: hidden;
-}
-
-.isl-hud-label {
-	min-width: 0;
-	font-size: 11.5px;
-	color: rgba(255, 255, 255, 0.85);
-}
-
-.isl-hud-label:empty {
-	display: none;
-}
-
-#island[data-mode="hud"][data-tone="green"] .isl-hud-icon,
-#island[data-mode="hud"][data-tone="green"] .isl-hud-label {
-	color: #30d158;
-}
-
-#island[data-mode="hud"][data-tone="green"] .isl-level-fill {
-	background: #30d158;
-}
-
-#island[data-mode="hud"][data-tone="red"] .isl-hud-icon,
-#island[data-mode="hud"][data-tone="red"] .isl-hud-label {
-	color: #ff453a;
-}
-
-#island[data-mode="hud"][data-tone="red"] .isl-level-fill {
-	background: #ff453a;
-}
-
-.isl-level-fill {
-	display: block;
-	height: 100%;
-	background: #fff;
-	transform-origin: left;
-	scale: 0 1;
-	transition: scale 0.12s ease-out;
-}
-
-/* ---- music -------------------------------------------------------------- */
-
-#island[data-mode="music"] .isl-inner {
-	padding: 0;
-}
-
-.isl-compact,
-.isl-full {
-	position: absolute;
-	transition: opacity 0.2s ease;
-}
-
-.isl-compact {
-	inset: 0;
-	display: flex;
-	align-items: center;
-	padding: 0 8px 0 3px;
-}
-
-/* Laid out at its final size so nothing reflows while the pill grows. */
-.isl-full {
-	left: 0;
-	top: 0;
-	width: 360px;
-	height: 92px;
-	box-sizing: border-box;
-	padding: 14px 16px 0 14px;
-	display: grid;
-	grid-template-columns: 48px minmax(0, 1fr) auto;
-	grid-template-rows: 48px auto;
-	column-gap: 11px;
-	row-gap: 11px;
-	align-items: center;
-	opacity: 0;
-	pointer-events: none;
-}
-
-#island.is-expanded .isl-compact {
-	opacity: 0;
-	pointer-events: none;
-}
-
-#island.is-expanded .isl-full {
-	opacity: 1;
-	pointer-events: auto;
-	transition-delay: 0.08s;
-}
-
-.isl-art {
-	width: 16px;
-	height: 16px;
-	border-radius: 5px;
-	object-fit: cover;
-}
-
-.isl-full-art {
-	width: 48px;
-	height: 48px;
-	border-radius: 11px;
-	object-fit: cover;
-}
-
-.isl-title,
-.isl-artist {
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.isl-title {
-	font-size: 13.5px;
-	font-weight: 650;
-}
-
-.isl-artist {
-	font-size: 12px;
-	font-weight: 500;
-	color: rgba(255, 255, 255, 0.55);
-	margin-top: 1px;
-}
-
-.isl-controls {
-	display: flex;
-	align-items: center;
-}
-
-.isl-controls button {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 30px;
-	height: 30px;
-	min-width: 0;
-	min-height: 0;
-	padding: 0;
-	border: none;
-	border-radius: 50%;
-	background: transparent;
-	box-shadow: none;
-	color: #fff;
-	cursor: pointer;
-}
-
-.isl-controls button:hover {
-	background: rgba(255, 255, 255, 0.14);
-}
-
-.isl-controls .media-icon {
-	width: 19px;
-	height: 19px;
-}
-
-.isl-controls .isl-play .media-icon {
-	width: 23px;
-	height: 23px;
-}
-
-.isl-bar {
-	grid-column: 1 / -1;
-	height: 3px;
-	border-radius: 3px;
-	background: rgba(255, 255, 255, 0.18);
-	overflow: hidden;
-}
-
-.isl-bar-fill {
-	height: 100%;
-	background: #fff;
-	transform-origin: left;
-	scale: 0 1;
-}
-
 /* The equaliser: four bars on the compositor, frozen while paused. */
 .isl-eq {
 	display: flex;
 	align-items: center;
 	gap: 2px;
-	height: 12px;
+	width: 16px;
+	height: 13px;
 }
 
 .isl-eq i {
-	width: 2.5px;
+	flex: 1;
 	height: 100%;
 	border-radius: 2px;
-	background: color-mix(in srgb, var(--theme-accent) 55%, #fff);
+	background: color-mix(in srgb, var(--theme-accent, #7a6cff) 55%, #fff);
 	scale: 1 0.3;
 	animation: isl-eq 0.8s ease-in-out infinite alternate;
 	animation-play-state: paused;
@@ -355,5 +355,521 @@
 	}
 	to {
 		scale: 1 1;
+	}
+}
+
+/* --------------------------------------------------------------------------
+   HUD: volume, brightness, battery
+   -------------------------------------------------------------------------- */
+
+.isl-hud {
+	gap: 10px;
+	padding: 0 14px;
+}
+
+.isl-hud-icon {
+	width: 18px;
+	font-size: 18px !important;
+	text-align: center;
+}
+
+.isl-level {
+	flex: 1;
+	height: 5px;
+	border-radius: 5px;
+	background: rgba(255, 255, 255, 0.2);
+	overflow: hidden;
+}
+
+.isl-level-fill {
+	display: block;
+	height: 100%;
+	background: #fff;
+	transform-origin: left;
+	scale: 0 1;
+	transition: scale 0.16s ease-out;
+}
+
+.isl-hud-label {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.85);
+	white-space: nowrap;
+}
+
+.isl-hud-label:empty {
+	display: none;
+}
+
+.isl-hud[data-tone="green"] :is(.isl-hud-icon, .isl-hud-label) {
+	color: #30d158;
+}
+
+.isl-hud[data-tone="green"] .isl-level-fill {
+	background: #30d158;
+}
+
+.isl-hud[data-tone="red"] :is(.isl-hud-icon, .isl-hud-label) {
+	color: #ff453a;
+}
+
+.isl-hud[data-tone="red"] .isl-level-fill {
+	background: #ff453a;
+}
+
+/* --------------------------------------------------------------------------
+   Alerts: notifications and approvals
+   Radii are concentric with the card's 30px: 30 - 14 of padding = 16.
+   -------------------------------------------------------------------------- */
+
+.isl-alert {
+	display: grid;
+	grid-template-columns: 40px minmax(0, 1fr);
+	column-gap: 12px;
+	row-gap: 12px;
+	align-items: center;
+	padding: 14px 16px 14px 14px;
+	cursor: pointer;
+}
+
+.isl-alert-art {
+	width: 40px;
+	height: 40px;
+	border-radius: 13px;
+	display: grid;
+	place-items: center;
+	overflow: hidden;
+	background: rgba(255, 255, 255, 0.1);
+}
+
+.isl-alert-art img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.isl-alert-art .material-symbols-outlined {
+	font-size: 22px;
+}
+
+.isl-alert[data-tone="red"] .isl-alert-art {
+	background: rgba(255, 69, 58, 0.18);
+	color: #ff6961;
+}
+
+.isl-alert[data-tone="green"] .isl-alert-art {
+	background: rgba(48, 209, 88, 0.16);
+	color: #30d158;
+}
+
+.isl-alert[data-tone="amber"] .isl-alert-art {
+	background: rgba(255, 159, 10, 0.16);
+	color: #ff9f0a;
+}
+
+.isl-alert[data-tone="accent"] .isl-alert-art {
+	background: color-mix(
+		in oklab,
+		var(--theme-accent, #7a6cff) 30%,
+		transparent
+	);
+	color: color-mix(in oklab, var(--theme-accent, #7a6cff) 50%, white);
+}
+
+.isl-alert-title {
+	font-size: 13.5px;
+	font-weight: 650;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.isl-alert-body {
+	margin-top: 2px;
+	font-size: 12.5px;
+	font-weight: 450;
+	line-height: 1.35;
+	color: rgba(255, 255, 255, 0.62);
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	overflow: hidden;
+	white-space: pre-line;
+}
+
+.isl-actions {
+	grid-column: 1 / -1;
+	display: flex;
+	gap: 8px;
+}
+
+.isl-btn {
+	flex: 1;
+	height: 32px;
+	min-width: 0;
+	padding: 0 12px;
+	border: 0;
+	border-radius: 16px;
+	background: rgba(255, 255, 255, 0.12);
+	color: #fff;
+	font: inherit;
+	font-size: 12.5px;
+	font-weight: 650;
+	cursor: pointer;
+	transition:
+		background-color 0.12s ease,
+		scale 0.2s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.isl-btn:hover {
+	background: rgba(255, 255, 255, 0.2);
+}
+
+.isl-btn:active {
+	scale: 0.96;
+}
+
+.isl-btn.is-primary {
+	background: var(--theme-accent, #7a6cff);
+}
+
+.isl-btn.is-primary:hover {
+	background: color-mix(in oklab, var(--theme-accent, #7a6cff) 85%, white);
+}
+
+/* --------------------------------------------------------------------------
+   The dashboard: what a click on the resting pill opens
+   -------------------------------------------------------------------------- */
+
+.isl-dash {
+	padding: 16px 16px 16px 20px;
+}
+
+.isl-dash-time {
+	font-size: 30px;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	line-height: 1.05;
+}
+
+.isl-dash-date {
+	margin-top: 2px;
+	font-size: 12.5px;
+	font-weight: 500;
+	color: rgba(255, 255, 255, 0.55);
+}
+
+.isl-dash-actions {
+	display: grid;
+	grid-template-columns: repeat(5, 1fr);
+	gap: 4px;
+	margin: 16px -4px 0 -8px;
+}
+
+.isl-dash-btn {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: rgba(255, 255, 255, 0.8);
+	font: inherit;
+	font-size: 10.5px;
+	font-weight: 550;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.isl-dash-btn .material-symbols-outlined {
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	font-size: 21px;
+	color: #fff;
+	background: rgba(255, 255, 255, 0.11);
+	transition:
+		background-color 0.12s ease,
+		scale 0.22s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.isl-dash-btn:hover .material-symbols-outlined {
+	background: rgba(255, 255, 255, 0.2);
+}
+
+.isl-dash-btn:active .material-symbols-outlined {
+	scale: 0.92;
+}
+
+.isl-dash-btn.is-on .material-symbols-outlined {
+	background: var(--theme-accent, #7a6cff);
+}
+
+.isl-dash-btn.is-ai .material-symbols-outlined {
+	background:
+		radial-gradient(
+			70% 70% at 35% 28%,
+			rgba(255, 255, 255, 0.5),
+			transparent 60%
+		),
+		conic-gradient(
+			from 200deg,
+			#7a6cff,
+			#38bdf8,
+			#34d399,
+			#fbbf24,
+			#f472b6,
+			#7a6cff
+		);
+}
+
+/* --------------------------------------------------------------------------
+   Music
+   -------------------------------------------------------------------------- */
+
+.isl-music {
+	display: grid;
+	grid-template-columns: 52px minmax(0, 1fr) auto;
+	grid-template-areas:
+		"art meta eq"
+		"scrub scrub scrub"
+		"ctl ctl ctl";
+	column-gap: 12px;
+	align-items: center;
+	cursor: pointer;
+}
+
+.isl-music-art {
+	grid-area: art;
+	width: 52px;
+	height: 52px;
+	border-radius: 14px;
+	object-fit: cover;
+}
+
+.isl-music-meta {
+	grid-area: meta;
+	min-width: 0;
+}
+
+.isl-music-title,
+.isl-music-artist {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.isl-music-title {
+	font-size: 14px;
+	font-weight: 650;
+}
+
+.isl-music-artist {
+	margin-top: 1px;
+	font-size: 12.5px;
+	font-weight: 500;
+	color: rgba(255, 255, 255, 0.55);
+}
+
+.isl-eq-lg {
+	grid-area: eq;
+	width: 20px;
+	height: 18px;
+	margin-right: 4px;
+}
+
+.isl-scrub {
+	grid-area: scrub;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 14px;
+	font-size: 10.5px;
+	font-weight: 550;
+	color: rgba(255, 255, 255, 0.5);
+}
+
+.isl-scrub-bar {
+	flex: 1;
+	height: 4px;
+	border-radius: 4px;
+	background: rgba(255, 255, 255, 0.18);
+	overflow: hidden;
+}
+
+.isl-scrub-fill {
+	height: 100%;
+	background: rgba(255, 255, 255, 0.9);
+	transform-origin: left;
+	scale: 0 1;
+}
+
+.isl-music-controls {
+	grid-area: ctl;
+	display: flex;
+	justify-content: center;
+	gap: 22px;
+	margin-top: 8px;
+}
+
+.isl-music-controls button,
+.isl-round {
+	display: grid;
+	place-items: center;
+	width: 38px;
+	height: 38px;
+	min-width: 0;
+	min-height: 0;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	background: transparent;
+	box-shadow: none;
+	color: #fff;
+	cursor: pointer;
+	transition:
+		background-color 0.12s ease,
+		scale 0.22s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.isl-music-controls button:hover {
+	background: rgba(255, 255, 255, 0.12);
+}
+
+.isl-music-controls button:active,
+.isl-round:active {
+	scale: 0.9;
+}
+
+.isl-music-controls .media-icon {
+	width: 22px;
+	height: 22px;
+}
+
+.isl-music-controls .isl-play .media-icon {
+	width: 28px;
+	height: 28px;
+}
+
+/* --------------------------------------------------------------------------
+   Timer
+   -------------------------------------------------------------------------- */
+
+.isl-timer {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	cursor: pointer;
+}
+
+.isl-timer-ring {
+	position: relative;
+	width: 44px;
+	height: 44px;
+	flex-shrink: 0;
+	display: grid;
+	place-items: center;
+	color: #ff9f0a;
+}
+
+.isl-timer-ring svg {
+	position: absolute;
+	inset: 0;
+	rotate: -90deg;
+}
+
+.isl-timer-ring circle {
+	fill: none;
+	stroke-width: 3.5;
+}
+
+.isl-ring-bg {
+	stroke: rgba(255, 159, 10, 0.22);
+}
+
+.isl-ring-fg {
+	stroke: #ff9f0a;
+	stroke-linecap: round;
+	stroke-dasharray: 100;
+	transition: stroke-dashoffset 1s linear;
+}
+
+.isl-timer-ring .material-symbols-outlined {
+	font-size: 19px;
+}
+
+.isl-timer-meta {
+	flex: 1;
+	min-width: 0;
+}
+
+.isl-timer-label {
+	font-size: 12px;
+	font-weight: 600;
+	color: rgba(255, 159, 10, 0.8);
+}
+
+.isl-timer-big {
+	font-size: 28px;
+	font-weight: 650;
+	letter-spacing: -0.01em;
+	line-height: 1.1;
+	color: #ff9f0a;
+}
+
+.isl-timer-controls {
+	display: flex;
+	gap: 8px;
+}
+
+.isl-round {
+	width: 40px;
+	height: 40px;
+	background: rgba(255, 255, 255, 0.14);
+}
+
+.isl-round:hover {
+	background: rgba(255, 255, 255, 0.22);
+}
+
+.isl-round.is-amber {
+	background: rgba(255, 159, 10, 0.24);
+	color: #ff9f0a;
+}
+
+.isl-round.is-amber:hover {
+	background: rgba(255, 159, 10, 0.34);
+}
+
+/* --------------------------------------------------------------------------
+   Elsewhere
+   -------------------------------------------------------------------------- */
+
+/* Phones and narrow windows: no room up there. Notifications go back to
+   toasts (Island.present is false). */
+@media (max-width: 600px) {
+	#island {
+		display: none;
+	}
+}
+
+@media (min-width: 601px) {
+	/* The island shows recording; the tray's own indicator is redundant. */
+	.rec-indicator {
+		display: none !important;
+	}
+}
+
+body.reduce-motion #island {
+	--isl-dur: 1ms !important;
+	--isl-split: 1ms linear !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	#island {
+		--isl-dur: 1ms !important;
+		--isl-split: 1ms linear !important;
 	}
 }

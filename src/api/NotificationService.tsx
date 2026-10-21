@@ -59,6 +59,45 @@ class NotificationService {
 			this.state.notifications = [...this.state.notifications, notif];
 			return;
 		}
+
+		// With the island on screen, the notice bursts out of it instead of
+		// sliding in as a corner toast. It's still recorded for the centre.
+		const island = (globalThis as any).AetherIsland;
+		if (island?.present) {
+			island.alert({
+				icon: notif.icon || "notifications",
+				title: notif.title,
+				body: notif.description,
+				// Toast timeouts are tuned for a big card; the island picks
+				// its own from the length of the text unless asked for longer.
+				ms:
+					typeof notif.timeout === "number" && notif.timeout > 4000
+						? notif.timeout
+						: undefined,
+				sticky: notif.timeout === "never" && notif.buttons.length > 0,
+				onTap: () => {
+					notif.callback(notif);
+					this.remove(notif);
+				},
+				actions: notif.buttons.map((b) => ({
+					label: b.text,
+					primary: (b.style || "contained") === "contained",
+					run: () => {
+						b.callback(notif);
+						if (typeof (b as any).close === "undefined" || (b as any).close)
+							this.remove(notif);
+					},
+				})),
+			});
+			try {
+				aetherSound.play("notify");
+			} catch {
+				/* best-effort */
+			}
+			this.state.notifications = [...this.state.notifications, notif];
+			return;
+		}
+
 		this.element.appendChild(notif.element);
 		notif.element.classList.add("notif-in");
 		notif.element.addEventListener(
@@ -122,8 +161,8 @@ interface NotifParams {
 		callback: (notif: AnuraNotification) => void;
 		close?: boolean;
 	}>;
-	// COMING SOON (hopefully)
-	// icon?: string
+	/** A Material Symbols name, shown when the notice comes out of the island. */
+	icon?: string;
 }
 
 class AnuraNotification implements NotifParams {
@@ -131,6 +170,7 @@ class AnuraNotification implements NotifParams {
 	description = `${BRANDING.name} Description`;
 	timeout: number | "never" = 2000;
 	closeIndicator = false;
+	icon?: string;
 	callback = (_notif: AnuraNotification) => null;
 	buttons: Array<{
 		text: string;
