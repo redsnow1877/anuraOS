@@ -68,6 +68,12 @@ class WispBus {
 				handler: assignedHandler,
 				packetCallBack,
 			});
+			(globalThis as any).DimensionNet?.open(
+				this.lastGlobalID,
+				parsed.hostname,
+				parsed.port,
+				parsed.streamType,
+			);
 			assignedHandler.send(
 				wisp.createWispPacket({
 					packetType: parsed.packetType,
@@ -83,11 +89,16 @@ class WispBus {
 				.mappings.set(parsed.streamID, this.lastGlobalID++); // return which ID we actually mapped
 		}
 		if (parsed?.packetType == wisp.DATA || parsed?.packetType == wisp.CLOSE) {
-			const streamMetaData = this.clientMappings.get(
-				this.virtualServerMapping
-					.get(virtualServerID)
-					.mappings.get(parsed.streamID),
-			);
+			const globalID = this.virtualServerMapping
+				.get(virtualServerID)
+				.mappings.get(parsed.streamID);
+			const streamMetaData = this.clientMappings.get(globalID);
+			const net = (globalThis as any).DimensionNet;
+			if (net) {
+				if (parsed.packetType == wisp.DATA)
+					net.data(globalID, "up", parsed.payload);
+				else net.close(globalID, parsed.reason);
+			}
 			const assignedHandler = streamMetaData.handler;
 			parsed.streamID = streamMetaData.remoteId; // modify the stream ID and then send it off
 			assignedHandler.send(wisp.createWispPacket(parsed));
@@ -120,6 +131,13 @@ class WispBus {
 			parsed.streamID = this.upstreamClients.get(parsed!.streamID);
 		}
 
+		const net = (globalThis as any).DimensionNet;
+		if (net) {
+			if (parsed.packetType === wisp.DATA)
+				net.data(parsed.streamID, "down", parsed.payload);
+			else if (parsed.packetType === wisp.CLOSE)
+				net.close(parsed.streamID, parsed.reason);
+		}
 		const reconstructedPacket = wisp.createWispPacket(parsed);
 		this.clientMappings
 			.get(parsed.streamID)
