@@ -1,0 +1,34 @@
+#! {"lang":"module"}
+// ai: ask Dimension AI from the terminal. The answer streams in here.
+//   ai what does chmod 755 mean
+//   ai                    opens the assistant
+
+export async function main(args) {
+	const AI = window.parent.DimensionAI;
+	if (!AI) {
+		eprintln("ai: the assistant isn't available");
+		exit(1);
+		return;
+	}
+	const prompt = args.join(" ").trim();
+	if (!prompt) {
+		AI.summon();
+		exit(0);
+		return;
+	}
+	if (!AI.key) {
+		eprintln("ai: no API key yet. Press Alt+A to open Dimension AI and add one.");
+		exit(1);
+		return;
+	}
+	print(`\x1b[2m${AI.model.name}\x1b[0m\n`);
+	try {
+		await AI.quick(prompt, (t) => print(t));
+		println("");
+	} catch (e) {
+		eprintln(`\nai: ${e?.message || e}`);
+		exit(1);
+		return;
+	}
+	exit(0);
+}

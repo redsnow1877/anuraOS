@@ -16,7 +16,16 @@
 		"/bin/chimerix.ajs",
 		"/bin/x86-run.ajs",
 		"/bin/vista.ajs",
-		"/bin/anuractrl.ajs"
+		"/bin/anuractrl.ajs",
+		"/bin/neofetch.ajs",
+		"/bin/matrix.ajs",
+		"/bin/top.ajs",
+		"/bin/ping.ajs",
+		"/bin/curl.ajs",
+		"/bin/ai.ajs",
+		"/bin/hack.ajs",
+		"/bin/notify.ajs",
+		"/bin/accent.ajs"
 	],
 	"defaultsettings": {
 		"use-sw-cache": false,

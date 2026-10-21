@@ -1,0 +1,53 @@
+#! {"lang":"module","stdin":true}
+// hack: look extremely busy. It doesn't do anything. Any key stops it.
+
+const E = "\x1b[";
+const hex = (n) => Array.from({ length: n }, () => ((Math.random() * 256) | 0).toString(16).padStart(2, "0")).join(" ");
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const TASKS = [
+	"Bypassing mainframe firewall",
+	"Decrypting quantum handshake",
+	"Rerouting through 7 proxies",
+	"Injecting payload into the cube",
+	"Compiling the Gibson",
+	"Reticulating splines",
+	"Downloading more RAM",
+];
+
+const BANNER = [
+	" ▄▀█ █▀▀ █▀▀ █▀▀ █▀ █▀   █▀▀ █▀█ ▄▀█ █▄ █ ▀█▀ █▀▀ █▀▄",
+	" █▀█ █▄▄ █▄▄ ██▄ ▄█ ▄█   █▄█ █▀▄ █▀█ █ ▀█  █  ██▄ █▄▀",
+];
+
+export async function main() {
+	const size = globalThis.term || { rows: 24, cols: 80 };
+	let stopped = false;
+	read().then(() => (stopped = true));
+	print(`${E}?1049h${E}?25l${E}2J${E}H`);
+	const width = Math.max(8, Math.floor((size.cols - 12) / 3));
+
+	for (const task of TASKS) {
+		for (let i = 0; i < 6 && !stopped; i++) {
+			const addr = ((Math.random() * 0xffffffff) >>> 0).toString(16).padStart(8, "0");
+			print(`${E}32m0x${addr}  ${E}2m${hex(width)}${E}0m\r\n`);
+			await sleep(40);
+		}
+		if (stopped) break;
+		const w = 30;
+		for (let p = 0; p <= 100 && !stopped; p += 4 + Math.floor(Math.random() * 9)) {
+			const f = Math.round((Math.min(p, 100) / 100) * w);
+			print(`\r${E}36m${task.padEnd(34)}${E}0m [${E}32m${"█".repeat(f)}${E}2m${"░".repeat(w - f)}${E}0m] ${Math.min(p, 100)}%`);
+			await sleep(60);
+		}
+		print(`\r${E}36m${task.padEnd(34)}${E}0m [${E}32m${"█".repeat(w)}${E}0m] ${E}1;32mOK${E}0m  \r\n`);
+	}
+	if (!stopped) {
+		print("\r\n");
+		for (const l of BANNER) print(`${E}1;32m${l}${E}0m\r\n`);
+		print(`\r\n${E}2m(any key)${E}0m`);
+		while (!stopped) await sleep(100);
+	}
+	print(`${E}0m${E}2J${E}?25h${E}?1049l`);
+	exit(0);
+}

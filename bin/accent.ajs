@@ -1,0 +1,35 @@
+#! {"lang":"module"}
+// accent: show or change the accent colour.
+//   accent            show it, and some to try
+//   accent #ff6b9d    change it
+//   accent random     surprise me
+
+const E = "\x1b[";
+const swatch = (hex) => {
+	const n = parseInt(hex.slice(1), 16);
+	return `${E}38;2;${(n >> 16) & 255};${(n >> 8) & 255};${n & 255}m██${E}0m`;
+};
+const PRESETS = ["#7a6cff", "#3b82f6", "#14b8a6", "#22c55e", "#f59e0b", "#ef4444", "#ec4899", "#a855f7"];
+
+export async function main(args) {
+	const theme = anura.ui.theme;
+	let want = args[0];
+	if (!want) {
+		println(`accent: ${swatch(theme.accent)} ${theme.accent}`);
+		println("try:    " + PRESETS.map((p) => `${swatch(p)} ${p}`).join("  "));
+		exit(0);
+		return;
+	}
+	if (want === "random")
+		want = "#" + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, "0");
+	if (!/^#?[0-9a-f]{6}$/i.test(want)) {
+		eprintln("accent: give a colour like #7a6cff");
+		exit(1);
+		return;
+	}
+	if (!want.startsWith("#")) want = "#" + want;
+	theme.accent = want;
+	await anura.settings.set("theme", want, "accent");
+	println(`accent: ${swatch(want)} ${want}`);
+	exit(0);
+}

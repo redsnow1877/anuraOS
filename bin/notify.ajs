@@ -1,0 +1,18 @@
+#! {"lang":"module"}
+// notify: send a notification. It comes out of the island.
+//   notify "Build finished" "All 42 tests passed"
+
+export async function main(args) {
+	const [title, ...rest] = args;
+	if (!title) {
+		eprintln('usage: notify "title" ["message"]');
+		exit(1);
+		return;
+	}
+	anura.notifications.add({
+		title,
+		description: rest.join(" "),
+		timeout: 5000,
+	});
+	exit(0);
+}

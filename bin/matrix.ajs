@@ -1,0 +1,70 @@
+#! {"lang":"module","stdin":true}
+// matrix: digital rain. Any key leaves. --accent rains in your accent colour.
+
+const host = window.parent;
+const E = "\x1b[";
+
+export async function main(args) {
+	const size = globalThis.term || { rows: 24, cols: 80 };
+	const rows = size.rows;
+	const cols = size.cols;
+	let color = [0, 255, 70];
+	if (args.includes("--accent")) {
+		const n = parseInt((host.anura.ui?.theme?.accent || "#7a6cff").slice(1), 16);
+		color = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+	}
+	const glyphs =
+		"ｦｱｳｴｵｶｷｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜ0123456789Z:.=*+-<>¦|";
+	const pick = () => glyphs[(Math.random() * glyphs.length) | 0];
+	const shade = (t) =>
+		`${E}38;2;${color.map((c) => Math.round(c * t)).join(";")}m`;
+
+	// Columns two cells apart: the half-width katakana read better spaced.
+	const drops = [];
+	for (let c = 1; c <= cols; c += 2)
+		drops.push({
+			c,
+			y: -Math.floor(Math.random() * rows),
+			len: 6 + Math.floor(Math.random() * rows * 0.6),
+			speed: 0.5 + Math.random() * 0.9,
+			acc: 0,
+		});
+
+	print(`${E}?1049h${E}?25l${E}2J`);
+	let running = true;
+	const stop = () => {
+		if (!running) return;
+		running = false;
+		clearInterval(timer);
+		print(`${E}0m${E}2J${E}?25h${E}?1049l`);
+		exit(0);
+	};
+	const timer = setInterval(() => {
+		let frame = "";
+		for (const d of drops) {
+			d.acc += d.speed;
+			while (d.acc >= 1) {
+				d.acc -= 1;
+				d.y++;
+				const y = d.y;
+				if (y >= 1 && y <= rows)
+					frame += `${E}${y};${d.c}H${E}1;38;2;220;255;225m${pick()}`;
+				if (y - 1 >= 1 && y - 1 <= rows)
+					frame += `${E}${y - 1};${d.c}H${E}22m${shade(1)}${pick()}`;
+				const mid = y - Math.floor(d.len / 2);
+				if (mid >= 1 && mid <= rows) frame += `${E}${mid};${d.c}H${shade(0.55)}${pick()}`;
+				const tail = y - d.len;
+				if (tail >= 1 && tail <= rows) frame += `${E}${tail};${d.c}H `;
+				if (tail > rows) {
+					d.y = -Math.floor(Math.random() * rows * 0.5);
+					d.len = 6 + Math.floor(Math.random() * rows * 0.6);
+					d.speed = 0.5 + Math.random() * 0.9;
+				}
+			}
+		}
+		if (frame) print(frame + `${E}0m`);
+	}, 55);
+
+	await read();
+	stop();
+}

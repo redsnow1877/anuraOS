@@ -554,6 +554,7 @@ document.addEventListener("anura-login-completed", async () => {
 	anura.registerApp(new NotesApp());
 	anura.registerApp(new ClockApp());
 	anura.registerApp(new SketchApp());
+	anura.registerApp(new NetworkApp());
 	anura.registerApp(new Game2048App());
 	anura.registerApp(new PhotosApp());
 	anura.registerApp(new MusicApp());
@@ -585,26 +586,35 @@ document.addEventListener("anura-login-completed", async () => {
 	]);
 	bootMark("core-apps");
 
-	// Restore any missing /usr/bin scripts. Only shells and terminals use
-	// them, so this runs alongside the rest of boot instead of in front of
-	// it (one stat after another cost ~250 ms of every boot).
+	// Restore any missing /usr/bin scripts, and refresh them all after an
+	// update (a new milestone), or new versions of the programs would never
+	// reach an existing install. Only shells and terminals use them, so this
+	// runs alongside the rest of boot instead of in front of it.
+	const binStamp = String(anura.settings.get("milestone") || "");
+	const binStale = anura.settings.get("bin-stamp") !== binStamp;
 	void Promise.all(
 		anura.config.bin.map(async (bin: string) => {
 			const path = directories.bin + "/" + bin.split("/").slice(-1)[0];
-			try {
-				await anura.fs.promises.stat(path);
-			} catch {
+			if (!binStale) {
 				try {
-					await anura.fs.promises.writeFile(
-						path,
-						await fetch(bin).then((r) => r.text()),
-					);
-				} catch (e) {
-					console.warn("[boot] couldn't restore", path, e);
+					await anura.fs.promises.stat(path);
+					return;
+				} catch {
+					/* missing: fetch it */
 				}
 			}
+			try {
+				const res = await fetch(bin);
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+				await anura.fs.promises.writeFile(path, await res.text());
+			} catch (e) {
+				console.warn("[boot] couldn't restore", path, e);
+			}
 		}),
-	).then(() => bootMark("bin-checked"));
+	).then(() => {
+		if (binStale) void anura.settings.set("bin-stamp", binStamp);
+		bootMark("bin-checked");
+	});
 
 	for (const lib of anura.config.libs) {
 		await anura.registerExternalLib(lib);

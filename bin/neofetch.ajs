@@ -1,0 +1,150 @@
+#! {"lang":"module"}
+// neofetch: the system at a glance, beside a cube drawn in your accent colour.
+
+const host = window.parent;
+const ESC = "\x1b[";
+const rgb = (hex) => {
+	const n = parseInt(hex.replace("#", ""), 16);
+	return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+const fg = ([r, g, b]) => `${ESC}38;2;${r};${g};${b}m`;
+const bg = ([r, g, b]) => `${ESC}48;2;${r};${g};${b}m`;
+const reset = `${ESC}0m`;
+
+/** The Dimension cube, rasterised into half-block characters. */
+function cube(accent) {
+	const faces = [
+		[mix(accent, [255, 255, 255], 0.6), [[32, 5], [57, 19], [32, 33], [7, 19]]],
+		[accent, [[7, 19], [32, 33], [32, 60], [7, 46]]],
+		[mix(accent, [0, 0, 0], 0.45), [[57, 19], [32, 33], [32, 60], [57, 46]]],
+	];
+	const inside = (x, y, poly) => {
+		let hit = false;
+		for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+			const [xi, yi] = poly[i];
+			const [xj, yj] = poly[j];
+			if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi)
+				hit = !hit;
+		}
+		return hit;
+	};
+	const W = 28;
+	const H = 28;
+	const px = (x, y) => {
+		const X = ((x + 0.5) / W) * 64;
+		const Y = ((y + 0.5) / H) * 64;
+		for (const [c, poly] of faces) if (inside(X, Y, poly)) return c;
+		return null;
+	};
+	const rows = [];
+	for (let y = 0; y < H; y += 2) {
+		let line = "";
+		for (let x = 0; x < W; x++) {
+			const a = px(x, y);
+			const b = px(x, y + 1);
+			if (a && b) line += fg(a) + bg(b) + "▀" + reset;
+			else if (a) line += fg(a) + "▀" + reset;
+			else if (b) line += fg(b) + "▄" + reset;
+			else line += " ";
+		}
+		rows.push(line);
+	}
+	return rows;
+}
+
+function since(ms) {
+	const m = Math.floor(ms / 60000);
+	const h = Math.floor(m / 60);
+	const d = Math.floor(h / 24);
+	const parts = [];
+	if (d) parts.push(`${d} day${d === 1 ? "" : "s"}`);
+	if (h % 24) parts.push(`${h % 24} hour${h % 24 === 1 ? "" : "s"}`);
+	parts.push(`${m % 60} min${m % 60 === 1 ? "" : "s"}`);
+	return parts.join(", ");
+}
+
+const bytes = (n) =>
+	n > 1e9 ? (n / 1e9).toFixed(1) + " GB" : n > 1e6 ? Math.round(n / 1e6) + " MB" : Math.round(n / 1e3) + " KB";
+
+export async function main() {
+	const a = host.anura;
+	const accentHex = a.ui?.theme?.accent || "#7a6cff";
+	const accent = rgb(accentHex);
+	const key = fg(mix(accent, [255, 255, 255], 0.35)) + `${ESC}1m`;
+
+	let user = "user";
+	try {
+		user = (a.settings.get("aether.user")?.name || "user").toLowerCase().replace(/\s+/g, "");
+	} catch {
+		/* default */
+	}
+
+	const nav = host.navigator;
+	const brand =
+		nav.userAgentData?.brands?.find((b) => !/Not.?A.?Brand|Chromium/i.test(b.brand)) ||
+		nav.userAgentData?.brands?.[0];
+	const browser = brand ? `${brand.brand} ${brand.version}` : nav.userAgent.split(" ").pop();
+	const platform = nav.userAgentData?.platform || nav.platform || "unknown";
+
+	let storage = "unknown";
+	try {
+		const est = await nav.storage.estimate();
+		storage = `${bytes(est.usage || 0)} of ${bytes(est.quota || 0)}`;
+	} catch {
+		/* not allowed */
+	}
+
+	const mem = host.performance?.memory;
+	const relay = host.DimensionRelay;
+	const ai = host.DimensionAI;
+	let linux = "not installed";
+	try {
+		if (a.x86?.ready) linux = "Alpine Linux on v86, running";
+		else if (!a.settings.get("x86-disabled")) linux = "Alpine Linux on v86";
+	} catch {
+		/* no emulator */
+	}
+
+	const info = [
+		`${key}${user}${reset}@${key}dimension${reset}`,
+		"─".repeat(user.length + 10),
+		["OS", "Dimension OS (anuraOS 2.0)"],
+		["Host", `${browser} on ${platform}`],
+		["Kernel", linux],
+		["Uptime", since(Date.now() - host.performance.timeOrigin)],
+		["Shell", "chimerix"],
+		[
+			"Resolution",
+			`${host.screen.width}x${host.screen.height} @${host.devicePixelRatio}x`,
+		],
+		["Accent", `${fg(accent)}██${reset} ${accentHex}`],
+		["Apps", String(Object.keys(a.apps).length)],
+		["CPU", `${nav.hardwareConcurrency || "?"} threads`],
+		[
+			"Memory",
+			mem ? `${bytes(mem.usedJSHeapSize)} heap / ${nav.deviceMemory || "?"} GB` : `${nav.deviceMemory || "?"} GB`,
+		],
+		["Storage", storage],
+		[
+			"Network",
+			relay
+				? `${relay.name(relay.current)}${relay.latency != null ? ` (${relay.latency} ms)` : ""}`
+				: "unknown",
+		],
+		["AI", ai ? `${ai.model.name}${ai.key ? "" : " (no key)"}` : "off"],
+		"",
+		[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `${ESC}4${i}m   `).join("") + reset,
+		[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `${ESC}10${i}m   `).join("") + reset,
+	].map((l) => (Array.isArray(l) ? `${key}${l[0]}${reset}: ${l[1]}` : l));
+
+	const art = cube(accent);
+	const lines = Math.max(art.length, info.length);
+	println("");
+	for (let i = 0; i < lines; i++) {
+		const left = art[i] ?? " ".repeat(28);
+		println(`  ${left}   ${info[i] ?? ""}`);
+	}
+	println("");
+	exit(0);
+}

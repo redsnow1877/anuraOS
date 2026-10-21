@@ -277,6 +277,32 @@ class DimensionAI {
 		void this.#submit();
 	}
 
+	/**
+	 * One plain answer, streamed, with no tools: for the terminal's `ai`.
+	 */
+	static async quick(prompt: string, onText: (t: string) => void) {
+		if (!this.key) throw new Error("No API key. Press Alt+A to add one.");
+		const client = await this.#client();
+		const m = this.model;
+		const params: any = {
+			model: m.id,
+			max_tokens: 16000,
+			system:
+				"You are Dimension AI, answering inside a terminal. Reply in plain text with no Markdown formatting. Keep it brief; use short lines.",
+			messages: [{ role: "user", content: prompt }],
+			output_config: { effort: "low" },
+		};
+		if (m.fallbacks) {
+			params.betas = ["server-side-fallback-2026-07-01"];
+			params.fallbacks = "default";
+		}
+		const stream = client.beta.messages.stream(params);
+		stream.on("text", onText);
+		const msg = await stream.finalMessage();
+		if (msg.stop_reason === "refusal")
+			onText("\n(Claude declined to answer that.)");
+	}
+
 	/* ---- the panel ------------------------------------------------------------ */
 
 	static #build() {

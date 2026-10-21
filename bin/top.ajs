@@ -1,0 +1,82 @@
+#! {"lang":"module","stdin":true}
+// top: what's running, live. q to quit.
+
+const host = window.parent;
+const E = "\x1b[";
+const mb = (n) => (n / 1048576).toFixed(1);
+const rate = (n) => (n > 1048576 ? (n / 1048576).toFixed(1) + " MB/s" : (n / 1024).toFixed(1) + " KB/s");
+
+function bar(frac, width) {
+	const f = Math.max(0, Math.min(1, frac));
+	const full = Math.round(f * width);
+	const color = f > 0.8 ? "31" : f > 0.5 ? "33" : "32";
+	return `${E}${color}m${"█".repeat(full)}${E}2m${"░".repeat(width - full)}${E}0m`;
+}
+
+function screen(cols) {
+	const a = host.anura;
+	const lines = [];
+	const up = (Date.now() - host.performance.timeOrigin) / 1000;
+	const hh = Math.floor(up / 3600);
+	const mm = Math.floor((up % 3600) / 60);
+	const ss = Math.floor(up % 60);
+	lines.push(
+		`${E}1mDimension${E}0m  up ${hh}:${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}   ${new Date().toLocaleTimeString()}`,
+	);
+	const mem = host.performance.memory;
+	if (mem) {
+		const frac = mem.usedJSHeapSize / mem.jsHeapSizeLimit;
+		lines.push(`Heap  [${bar(frac, 30)}] ${mb(mem.usedJSHeapSize)} / ${mb(mem.jsHeapSizeLimit)} MB`);
+	}
+	const net = host.DimensionNet;
+	if (net) {
+		const s = net.summary();
+		lines.push(
+			`Net   ↑ ${rate(s.upRate)}  ↓ ${rate(s.downRate)}   ${s.open} open connection${s.open === 1 ? "" : "s"}, ${s.total} total`,
+		);
+	}
+	const relay = host.DimensionRelay;
+	if (relay) lines.push(`Relay ${relay.name(relay.current)}${relay.latency != null ? ` · ${relay.latency} ms` : ""} · ${relay.state}`);
+	lines.push("");
+
+	const wins = Array.from(host.document.querySelectorAll(".aliceWMwin"))
+		.map((w) => ({
+			title: w.querySelector(".titleContent")?.textContent?.trim() || "Untitled",
+			z: parseInt(w.style.zIndex) || 0,
+			min: w.style.display === "none" || w.classList.contains("minimized"),
+		}))
+		.sort((x, y) => y.z - x.z);
+	lines.push(`${E}7m ${"WINDOW".padEnd(cols - 14)} STATE      ${E}0m`);
+	for (const w of wins.slice(0, 10))
+		lines.push(` ${w.title.slice(0, cols - 15).padEnd(cols - 14)}${w.min ? "minimized" : "open"}`);
+	if (!wins.length) lines.push(`${E}2m (no windows)${E}0m`);
+	lines.push("");
+
+	const procs = (a.processes.procs || []).map((p) => p?.deref?.() ?? p).filter(Boolean);
+	lines.push(`${E}7m ${"PID".padEnd(6)}${"PROCESS".padEnd(cols - 8)}${E}0m`);
+	for (const p of procs.slice(-12))
+		lines.push(` ${String(p.pid ?? "?").padEnd(6)}${String(p.title || "").slice(0, cols - 9)}`);
+	lines.push("");
+	lines.push(`${E}2mq quit${E}0m`);
+	return lines;
+}
+
+export async function main() {
+	const size = globalThis.term || { rows: 24, cols: 80 };
+	const cols = Math.max(40, Math.min(size.cols, 110));
+	print(`${E}?1049h${E}?25l`);
+	const draw = () => {
+		const lines = screen(cols).slice(0, size.rows - 1);
+		print(`${E}H${E}2J` + lines.join("\r\n"));
+	};
+	draw();
+	const timer = setInterval(draw, 1000);
+	for (;;) {
+		const k = await read();
+		const s = typeof k === "string" ? k : new TextDecoder().decode(k);
+		if (/[qQ\x03\x1b]/.test(s)) break;
+	}
+	clearInterval(timer);
+	print(`${E}0m${E}2J${E}?25h${E}?1049l`);
+	exit(0);
+}

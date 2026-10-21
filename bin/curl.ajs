@@ -1,0 +1,45 @@
+#! {"lang":"module"}
+// curl: fetch a URL through Dimension's relay.
+//   curl https://example.com
+//   curl -I https://example.com        status and headers only
+//   curl -o page.html https://...      save to a file
+
+export async function main(args) {
+	let head = false;
+	let out = "";
+	let url = "";
+	for (let i = 0; i < args.length; i++) {
+		const a = args[i];
+		if (a === "-I" || a === "--head") head = true;
+		else if (a === "-o" || a === "--output") out = args[++i] || "";
+		else if (a === "-s" || a === "-L") continue;
+		else url = a;
+	}
+	if (!url) {
+		eprintln("usage: curl [-I] [-o file] URL");
+		exit(1);
+		return;
+	}
+	if (!/^https?:\/\//.test(url)) url = "https://" + url;
+	try {
+		const res = await anura.net.fetch(url, head ? { method: "HEAD" } : undefined);
+		if (head) {
+			println(`HTTP ${res.status} ${res.statusText || ""}`.trim());
+			for (const [k, v] of res.headers.entries()) println(`${k}: ${v}`);
+		} else if (out) {
+			const buf = new Uint8Array(await res.arrayBuffer());
+			const cwd = window.parent.anura.settings.get("directories")?.home || "/home/user";
+			const path = out.startsWith("/") ? out : `${cwd}/${out}`;
+			await anura.fs.promises.writeFile(path, buf);
+			println(`saved ${buf.length} bytes to ${path}`);
+		} else {
+			print(await res.text());
+			println("");
+		}
+	} catch (e) {
+		eprintln(`curl: ${e?.message || e}`);
+		exit(1);
+		return;
+	}
+	exit(0);
+}
