@@ -25,7 +25,7 @@ class ExtensionsController {
       await ((new this.resources.regularFs.Shell()).promises).rm(`/${this.internalThemeId}`, {recursive:true})
     }
     if(!installedExtensions.includes(this.internalThemeId)) {
-      await this.installFromUnpackedZipBlob(await fetch("/themes/chrome_dark.zip").then(r=>r.blob()), "aboutproxy-bad-theme");
+      await this.installFromUnpackedZipBlob(await fetch(BASE_PATH + "themes/chrome_dark.zip").then(r=>r.blob()), "aboutproxy-bad-theme");
       this.setExtensionEnabled(this.internalThemeId, true);
     }
 
@@ -131,10 +131,10 @@ class ExtensionsController {
   getExtensionMetadata() {
     let metadata = [];
     for (const extension of Object.entries(this.extensions)) {
-      let icon = "/aboutbrowser/darkfavi.png";
+      let icon = BASE_PATH + "aboutbrowser/darkfavi.png";
       if(extension[1].manifest.icons && Object.keys(extension[1].manifest.icons).length) {
         const iconPath = extension[1].manifest.icons[Object.keys(extension[1].manifest.icons).sort((a,b)=>b-a)[0]];
-        icon = `/extension/${extension[0]}/${iconPath}`;
+        icon = `${BASE_PATH}extension/${extension[0]}/${iconPath}`;
       }
 
       metadata.push({

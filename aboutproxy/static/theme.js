@@ -218,7 +218,7 @@ class Theme {
     }
 
     for(const image of Object.entries(this.imageToCSSMap)) {
-      themeCSS.push([image[1], `url(/extension/${this.extension.id}/${this.imageMap[image[0]]})`]);
+      themeCSS.push([image[1], `url(${BASE_PATH}extension/${this.extension.id}/${this.imageMap[image[0]]})`]);
     }
 
     return themeCSS;

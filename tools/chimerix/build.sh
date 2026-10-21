@@ -2,19 +2,23 @@
 # Builds bin/chimerix.ajs from the chimerix submodule with Dimension's one
 # addition: AjsCommandProvider, which runs /usr/bin/<name>.ajs programs by
 # name. The submodule itself is left untouched; the patch is applied to a
-# scratch copy of its source under build/.
+# scratch copy of its source under build/.chimerix. It's a dot-directory on
+# purpose: `make static` copies build/* into the site, and a glob skips
+# dotfiles, so the scratch copy (and its node_modules link) stays out of the
+# deployed site.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 (cd chimerix && npm i)
 
-rm -rf build/chimerix
-mkdir -p build/chimerix bin
-cp -r chimerix/src chimerix/rollup.config.js chimerix/package.json build/chimerix/
-ln -s ../../chimerix/node_modules build/chimerix/node_modules
-cp tools/chimerix/AjsCommandProvider.js build/chimerix/src/puter-shell/providers/
+SCRATCH=build/.chimerix
+rm -rf build/chimerix "$SCRATCH"
+mkdir -p "$SCRATCH" bin
+cp -r chimerix/src chimerix/rollup.config.js chimerix/package.json "$SCRATCH/"
+ln -s "$PWD/chimerix/node_modules" "$SCRATCH/node_modules"
+cp tools/chimerix/AjsCommandProvider.js "$SCRATCH/src/puter-shell/providers/"
 
-main=build/chimerix/src/puter-shell/main.js
+main="$SCRATCH/src/puter-shell/main.js"
 grep -q "new ScriptCommandProvider()," "$main" || {
 	echo "chimerix changed: couldn't find where to add AjsCommandProvider" >&2
 	exit 1
@@ -25,5 +29,5 @@ sed -i \
 	"$main"
 grep -q "new AjsCommandProvider()" "$main"
 
-(cd build/chimerix && npx rollup -c rollup.config.js)
-cp build/chimerix/dist/chimerix.ajs bin/chimerix.ajs
+(cd "$SCRATCH" && npx rollup -c rollup.config.js)
+cp "$SCRATCH/dist/chimerix.ajs" bin/chimerix.ajs

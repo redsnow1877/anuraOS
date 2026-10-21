@@ -24,7 +24,7 @@
  * missed, so a silent half-rewrite can't ship.
  */
 import { readdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
-import { join, extname } from "node:path";
+import { join, extname, relative, sep } from "node:path";
 
 const [, , ROOT, RAW_BASE] = process.argv;
 if (!ROOT) {
@@ -90,6 +90,46 @@ const FILES = [
 	"mw_icon_colored.png",
 ];
 
+/*
+ * Directories at the top of the build output are URLs too: the browser's own
+ * pages, fonts and scripts live in aboutbrowser/, chrome-tabs/, fonts/ and
+ * friends, and used to be missed, so under a sub-path the Browser window
+ * loaded its frame but none of what it needs. Discovering them from the tree
+ * means a new directory can't be forgotten. (Files are listed by name: a
+ * generic name like favicon.ico also turns up as a remote site's, which must
+ * not be re-based.) `bin` stays out, as explained above; it's handled by key
+ * in config.json below.
+ */
+for (const e of readdirSync(ROOT)) {
+	if (e.startsWith(".") || e === "bin" || DIRS.includes(e)) continue;
+	try {
+		if (statSync(join(ROOT, e)).isDirectory()) DIRS.push(e);
+	} catch {
+		/* a dangling link */
+	}
+}
+FILES.push(
+	"roboto.css",
+	"material-symbols-outlined.css",
+	"helpers.js",
+	"browser-api-tab.js",
+);
+
+/**
+ * Files left exactly as they are. The browser's extension code builds both
+ * URLs and Filer file paths out of the same names ("/extension/<id>/
+ * manifest.json" is a path in a virtual disk), and re-basing the paths
+ * breaks extension install, which the browser does on first start. Where
+ * those files need a URL they build it from BASE_PATH (helpers.js).
+ */
+const SKIP = new Set([
+	"extensions/extension.js",
+	"extensions/controller.js",
+	"extensions/resources.js",
+	"theme.js",
+	"plugin.js",
+]);
+
 const TEXT_EXT = new Set([
 	".html",
 	".htm",
@@ -144,6 +184,12 @@ function patchServiceWorker(text) {
 		// so every downstream comparison and cache lookup stays base-agnostic.
 		// The cache index is keyed on root-relative paths, so strip the scope
 		// prefix straight after `path` is derived from the request URL.
+		// The browser's extension files are in a virtual disk at /extension/...;
+		// the request for one arrives under the sub-path.
+		[
+			"return new Response(await fs.promises.readFile(url.pathname));",
+			"return new Response(await fs.promises.readFile(stripBase(url.pathname)));",
+		],
 		[
 			"let path = decodeURI(event.url.pathname);",
 			"let path = stripBase(decodeURI(event.url.pathname));",
@@ -198,6 +244,7 @@ function walk(dir) {
 			continue;
 		}
 		if (!TEXT_EXT.has(extname(full).toLowerCase())) continue;
+		if (SKIP.has(relative(ROOT, full).split(sep).join("/"))) continue;
 
 		const before = readFileSync(full, "utf8");
 		const isServiceWorker = entry === "anura-sw.js" && dir === ROOT;
@@ -248,6 +295,7 @@ function verify(dir) {
 			continue;
 		}
 		if (!TEXT_EXT.has(extname(full).toLowerCase())) continue;
+		if (SKIP.has(relative(ROOT, full).split(sep).join("/"))) continue;
 		const text = readFileSync(full, "utf8");
 		for (const m of text.matchAll(dirRe)) leftovers.push(`${full}: ${m[0]}`);
 		if (entry === "anura-sw.js" && dir === ROOT) continue;

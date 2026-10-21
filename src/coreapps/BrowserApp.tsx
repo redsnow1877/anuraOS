@@ -89,7 +89,11 @@ class BrowserApp extends App {
 		//@ts-ignore
 		iframe.style =
 			"top:0; left:0; bottom:0; right:0; width:100%; height:100%; border:none; margin:0; padding:0;";
-		iframe.setAttribute("src", "../../browser.html");
+		// Next to the page the shell itself was loaded from. It used to climb
+		// out with "../../", which only worked at an origin's root: served
+		// from a sub-path (GitHub Pages at /<repo>/) it landed on a different
+		// site's /browser.html and the window said "refused to connect".
+		iframe.setAttribute("src", new URL("browser.html", document.baseURI).href);
 
 		iframe.addEventListener("load", () => {
 			// On interaction with the iframe, set the last active window to this one

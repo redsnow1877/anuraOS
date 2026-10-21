@@ -1,3 +1,12 @@
+// Where this deployment is served from: "/" at an origin's root, "/<repo>/" on
+// GitHub Pages. Taken from this script's own address (it sits at that root),
+// not the page's, since the about: pages that also load it live a level down.
+// URLs the browser builds for its own files start from this; the build's
+// base-path rewrite (.github/scripts/set-base-path.mjs) leaves the extension
+// code alone because it mixes these with Filer paths ("/extension/<id>/...")
+// that must not move.
+const BASE_PATH = new URL(".", document.currentScript.src).pathname;
+
 function isUrl(val = '') {
     if (/^http(s?):\/\//.test(val) || val.includes('.') && val.substr(0, 1) !== ' ') return true;
     return false;

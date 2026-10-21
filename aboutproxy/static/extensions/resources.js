@@ -3,7 +3,7 @@ class ExtensionResources {
     this.fs = fs.promises;
     this.regularFs = fs;
     this.resourcesUri = "chrome-extension://";
-    this.resourcesUrl = window.location.origin + "/extension";
+    this.resourcesUrl = window.location.origin + BASE_PATH + "extension";
   }
 
   static new(fsName = "local") {
