@@ -659,6 +659,19 @@ class SettingsApp extends App {
 						class="sidebar-settings-item"
 						on:click={() => {
 							document
+								.getElementById("browsing")
+								?.scrollIntoView({ behavior: "smooth", block: "start" });
+						}}
+					>
+						<span class="sidebar-settings-item-name">
+							<span class="material-symbols-outlined">public</span>
+							<a>Browsing</a>
+						</span>
+					</div>
+					<div
+						class="sidebar-settings-item"
+						on:click={() => {
+							document
 								.getElementById("feel")
 								?.scrollIntoView({ behavior: "smooth", block: "start" });
 						}}
@@ -777,6 +790,10 @@ class SettingsApp extends App {
 							<SettingText title="Custom Wisp URL" setting="wisp-url" />
 							<SettingText title="Custom Power Off URL" setting="exitUrl" />
 						</div>
+					</div>
+					<div id="browsing" class="settings-category">
+						<h3 class="settings-category-name">Browsing</h3>
+						<div class="settings-group">{dimensionRelayPanel()}</div>
 					</div>
 					<div id="feel" class="feel settings-category">
 						<h3 class="settings-category-name">Sound &amp; Feel</h3>
@@ -1248,8 +1265,19 @@ class SettingsApp extends App {
 		</div>
 	);
 
-	async open(): Promise<WMWindow | undefined> {
+	async open(args: string[] = []): Promise<WMWindow | undefined> {
+		// `open(["browsing"])` and friends land on that section.
+		const jump = () =>
+			args[0] &&
+			setTimeout(
+				() =>
+					document
+						.getElementById(args[0]!)
+						?.scrollIntoView({ behavior: "smooth", block: "start" }),
+				120,
+			);
 		if (this.win?.element?.parentElement) {
+			jump();
 			return this.win;
 		}
 		this.win = anura.wm.create(this, {
@@ -1260,6 +1288,7 @@ class SettingsApp extends App {
 		});
 
 		this.win.content.appendChild(await this.page());
+		jump();
 		return this.win;
 	}
 }

@@ -1,9 +1,8 @@
 // Which Wisp server carries this browser's traffic, and is it answering?
 //
-// Every page loads through a Wisp relay. By default that's the server Aether
-// itself is hosted on, which is right for a self-hosted install and useless
-// on static hosting (GitHub Pages can't run one). This keeps an eye on the
-// relay, tells the UI, and lets you move to another one without a restart.
+// Every page loads through a Wisp relay. Dimension's DimensionRelay (Relay.ts)
+// picks one that's up at boot and keeps an eye on it; this mirrors its state
+// for the browser UI, and picking a relay here hands the choice back to it.
 class ProxyConnection {
     constructor(browser) {
         this.browser = browser;
@@ -18,7 +17,13 @@ class ProxyConnection {
         return (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/";
     }
 
+    get relay() {
+        try { return top.DimensionRelay || null; } catch { return null; }
+    }
+
     get presets() {
+        const R = this.relay;
+        if (R) return R.candidates().filter((c) => c.id !== "local" || R.localEnabled);
         return [
             { name: "This site", url: ProxyConnection.sameOrigin(), note: "The server Dimension is running on" },
             { name: "Mercury Workshop", url: "wss://wisp.mercurywork.shop/", note: "Public relay from the anuraOS developers" },
@@ -70,8 +75,11 @@ class ProxyConnection {
     async use(url) {
         const a = this.anura;
         if (!a) return;
-        a.net.setWispServer(url);
-        await a.settings.set("wisp-url", url);
+        if (this.relay) await this.relay.use(url, true);
+        else {
+            a.net.setWispServer(url);
+            await a.settings.set("wisp-url", url);
+        }
         return this.check();
     }
 }

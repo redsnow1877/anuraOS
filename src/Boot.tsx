@@ -710,6 +710,7 @@ document.addEventListener("anura-login-completed", async () => {
 		AetherBrightness.sync();
 		AetherMusic.init();
 		AetherIsland.init();
+		DimensionRelay.init();
 		AetherRGB.init();
 		AetherScreensaver.init();
 		AetherBattery.init();

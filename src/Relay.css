@@ -1,0 +1,239 @@
+/* ==========================================================================
+   Dimension — Settings › Browsing (Relay.ts)
+   ========================================================================== */
+
+.relay-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	width: calc(100% - 20px);
+	margin-bottom: 14px;
+}
+
+.rl-status {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 12px;
+	border-radius: 12px;
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid var(--hairline, rgba(255, 255, 255, 0.1));
+}
+
+.rl-status-text {
+	flex: 1;
+	min-width: 0;
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.rl-dot {
+	display: inline-block;
+	flex-shrink: 0;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.3);
+}
+
+.rl-dot[data-state="ok"] {
+	background: #30d158;
+	box-shadow: 0 0 8px rgba(48, 209, 88, 0.7);
+}
+
+.rl-dot[data-state="down"] {
+	background: #ff453a;
+	box-shadow: 0 0 8px rgba(255, 69, 58, 0.6);
+}
+
+.rl-dot[data-state="checking"] {
+	background: #ff9f0a;
+	animation: rl-pulse 1s ease-in-out infinite;
+}
+
+@keyframes rl-pulse {
+	50% {
+		opacity: 0.3;
+	}
+}
+
+.rl-auto,
+.rl-running {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12.5px;
+	color: var(--ink-dim, rgba(255, 255, 255, 0.7));
+}
+
+.rl-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 32px;
+	padding: 0 14px;
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.08);
+	color: inherit;
+	font: inherit;
+	font-size: 12.5px;
+	font-weight: 600;
+	cursor: default;
+	transition: background-color 0.12s ease;
+}
+
+.rl-btn:hover {
+	background: rgba(255, 255, 255, 0.15);
+}
+
+.rl-btn.is-primary {
+	border-color: transparent;
+	background: var(--theme-accent, #7a6cff);
+	color: #fff;
+}
+
+.rl-btn .material-symbols-outlined {
+	font-size: 17px;
+}
+
+.rl-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.rl-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 12px;
+	border: 1px solid transparent;
+	border-radius: 12px;
+	background: rgba(255, 255, 255, 0.04);
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: default;
+	transition:
+		background-color 0.12s ease,
+		border-color 0.12s ease;
+}
+
+.rl-row:hover {
+	background: rgba(255, 255, 255, 0.08);
+}
+
+.rl-row.is-on {
+	border-color: color-mix(
+		in oklab,
+		var(--theme-accent, #7a6cff) 60%,
+		transparent
+	);
+	background: color-mix(
+		in oklab,
+		var(--theme-accent, #7a6cff) 14%,
+		transparent
+	);
+}
+
+.rl-radio {
+	flex-shrink: 0;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	box-sizing: border-box;
+	border: 2px solid rgba(255, 255, 255, 0.35);
+}
+
+.rl-row.is-on .rl-radio {
+	border: 5px solid var(--theme-accent, #7a6cff);
+}
+
+.rl-row-text {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.rl-row-name {
+	font-weight: 600;
+	font-size: 13px;
+}
+
+.rl-row-note {
+	font-size: 11.5px;
+	color: var(--ink-faint, rgba(255, 255, 255, 0.5));
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.rl-row-status {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11.5px;
+	color: var(--ink-dim, rgba(255, 255, 255, 0.7));
+	white-space: nowrap;
+}
+
+.rl-laptop {
+	padding: 14px 16px;
+	border-radius: 14px;
+	background: linear-gradient(
+		135deg,
+		color-mix(in oklab, var(--theme-accent, #7a6cff) 22%, transparent),
+		rgba(255, 255, 255, 0.04)
+	);
+	border: 1px solid
+		color-mix(in oklab, var(--theme-accent, #7a6cff) 35%, transparent);
+}
+
+.rl-laptop-head {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.rl-laptop-head .material-symbols-outlined {
+	font-size: 22px;
+	color: color-mix(in oklab, var(--theme-accent, #7a6cff) 60%, white);
+}
+
+.rl-laptop-title {
+	font-weight: 650;
+	font-size: 14px;
+}
+
+.rl-laptop-text {
+	margin: 8px 0 12px;
+	font-size: 12.5px;
+	line-height: 1.45;
+	color: var(--ink-dim, rgba(255, 255, 255, 0.72));
+}
+
+.rl-laptop-btns {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.rl-running {
+	margin-left: auto;
+}
+
+.rl-laptop-note {
+	margin-top: 10px;
+	font-size: 12px;
+	line-height: 1.4;
+	color: var(--ink-dim, rgba(255, 255, 255, 0.72));
+}
+
+.rl-laptop-note:empty {
+	display: none;
+}

@@ -1752,18 +1752,10 @@ class OobeView {
 	}
 
 	#relays(): Array<{ name: string; url: string; note: string }> {
-		const list = [
-			{
-				name: "This site",
-				url: OobeView.sameOriginWisp(),
-				note: `The server ${BRANDING.name} is running on`,
-			},
-			{
-				name: "Mercury Workshop",
-				url: "wss://wisp.mercurywork.shop/",
-				note: "Public relay from the anuraOS developers",
-			},
-		];
+		// The laptop relay is set up later, from Settings › Browsing.
+		const list = DimensionRelay.candidates()
+			.filter((c) => c.id !== "local")
+			.map(({ name, url, note }) => ({ name, url, note }));
 		const custom = this.c.customWisp;
 		if (custom && !list.some((r) => r.url === custom))
 			list.push({ name: "Custom", url: custom, note: custom });
