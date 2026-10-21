@@ -1531,3 +1531,9 @@ body.reduce-motion #oobe .install-bar::after {
 .ape-rerun .material-symbols-outlined {
 	font-size: 18px;
 }
+
+/* A choice this build can't provide: visible, explained, not selectable. */
+.oobe-row.is-unavailable {
+	opacity: 0.5;
+	cursor: default;
+}

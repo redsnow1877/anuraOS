@@ -1479,6 +1479,24 @@ class OobeView {
 					oobeEl("div", { class: "oobe-note rv" }, oobeIcon("download"), size),
 				);
 			},
+			enter: () => {
+				// This build may not carry the Linux image at all (GitHub Pages
+				// doesn't). Find out before offering it.
+				void x86Available().then((ok) => {
+					if (ok) return;
+					this.c.linux = false;
+					const row = document.querySelector<HTMLElement>(
+						"[data-step=features] .oobe-row:nth-child(2)",
+					);
+					if (!row) return;
+					row.classList.add("is-unavailable");
+					row.querySelector<HTMLButtonElement>(".oobe-switch")!.disabled = true;
+					row.querySelector(".row-desc")!.textContent =
+						"Not in this build of " + BRANDING.name + ".";
+					row.querySelector(".row-icon")!.classList.remove("is-on");
+					this.refresh();
+				});
+			},
 			next: () => (this.c.offline || this.c.linux ? "Set Up" : "Continue"),
 			commit: async () => {
 				await anura.settings.set("x86-disabled", !this.c.linux);
@@ -1530,7 +1548,21 @@ class OobeView {
 					);
 					if (this.c.linux && !haveLinux) {
 						await anura.settings.set("x86-image", "alpine");
-						await installx86(tracker);
+						try {
+							await installx86(tracker);
+						} catch (e) {
+							// Carry on without Linux rather than sit here forever.
+							console.warn("[setup] Linux download failed", e);
+							await anura.fs.promises.unlink("/boot/bzimage").catch(() => {});
+							await anura.fs.promises
+								.unlink("/boot/initrd.img")
+								.catch(() => {});
+							await anura.settings.set("x86-disabled", true);
+							if (tracker)
+								tracker.innerText =
+									"Linux couldn't be downloaded. Carrying on without it.";
+							await sleep(1800);
+						}
 					}
 					if (this.c.offline) await preloadFiles(tracker);
 				} catch (e) {
@@ -1809,102 +1841,81 @@ class OobeView {
 	}
 }
 
+/** Whether this build ships the Linux image at all. Pages builds don't. */
+async function x86Available(): Promise<boolean> {
+	try {
+		const image =
+			anura.config.x86?.[anura.settings.get("x86-image") || "alpine"];
+		if (!image) return false;
+		const r = await fetch(image.bzimage, { method: "HEAD" });
+		return r.ok;
+	} catch {
+		return false;
+	}
+}
+
+/** fetch, but a non-2xx answer is an error, not a file. */
+async function fetchOk(url: string, tries = 3): Promise<Response> {
+	let last: unknown = null;
+	for (let i = 0; i < tries; i++) {
+		try {
+			const r = await fetch(url);
+			if (r.ok) return r;
+			last = new Error(`HTTP ${r.status} for ${url}`);
+		} catch (e) {
+			last = e;
+		}
+		await sleep(400 * (i + 1));
+	}
+	throw last;
+}
+
 async function installx86(tracker = document.getElementById("tracker")) {
 	console.debug("installing x86");
 	await anura.fs.mkdir("/boot");
 	const x86image = anura.settings.get("x86-image");
-	tracker!.innerText = "Downloading x86 kernel";
-	const bzimage = await fetch(anura.config.x86[x86image].bzimage);
-	anura.fs.writeFile(
+	const image = anura.config.x86[x86image];
+	const say = (text: string) => {
+		if (tracker) tracker.innerText = text;
+	};
+
+	say("Downloading x86 kernel");
+	const bzimage = await fetchOk(image.bzimage);
+	await anura.fs.writeFile(
 		"/boot/bzimage",
 		Filer.Buffer(await bzimage.arrayBuffer()),
 	);
-	tracker!.innerText = "Downloading x86 initrd";
-	const initrd = await fetch(anura.config.x86[x86image].initrd);
-	anura.fs.writeFile(
+
+	say("Downloading x86 initrd");
+	const initrd = await fetchOk(image.initrd);
+	await anura.fs.writeFile(
 		"/boot/initrd.img",
 		Filer.Buffer(await initrd.arrayBuffer()),
 	);
 
-	if (typeof anura.config.x86[x86image].rootfs === "string") {
-		const rootfs = await fetch(anura.config.x86[x86image].rootfs);
-		const blob = await rootfs.blob();
+	if (typeof image.rootfs === "string") {
+		const rootfs = await fetchOk(image.rootfs);
 		//@ts-ignore
-		await anura.x86hdd.loadfile(blob);
-	} else if (anura.config.x86[x86image].rootfs) {
-		// TODO: add batching, this will bottleneck and OOM if the rootfs is too large
-
-		console.debug("fetching");
-		// const files = await Promise.all(
-		//     anura.config.x86[x86image].rootfs.map((part: string) => fetch(part)),
-		// );
-
-		const files: Blob[] = [];
-		let limit = 4;
-		let i = 0;
-		let done = false;
-		let doneSoFar = 0;
-		const doWhenAvail = function () {
-			if (limit === 0) return;
-			limit--;
-			const assigned = i;
-			i++;
-
-			fetch(anura.config.x86[x86image].rootfs[assigned])
-				.then(async (response) => {
-					if (response.status !== 200) {
-						console.error("Status code bad on chunk " + assigned);
-						console.error(anura.config.x86[x86image].rootfs[assigned]);
-						console.error("Finished " + doneSoFar + " chunks before error");
-						anura.notifications.add({
-							title: "bad chunk on x86 download",
-							description: `Chunk ${assigned} gave status code ${response.status}\nClick me to reload`,
-							timeout: 50000,
-							callback: () => {
-								location.reload();
-							},
-						});
-						return;
-					}
-					files[assigned] = await response.blob();
-					limit++;
-					doneSoFar++;
-					tracker!.innerHTML = `Downloading x86 rootfs. Chunk ${doneSoFar}/${anura.config.x86[x86image].rootfs.length} done`;
-					if (i < anura.config.x86[x86image].rootfs.length) {
-						doWhenAvail();
-					}
-					if (doneSoFar === anura.config.x86[x86image].rootfs.length) {
-						done = true;
-					}
-					console.debug(
-						anura.config.x86[x86image].rootfs.length -
-							doneSoFar +
-							" chunks to go",
-					);
-				})
-
-				.catch((e) => {
-					console.error("Error on chunk " + assigned);
-					anura.notifications.add({
-						title: "bad chunk on x86 download",
-						description: `Chunk ${assigned} had a download error ${e}\nClick me to reload`,
-						timeout: 50000,
-						callback: () => {
-							location.reload();
-						},
-					});
-				}); // Peak error handling right there
+		await anura.x86hdd.loadfile(await rootfs.blob());
+	} else if (image.rootfs) {
+		// Chunks are fetched a few at a time, each retried on its own. A chunk
+		// that still fails throws, so the install stops instead of waiting on
+		// a count that can never be reached.
+		const chunks: string[] = image.rootfs;
+		const files: Blob[] = new Array(chunks.length);
+		let next = 0;
+		let done = 0;
+		const worker = async () => {
+			while (next < chunks.length) {
+				const i = next++;
+				files[i] = await (await fetchOk(chunks[i]!)).blob();
+				done++;
+				say(`Downloading x86 rootfs. Chunk ${done}/${chunks.length} done`);
+			}
 		};
-		doWhenAvail();
-		doWhenAvail();
-		doWhenAvail();
-		doWhenAvail();
-		while (!done) {
-			await sleep(200);
-		}
+		await Promise.all([worker(), worker(), worker(), worker()]);
 
-		console.debug("constructing blobs...");
-		tracker!.innerText = "Concatenating and installing x86 rootfs";
+		say("Concatenating and installing x86 rootfs");
 		//@ts-ignore
 		await anura.x86hdd.loadfile(new Blob(files));
 	}
