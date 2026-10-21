@@ -1,0 +1,99 @@
+# Builds the Alpine Linux image for the x86 subsystem and publishes it as a
+# GitHub release, which is where Aether's "Download Linux image" button points.
+#
+# It's a separate download because the disk is 1 GB and GitHub Pages can't host
+# it. Run it by hand from the Actions tab; nothing triggers it automatically,
+# and it only needs re-running when x86_image_wizard/ changes.
+name: Build Linux image
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the result as a GitHub release (off: just build it and keep it as a run artifact)"
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    name: Build Alpine image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release
+    env:
+      TAG: linux-image-1
+    steps:
+      - uses: actions/checkout@v4
+
+      # Only epoxy is needed to build the image, not every submodule.
+      - name: Fetch epoxy
+        run: git submodule update --init --depth 1 x86_image_wizard/epoxy
+
+      # 32-bit C headers for the i686 Rust build; jq for the script's last line.
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y gcc-multilib jq
+
+      - name: Install Rust nightly
+        run: rustup toolchain install nightly --profile minimal -t i686-unknown-linux-gnu -t wasm32-unknown-unknown
+
+      # Compiles epoxy-server for 32-bit, builds the Docker image, and writes
+      # it into a 1 GB ext4 disk. USER is unset on Actions and the script
+      # chowns with it.
+      - name: Build the image
+        working-directory: x86_image_wizard/alpine
+        env:
+          USER: runner
+        run: bash build-alpine-bin.sh
+
+      # One file, in the order src/LinuxImage.ts reads it: kernel, initramfs,
+      # then the disk.
+      - name: Package
+        run: |
+          set -euo pipefail
+          mkdir -p out/stage
+          cp build/x86images/alpine-boot/vmlinuz-virt out/stage/bzimage
+          cp build/x86images/alpine-boot/initramfs-virt out/stage/initrd.img
+          ln -s "$GITHUB_WORKSPACE/build/x86images/alpine-rootfs.bin" out/stage/rootfs.bin
+          tar -chf - -C out/stage bzimage initrd.img rootfs.bin | gzip -6 > out/aether-linux-alpine.tar.gz
+          (cd out && sha256sum aether-linux-alpine.tar.gz > aether-linux-alpine.tar.gz.sha256)
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aether-linux-alpine
+          path: |
+            out/aether-linux-alpine.tar.gz
+            out/aether-linux-alpine.tar.gz.sha256
+          retention-days: 7
+          compression-level: 0
+
+      - name: Publish release
+        if: ${{ inputs.publish }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          SUM="$(cut -d' ' -f1 out/aether-linux-alpine.tar.gz.sha256)"
+          cat > notes.md <<NOTES
+          Alpine Linux (32-bit, \`linux-virt\` kernel) for Aether's x86 subsystem.
+
+          **How to use it:** in Aether's setup, or Settings → x86 Subsystem, choose *Import image* and pick this file. It's too big (about 1 GB unpacked) to host on GitHub Pages, so it's a download.
+
+          **What's inside** \`aether-linux-alpine.tar.gz\` (a gzip'd tar, three files):
+          - \`bzimage\`: the Linux kernel (Alpine \`linux-virt\`)
+          - \`initrd.img\`: the initramfs
+          - \`rootfs.bin\`: a 1 GB ext4 disk with Alpine Linux, X11/xterm/xcalc, gcc/make, vim/nano/htop, and Aether's helpers (\`epoxy-server\` and the \`anura-*\` scripts)
+
+          **SHA-256:** \`${SUM}\`
+
+          **Source and licences.** The disk is Alpine Linux and its packages, each under its own licence (many GPL); their sources are at https://pkgs.alpinelinux.org and https://git.alpinelinux.org. It was built by \`.github/workflows/linux-image.yml\`, which runs \`x86_image_wizard/alpine/build-alpine-bin.sh\` and its \`Dockerfile\`, at commit ${GITHUB_SHA}. \`epoxy-server\` is built from the \`x86_image_wizard/epoxy\` submodule (MercuryWorkshop/epoxy-tls); see that repository for its licence. Aether itself is AGPL-3.0, derived from anuraOS (see \`LICENSE\` and \`CREDITS.md\`).
+          NOTES
+          sed -i 's/^          //' notes.md
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" out/aether-linux-alpine.tar.gz out/aether-linux-alpine.tar.gz.sha256 --clobber
+            gh release edit "$TAG" --notes-file notes.md
+          else
+            gh release create "$TAG" out/aether-linux-alpine.tar.gz out/aether-linux-alpine.tar.gz.sha256 \
+              --title "Linux image 1 (Alpine, for the x86 subsystem)" \
+              --notes-file notes.md --target "$GITHUB_SHA"
+          fi
