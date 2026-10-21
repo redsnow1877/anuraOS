@@ -658,9 +658,14 @@ class AetherMotion {
 	 */
 	static minimizeWindow(
 		el: HTMLElement,
-		app?: { name?: string } | null,
+		app?: { name?: string; package?: string } | null,
 	): Promise<unknown> {
 		if (this.reduced) return Promise.resolve();
+		// A window whose app has a live island activity doesn't go to the dock:
+		// the island is where it will live now, so it flies up there.
+		const owner = app?.package;
+		if (owner && (globalThis as any).AetherIsland?.wantsWindow(owner, el))
+			return this.flyIntoIsland(el, owner);
 		el.classList.remove("scaletransition");
 		const r = el.getBoundingClientRect();
 		const target =
@@ -700,12 +705,23 @@ class AetherMotion {
 	}
 
 	/** Back out of the dock, springing up into place. */
-	static restoreWindow(el: HTMLElement, app?: { name?: string } | null) {
+	static restoreWindow(
+		el: HTMLElement,
+		app?: { name?: string; package?: string } | null,
+	) {
 		if (this.reduced) {
 			el.classList.remove("opacity0");
 			return;
 		}
 		el.classList.remove("scaletransition");
+		// One that went up into the island comes back out of it.
+		const owner = el.dataset.islandFrom;
+		delete el.dataset.islandFrom;
+		const island = (globalThis as any).AetherIsland;
+		if (owner && island?.present && island.claims(owner)) {
+			this.flyOutOfIsland(el, owner);
+			return;
+		}
 		this.hold(el);
 		el.classList.remove("opacity0");
 		const r = el.getBoundingClientRect();
@@ -738,6 +754,159 @@ class AetherMotion {
 		];
 		void this.#run(el, anims);
 		this.release(el);
+	}
+
+	/* ---- the island -------------------------------------------------------- */
+
+	/**
+	 * Up into the island. Three beats, borrowed from how things move when
+	 * they're thrown:
+	 *
+	 *   crouch   it dips a few pixels first, like a spring being wound
+	 *   flight   it rises on an arc, accelerating the whole way (it's being
+	 *            pulled in, not drifting), shrinking and flattening toward
+	 *            the pill's proportions, banking a little into the turn and
+	 *            stretching along its path as it speeds up, with a blur that
+	 *            follows its speed (none while it's slow, a few pixels as it
+	 *            arrives)
+	 *   contact  its top edge meets the pill's bottom edge, and the pill
+	 *            takes the hit (Island.ts: it reaches for the window just
+	 *            before, squashes, and recoils on a spring) while the window
+	 *            slips in behind it
+	 *
+	 * The whole path is sampled into one Web Animation (translate, scale,
+	 * rotate, filter, opacity together), so the pieces can't drift apart.
+	 * `filter: blur()` happens in the window's own pixels and is then scaled
+	 * down with it, so each frame's blur is divided by the window's current
+	 * scale to come out as the few visible pixels intended.
+	 */
+	static flyIntoIsland(el: HTMLElement, owner: string): Promise<unknown> {
+		const island = (globalThis as any).AetherIsland;
+		el.classList.remove("scaletransition");
+		const r = el.getBoundingClientRect();
+		const ir: DOMRect = island.rect();
+		const W = Math.max(1, r.width);
+		const H = Math.max(1, r.height);
+		const cx = r.left + W / 2;
+		const cy = r.top + H / 2;
+		const endX = ir.left + ir.width / 2;
+		const endY = ir.top + ir.height / 2;
+		const endSx = Math.min(
+			0.4,
+			Math.max(0.03, Math.min(ir.width * 0.8, 96) / W),
+		);
+		const endSy = Math.min(0.3, Math.max(0.02, endSx * 0.62));
+		const dx = endX - cx;
+		const dy = endY - cy;
+
+		const T = 560;
+		const crouch = 0.16;
+		const N = Math.round(T / 14);
+		const frames: Keyframe[] = [];
+		let contact = -1;
+		for (let i = 0; i <= N; i++) {
+			const u = i / N;
+			// Crouch: down and slightly smaller, then released as it launches.
+			const bump =
+				u < crouch
+					? Math.sin((Math.PI / 2) * (u / crouch))
+					: u < crouch + 0.26
+						? Math.cos((Math.PI / 2) * ((u - crouch) / 0.26))
+						: 0;
+			const v = Math.max(0, (u - crouch) / (1 - crouch));
+			const py = Math.pow(v, 2.15);
+			const px = 1 - Math.pow(1 - v, 2.3);
+			const ps = 1 - Math.pow(1 - v, 1.6);
+			const speed = Math.pow(v, 1.15);
+			const crouchScale = 1 - 0.03 * bump;
+			const sx =
+				Math.exp(Math.log(endSx) * ps) * crouchScale * (1 - 0.05 * speed);
+			const sy =
+				Math.exp(Math.log(endSy) * ps) * crouchScale * (1 + 0.1 * speed);
+			const tx = dx * px;
+			const ty = dy * py + 9 * bump;
+			const bank =
+				Math.sign(dx) *
+				Math.min(1, Math.abs(dx) / 260) *
+				6 *
+				Math.sin(Math.PI * Math.pow(v, 0.9));
+			const visibleBlur = 4.2 * Math.pow(speed, 1.4);
+			const blur = Math.min(40, visibleBlur / Math.sqrt(sx * sy));
+			if (contact < 0 && cy + ty - (H * sy) / 2 <= ir.bottom && v > 0.3)
+				contact = u;
+			frames.push({
+				offset: u,
+				translate: `${tx.toFixed(2)}px ${ty.toFixed(2)}px`,
+				scale: `${sx.toFixed(4)} ${sy.toFixed(4)}`,
+				rotate: `${bank.toFixed(2)}deg`,
+				filter: `blur(${blur.toFixed(2)}px)`,
+				opacity: u < 0.93 ? 1 : Math.max(0, 1 - (u - 0.93) / 0.07),
+			});
+		}
+		if (contact < 0) contact = 0.88;
+		el.dataset.islandFrom = owner;
+		el.style.setProperty("--mo-ox", "50%");
+		el.style.setProperty("--mo-oy", "50%");
+		el.classList.add("mo-origin");
+		island.incoming(owner, {
+			contactIn: contact * T,
+			strength: 0.65 + 0.35 * Math.min(1, Math.sqrt((W * H) / (900 * 600))),
+			fromX: Math.max(-1, Math.min(1, -dx / (innerWidth / 2))),
+		});
+		return this.#run(el, [
+			el.animate(frames, { duration: T, easing: "linear", fill: "forwards" }),
+		]);
+	}
+
+	/**
+	 * Out of the island: the mirror of the flight, but it's let go rather than
+	 * pulled, so it leaves fast and settles on a spring (a little life at the
+	 * end), resolving from a blur as it opens up.
+	 */
+	static flyOutOfIsland(el: HTMLElement, owner: string) {
+		const island = (globalThis as any).AetherIsland;
+		this.hold(el);
+		el.classList.remove("opacity0");
+		const r = el.getBoundingClientRect();
+		const ir: DOMRect = island.rect();
+		const W = Math.max(1, r.width);
+		const H = Math.max(1, r.height);
+		const sx = Math.min(0.4, Math.max(0.03, Math.min(ir.width * 0.8, 96) / W));
+		const sy = Math.min(0.3, Math.max(0.02, sx * 0.62));
+		const x = ir.left + ir.width / 2 - (r.left + W / 2);
+		const y = ir.top + ir.height / 2 - (r.top + H / 2);
+		el.style.setProperty("--mo-ox", "50%");
+		el.style.setProperty("--mo-oy", "50%");
+		el.classList.add("mo-origin");
+		const spring = this.spring(0.5, 0.74);
+		const quick = this.spring(0.4, 0.9);
+		const anims = [
+			el.animate([{ translate: `${x}px ${y}px` }, { translate: "0px 0px" }], {
+				duration: quick.duration,
+				easing: quick.easing,
+			}),
+			el.animate([{ scale: `${sx} ${sy}` }, { scale: "1 1" }], {
+				duration: spring.duration,
+				easing: spring.easing,
+			}),
+			// The blur is in the window's own pixels, so it starts large (it's
+			// tiny on screen) and is gone before the window is half size.
+			el.animate(
+				[
+					{ filter: `blur(${Math.min(36, 5 / Math.sqrt(sx * sy))}px)` },
+					{ filter: "blur(0px)", offset: 0.4 },
+					{ filter: "blur(0px)" },
+				],
+				{ duration: 300, easing: "cubic-bezier(0.2, 0.7, 0.3, 1)" },
+			),
+			el.animate([{ opacity: 0 }, { opacity: 1 }], {
+				duration: 110,
+				easing: "cubic-bezier(0.2, 0.6, 0.35, 1)",
+			}),
+		];
+		void this.#run(el, anims);
+		this.release(el);
+		island.released(owner, Math.min(1, Math.sqrt((W * H) / (900 * 600))));
 	}
 
 	/** Drop whatever this module is animating on `el` (fill-forwards included). */

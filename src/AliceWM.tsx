@@ -596,6 +596,8 @@ class WMWindow extends EventTarget implements Process {
 		setTimeout(() => {
 			AetherMotion.openWindow(this.element);
 			(globalThis as any).aetherSound?.play?.("open");
+			// Its app's island activity (if any) steps aside now it's on screen.
+			(globalThis as any).AetherIsland?.refresh();
 		}, 10);
 
 		this.pid = anura.processes.state.procs.length;
@@ -705,6 +707,9 @@ class WMWindow extends EventTarget implements Process {
 			this.#globalListeners.abort();
 			// Hand focus (and the menu bar title) to whatever is on top now.
 			focusTopmostWindow();
+			// With its window gone, the app's island activity (a song still
+			// playing, a timer still running) takes over.
+			(globalThis as any).AetherIsland?.refresh();
 			// TODO, Remove this and make it an event
 			anura.removeStaleApps();
 		};
@@ -878,6 +883,9 @@ class WMWindow extends EventTarget implements Process {
 			el.style.display = "none";
 			AetherMotion.cancel(el);
 			focusTopmostWindow();
+			// Minimized to the dock: if the app has an island activity, it
+			// shows now (a window that flew into the island already did).
+			(globalThis as any).AetherIsland?.refresh();
 		};
 		AetherMotion.minimizeWindow(el, this.app).then(hide, hide);
 	}
@@ -975,6 +983,7 @@ class WMWindow extends EventTarget implements Process {
 		}
 		this.element.style.display = "";
 		AetherMotion.restoreWindow(this.element, this.app);
+		(globalThis as any).AetherIsland?.refresh();
 	}
 
 	snap(snapDirection: "left" | "right" | "top" | "ne" | "nw" | "se" | "sw") {

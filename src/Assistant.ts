@@ -218,7 +218,13 @@ class DimensionAI {
 				: this.#view
 			: "key";
 		this.#render();
+		// Back from the island (or mid-flight into it): start from a clean slate.
+		(globalThis as any).AetherMotion?.cancel(el);
+		delete el.dataset.islandFrom;
+		el.classList.remove("is-leaving");
 		el.classList.add("is-open");
+		// On screen, so the island has nothing to add for it.
+		AetherIsland.refresh();
 		const motion = (globalThis as any).AetherMotion;
 		if (!motion?.reduced) {
 			const p = el.getBoundingClientRect();
@@ -257,9 +263,27 @@ class DimensionAI {
 
 	static close() {
 		const el = this.#el;
-		if (!el?.classList.contains("is-open")) return;
-		el.classList.remove("is-open");
-		if ((globalThis as any).AetherMotion?.reduced) return;
+		if (
+			!el?.classList.contains("is-open") ||
+			el.classList.contains("is-leaving")
+		)
+			return;
+		const motion = (globalThis as any).AetherMotion;
+		// Still working? Then it keeps going in the island, and the panel
+		// flies up there to become it.
+		el.classList.add("is-leaving");
+		if (!motion?.reduced && AetherIsland.wantsWindow("dimension.ai", el)) {
+			const done = () => {
+				el.classList.remove("is-open", "is-leaving");
+				motion.cancel(el);
+				AetherIsland.refresh();
+			};
+			motion.flyIntoIsland(el, "dimension.ai").then(done, done);
+			return;
+		}
+		el.classList.remove("is-open", "is-leaving");
+		AetherIsland.refresh();
+		if (motion?.reduced) return;
 		el.animate(
 			[
 				{ scale: "1", opacity: 1 },
@@ -586,8 +610,10 @@ class DimensionAI {
 			leading: bits.orb,
 			trailing: bits.text,
 			minimal: bits.mini,
+			owner: "dimension.ai",
 			label: () => "Dimension AI",
-			onTap: () => this.open(),
+			// Out of the island: the panel grows from where the activity is.
+			onTap: () => this.open(document.getElementById("island")),
 		});
 	}
 

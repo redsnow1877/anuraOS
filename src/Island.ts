@@ -33,6 +33,13 @@
 interface IslandActivitySpec {
 	/** Higher wins the compact slot; the runner-up gets the bubble. */
 	priority: number;
+	/**
+	 * Whose activity this is: an app's package id, or "dimension.ai". It's
+	 * left out of the island while that app has a window on screen (you can
+	 * see it already), and shows once the window is minimized or closed.
+	 * Without an owner (a screen recording) it's always shown.
+	 */
+	owner?: string;
 	/** Identity colour: tints the island's hairline. */
 	tint?: string;
 	leading: HTMLElement;
@@ -100,6 +107,8 @@ class AetherIsland {
 	static #leaveTimer = 0;
 	static #hoverTimer = 0;
 	static #gooTimer = 0;
+	/** Owners whose window is on its way in: their activity waits for the hit. */
+	static #flying = new Set<string>();
 
 	static #alerts: IslandAlert[] = [];
 	static #alert: IslandAlert | null = null;
@@ -146,6 +155,173 @@ class AetherIsland {
 
 	static has(id: string) {
 		return this.#activities.has(id);
+	}
+
+	/** Does `owner` have a live activity, shown or not? */
+	static claims(owner: string): boolean {
+		for (const a of this.#activities.values())
+			if (a.owner === owner) return true;
+		return false;
+	}
+
+	/** Is any of `owner`'s windows on screen (not minimized, not closing)? */
+	static appVisible(owner: string, except?: HTMLElement): boolean {
+		if (owner === "dimension.ai") {
+			const p = document.getElementById("ai-panel");
+			return (
+				!!p?.classList.contains("is-open") &&
+				!p.classList.contains("is-leaving")
+			);
+		}
+		const app = (globalThis as any).anura?.apps?.[owner];
+		for (const w of app?.windows || []) {
+			const el = w?.element as HTMLElement | undefined;
+			if (!el || el === except || !el.isConnected) continue;
+			if (el.style.display === "none" || el.classList.contains("opacity0"))
+				continue;
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Would minimizing `el` (one of `owner`'s windows) leave an activity for
+	 * the island to take over? That's when the window flies up into it.
+	 */
+	static wantsWindow(owner: string, el?: HTMLElement): boolean {
+		return this.present && this.claims(owner) && !this.appVisible(owner, el);
+	}
+
+	/** Where the pill is right now. */
+	static rect(): DOMRect {
+		return this.#root!.getBoundingClientRect();
+	}
+
+	/**
+	 * A window is flying in and will hit the pill in `contactIn` ms. The
+	 * activity waits until then; the pill reaches toward it just before
+	 * (surface tension), takes the hit, and the activity springs open as it
+	 * recoils. `strength` (0..1) is how hard it lands, `fromX` (-1..1) which
+	 * side it came from.
+	 */
+	static incoming(
+		owner: string,
+		o: { contactIn: number; strength: number; fromX: number },
+	) {
+		this.#flying.add(owner);
+		const reach = 95;
+		this.#jiggle({
+			delay: Math.max(0, o.contactIn - reach),
+			reach,
+			reachD: -0.42 * o.strength,
+			peak: o.strength,
+			lateral: o.fromX,
+		});
+		setTimeout(() => {
+			if (this.#flying.delete(owner)) this.refresh();
+			this.#flash();
+		}, o.contactIn);
+		// If the window never lands (interrupted), don't hold the activity back.
+		setTimeout(() => {
+			if (this.#flying.delete(owner)) this.refresh();
+		}, o.contactIn + 1500);
+	}
+
+	/** A window came back out of the pill: it exhales (stretches, then settles). */
+	static released(owner: string, strength = 0.6) {
+		this.#flying.delete(owner);
+		this.refresh();
+		this.#jiggle({
+			delay: 0,
+			reach: 0,
+			reachD: 0,
+			peak: -0.6 * strength,
+			lateral: 0,
+		});
+	}
+
+	static #jig: Animation | null = null;
+
+	/**
+	 * The pill as something springy. It's pushed to `peak` (1 = hit hard from
+	 * below: shorter, wider, shoved into the screen edge; negative = pulled
+	 * out: taller, narrower), then recoils through zero on a damped spring and
+	 * settles. Before the hit it can reach toward what's coming (`reachD`).
+	 * It's pinned at the top edge, so every squash happens downward.
+	 * Sampled from the spring's own equation, so the overshoot is the physics
+	 * and not a hand-drawn bounce: one compositor animation.
+	 */
+	static #jiggle(o: {
+		delay: number;
+		reach: number;
+		reachD: number;
+		peak: number;
+		lateral: number;
+	}) {
+		const root = this.#root;
+		if (!root || (globalThis as any).AetherMotion?.reduced) return;
+		const hit = o.reach ? 55 : 0;
+		const zeta = 0.34;
+		const w = (2 * Math.PI) / 0.3;
+		const wd = w * Math.sqrt(1 - zeta * zeta);
+		const settle = 560;
+		const total = o.reach + hit + settle;
+		const ease = (k: number) => k * k * (3 - 2 * k);
+		const frames: Keyframe[] = [];
+		for (let t = 0; t <= total; t += 16) {
+			let d: number;
+			if (t < o.reach) d = o.reachD * ease(t / o.reach);
+			else if (t < o.reach + hit) {
+				const k = (t - o.reach) / hit;
+				d = o.reachD + (o.peak - o.reachD) * (1 - Math.pow(1 - k, 3));
+			} else {
+				const tt = (t - o.reach - hit) / 1000;
+				d =
+					o.peak *
+					Math.exp(-zeta * w * tt) *
+					(Math.cos(wd * tt) + ((zeta * w) / wd) * Math.sin(wd * tt));
+			}
+			frames.push({
+				offset: t / total,
+				scale: `${(1 + 0.13 * d).toFixed(4)} ${(1 - 0.27 * d).toFixed(4)}`,
+				translate: `0px ${(-2.6 * d).toFixed(2)}px`,
+				rotate: `${(o.lateral * 1.5 * d).toFixed(3)}deg`,
+			});
+		}
+		frames[frames.length - 1] = {
+			offset: 1,
+			scale: "1 1",
+			translate: "0px 0px",
+			rotate: "0deg",
+		};
+		this.#jig?.cancel();
+		this.#jig = root.animate(frames, {
+			duration: total,
+			delay: o.delay,
+			easing: "linear",
+		});
+	}
+
+	/** A brief bright ring as it lands. */
+	static #flash() {
+		const root = this.#root;
+		if (!root || (globalThis as any).AetherMotion?.reduced) return;
+		root.classList.remove("is-hit");
+		void root.offsetWidth;
+		root.classList.add("is-hit");
+		setTimeout(() => root.classList.remove("is-hit"), 560);
+	}
+
+	/** Bring an owner's app forward: its window, restored if it was minimized. */
+	static openOwner(owner: string, args: string[] = []) {
+		const g = globalThis as any;
+		if (owner === "dimension.ai") return g.DimensionAI?.open();
+		const app = g.anura?.apps?.[owner];
+		const win = app?.windows?.[app.windows.length - 1];
+		if (win) {
+			win.unminimize?.();
+			win.focus?.();
+		} else app?.open(args);
 	}
 
 	/** Open the expanded view: an activity's card, or the dashboard. */
@@ -217,23 +393,30 @@ class AetherIsland {
 
 	/** A built-in source changed (music, timer, recording). */
 	static refresh() {
+		// Windows come and go before the island is up (and on narrow screens
+		// it never is).
+		if (!this.#root) return;
 		this.#syncBuiltins();
 		this.#render();
 	}
 
 	/* ---- what to show -------------------------------------------------- */
 
+	/** What's on the island: live activities whose own window isn't on screen. */
 	static #top(): Array<[string, IslandActivitySpec]> {
-		return [...this.#activities.entries()].sort(
-			(a, b) => b[1].priority - a[1].priority,
-		);
+		return [...this.#activities.entries()]
+			.filter(([, a]) => {
+				if (!a.owner) return true;
+				return !this.#flying.has(a.owner) && !this.appVisible(a.owner);
+			})
+			.sort((a, b) => b[1].priority - a[1].priority);
 	}
 
 	static #currentView(): IslandView {
 		if (this.#alert) return "alert";
 		if (this.#hud) return "hud";
 		if (this.#view === "expanded") return "expanded";
-		return this.#activities.size ? "compact" : "rest";
+		return this.#top().length ? "compact" : "rest";
 	}
 
 	/* ---- rendering ------------------------------------------------------ */
@@ -264,7 +447,8 @@ class AetherIsland {
 			tint = this.#toneColor(h.tone);
 		} else if (view === "expanded") {
 			const id = this.#expandedId || "dashboard";
-			const spec = this.#activities.get(id);
+			// An activity whose window came back on screen has nothing to show.
+			const spec = this.#top().find(([k]) => k === id)?.[1];
 			key = "expanded:" + id;
 			if (spec?.expanded) {
 				const node = spec.expanded;
@@ -670,7 +854,7 @@ class AetherIsland {
 			const b = (e.target as Element).closest<HTMLElement>("button[data-a]");
 			if (!b) {
 				// Anywhere else on the card: open the full player.
-				anura.apps["anura.music"]?.open();
+				this.openOwner("anura.music");
 				this.collapse();
 				return;
 			}
@@ -743,7 +927,7 @@ class AetherIsland {
 			const clock = anura.apps["anura.clock"] as any;
 			const b = (e.target as Element).closest<HTMLElement>("button[data-a]");
 			if (!b) {
-				clock?.open(["timer"]);
+				this.openOwner("anura.clock", ["timer"]);
 				this.collapse();
 				return;
 			}
@@ -784,6 +968,7 @@ class AetherIsland {
 			if (!this.#activities.has("timer"))
 				this.#activities.set("timer", {
 					priority: 20,
+					owner: "anura.clock",
 					tint: "rgba(255, 159, 10, 0.4)",
 					leading: this.#timer.icon,
 					trailing: this.#timer.time,
@@ -801,6 +986,7 @@ class AetherIsland {
 			if (!this.#activities.has("music"))
 				this.#activities.set("music", {
 					priority: 10,
+					owner: "anura.music",
 					tint: "color-mix(in oklab, var(--theme-accent) 40%, transparent)",
 					leading: this.#music.art,
 					trailing: this.#music.eq,

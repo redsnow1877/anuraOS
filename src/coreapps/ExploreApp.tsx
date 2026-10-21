@@ -178,11 +178,14 @@ class ExploreApp extends App {
 			<p>
 				A black pill floats at the top of the screen and grows into whatever is
 				happening: the song that's playing, a timer, a screen recording, the
-				assistant at work. A second activity splits off into its own bubble.
-				Hover it for a peek, click it to open it, or click it when nothing's
-				going on for the time, date and quick actions. Notifications and volume,
-				brightness and battery levels come out of it too; flick a notification
-				up to dismiss it.
+				assistant at work. An app's activity shows up once its window is out of
+				the way: minimize the Clock with a timer running and the window flies up
+				into the island, which takes the hit and recoils into the timer; click
+				it and the window flies back out. A second activity splits off into its
+				own bubble. Hover it for a peek, click it to open it, or click it when
+				nothing's going on for the time, date and quick actions. Notifications
+				and volume, brightness and battery levels come out of it too; flick a
+				notification up to dismiss it.
 			</p>
 
 			<h2>The dock</h2>
