@@ -642,10 +642,16 @@ workbox.routing.registerRoute(
 	"GET",
 );
 
+// Same-origin only. As a bare regex this also matched every cross-origin
+// GET (a regex anchored at ^ matches any URL at index 0, which is workbox's
+// test for cross-origin routes), and returning nothing for those failed the
+// request: the shell couldn't fetch() anything from another site. Unmatched
+// requests go to the network untouched.
 workbox.routing.registerRoute(
-	/^(?!.*(\/config.json|\/MILESTONE|\/x86images\/|\/service\/))/,
+	({ url }) =>
+		url.origin === self.location.origin &&
+		!/(\/config.json|\/MILESTONE|\/x86images\/|\/service\/)/.test(url.href),
 	async (event) => {
-		if (new URL(event.url).origin !== self.location.origin) return false;
 		await bootStrapFSReady;
 		if (cacheenabled === undefined) {
 			console.debug("retrieving cache value");
